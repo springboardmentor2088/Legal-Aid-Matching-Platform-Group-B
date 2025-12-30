@@ -24,25 +24,12 @@ public class UserService {
     private final CitizenRepository citizenRepository;
 
     private final com.jurify.jurify_backend.repository.VerificationRequestRepository verificationRequestRepository;
+    private final CloudflareR2Service r2Service;
+    private final com.jurify.jurify_backend.repository.DirectoryEntryRepository directoryEntryRepository;
+    private final DirectoryEntryService directoryEntryService;
 
     @Transactional
     public void updateProfileLocation(Long userId, LocationUpdateDTO locationDTO) {
-        // ... (keeping existing method for location-specific updates if needed, logic
-        // is similar)
-        // Actually, let's keep it as is or delegate?
-        // For now, I will keep the original method and add the new one to avoid
-        // breaking changes if anything uses the old one.
-        // Wait, the instruction says "Reuse existing... or rewrite inline".
-        // I will keep the previous method implementation and append the NEW method.
-        // But the user asked me to REPLACE lines 27-83 which IS the existing method.
-        // I should PROBABLY REPLACE IT with the new method AND keep the old one?
-        // Or should I implement the new method separately?
-        // The tool is replace_file_content.
-        // I will INSERT the new method AFTER the existing one.
-        // BUT wait, I have to target specific lines.
-        // I'll rewrite the existing method and add the new one below it within the same
-        // replacement block.
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -172,6 +159,13 @@ public class UserService {
                         lawyer.setLongitude(profileDTO.getLongitude());
 
                     lawyerRepository.save(lawyer);
+                    // Sync with DirectoryEntry
+                    try {
+                        directoryEntryService.syncLawyerProfile(user, lawyer);
+                    } catch (Exception e) {
+                        // Log error but don't fail profile update if directory sync fails
+                        System.err.println("Failed to sync directory entry: " + e.getMessage());
+                    }
                 }
                 break;
             case NGO:
@@ -235,6 +229,13 @@ public class UserService {
                         ngo.setLongitude(profileDTO.getLongitude());
 
                     ngoRepository.save(ngo);
+                    // Sync with DirectoryEntry
+                    try {
+                        directoryEntryService.syncNgoProfile(user, ngo);
+                    } catch (Exception e) {
+                        // Log error but don't fail profile update if directory sync fails
+                        System.err.println("Failed to sync directory entry: " + e.getMessage());
+                    }
                 }
                 break;
             case ADMIN:
@@ -243,12 +244,18 @@ public class UserService {
         }
     }
 
+    @Transactional(readOnly = true)
     public com.jurify.jurify_backend.dto.auth.AuthResponse getCurrentUserResponse(User user) {
         var builder = com.jurify.jurify_backend.dto.auth.AuthResponse.builder()
                 .userId(user.getId())
                 .email(user.getEmail())
                 .role(user.getRole())
                 .isEmailVerified(user.getIsEmailVerified());
+
+        // Populate Directory Status (isActive)
+        java.util.Optional<com.jurify.jurify_backend.model.DirectoryEntry> directoryEntry = directoryEntryRepository
+                .findByUser(user);
+        directoryEntry.ifPresent(entry -> builder.isActive(entry.getIsActive()));
 
         if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.CITIZEN) {
             Citizen citizen = user.getCitizen();
@@ -270,7 +277,7 @@ public class UserService {
 
                 // Citizen Document
                 if (citizen.getDocument() != null) {
-                    builder.documentUrl(citizen.getDocument().getFileUrl());
+                    builder.documentUrl(r2Service.generatePresignedUrl(citizen.getDocument().getS3Key()));
                 }
                 // Citizen Verification based on Email
                 builder.isVerified(user.getIsEmailVerified());
@@ -313,10 +320,30 @@ public class UserService {
                 builder.verificationStatus(
                         lawyer.getVerificationStatus() != null ? lawyer.getVerificationStatus().name() : "PENDING");
 
-                // Fetch latest verification request for document
-                verificationRequestRepository.findByUserId(user.getId()).stream()
-                        .reduce((first, second) -> second) // Get last one
-                        .ifPresent(req -> builder.documentUrl(req.getDocumentUrl()));
+                // Fetch document from LawyerDocument if available
+                if (lawyer.getDocument() != null) {
+                    builder.documentUrl(r2Service.generatePresignedUrl(lawyer.getDocument().getS3Key()));
+                } else {
+                    // Fallback to fetch from verification request if document is missing in entity
+                    // relation
+                    verificationRequestRepository.findByUserId(user.getId()).stream()
+                            .reduce((first, second) -> second)
+                            .ifPresent(req -> {
+                                String docUrl = req.getDocumentUrl();
+                                if (docUrl != null && docUrl.contains("cloudflarestorage.com/")) {
+                                    // Extract key from public URL if possible to presign it
+                                    // URL format: https://<...>.r2.cloudflarestorage.com/<key>
+                                    // We need everything after the domain
+                                    String key = docUrl.substring(docUrl.indexOf("cloudflarestorage.com/") + 24);
+                                    if (key.startsWith("/"))
+                                        key = key.substring(1); // remove leading slash
+
+                                    builder.documentUrl(r2Service.generatePresignedUrl(key));
+                                } else {
+                                    builder.documentUrl(docUrl);
+                                }
+                            });
+                }
             }
         } else if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.NGO) {
             NGO ngo = user.getNgo();
@@ -357,7 +384,7 @@ public class UserService {
 
                 // Fetch document from NGODocument entity
                 if (ngo.getDocuments() != null && !ngo.getDocuments().isEmpty()) {
-                    builder.documentUrl(ngo.getDocuments().get(0).getFileUrl());
+                    builder.documentUrl(r2Service.generatePresignedUrl(ngo.getDocuments().get(0).getS3Key()));
                 }
             }
         }

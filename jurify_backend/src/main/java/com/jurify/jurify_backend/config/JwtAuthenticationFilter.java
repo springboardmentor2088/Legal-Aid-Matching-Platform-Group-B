@@ -27,9 +27,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
-    ) throws ServletException, IOException {
-        
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
+
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
         final String userEmail;
@@ -47,29 +46,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        
+
         try {
             userEmail = jwtUtil.extractUsername(jwt);
-            
+
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 if (jwtUtil.validateToken(jwt)) {
                     String role = jwtUtil.extractRole(jwt);
-                    
+
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userEmail,
                             null,
-                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
-                    
+                            Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
+
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            // Token is expired
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"error\": \"Token expired\", \"message\": \"" + e.getMessage() + "\"}");
+            return; // Stop processing
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            logger.error("Cannot set user authentication: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 }
-

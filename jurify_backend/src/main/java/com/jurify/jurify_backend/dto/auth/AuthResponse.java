@@ -61,4 +61,6 @@ public class AuthResponse {
     private String verificationStatus; // e.g. PENDING, APPROVED, REJECTED
     @Builder.Default
     private Boolean isVerified = false;
+    @Builder.Default
+    private Boolean isActive = true;
 }

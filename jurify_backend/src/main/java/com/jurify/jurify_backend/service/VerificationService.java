@@ -20,6 +20,9 @@ public class VerificationService {
     private final UserRepository userRepository;
     private final LawyerRepository lawyerRepository;
     private final NGORepository ngoRepository;
+    private final DirectoryEntryService directoryEntryService;
+
+    private final CloudflareR2Service r2Service;
 
     @Transactional
     public VerificationRequest submitVerificationRequest(Long userId, VerificationRequestDTO requestDTO) {
@@ -58,7 +61,45 @@ public class VerificationService {
     }
 
     public List<VerificationRequest> getPendingRequests() {
-        return verificationRequestRepository.findByStatus(VerificationStatus.PENDING);
+        List<VerificationRequest> requests = verificationRequestRepository.findByStatus(VerificationStatus.PENDING);
+
+        // Generate presigned URLs for each request to ensure access to private R2
+        // bucket files
+        for (VerificationRequest request : requests) {
+            String documentUrl = request.getDocumentUrl();
+            if (documentUrl != null && documentUrl.contains(".r2.cloudflarestorage.com/")) {
+                try {
+                    // Extract key: everything after the domain
+                    // URL format: https://<bucket>.<account>.r2.cloudflarestorage.com/<key>
+                    int index = documentUrl.indexOf(".r2.cloudflarestorage.com/");
+                    String key = documentUrl.substring(index + 26);
+
+                    // Remove leading slash if present (though logic above should handle it)
+                    if (key.startsWith("/")) {
+                        key = key.substring(1);
+                    }
+
+                    // Decode key URL if needed? The stored URL is manually concatenated string so
+                    // likely raw.
+
+                    System.out.println("Generating presigned URL for key: " + key);
+                    String presignedUrl = r2Service.generatePresignedUrl(key);
+
+                    if (presignedUrl != null) {
+                        System.out.println("Generated URL: " + presignedUrl);
+                        request.setDocumentUrl(presignedUrl);
+                    } else {
+                        System.err.println("Generated URL is null for key: " + key);
+                    }
+                } catch (Exception e) {
+                    System.err.println(
+                            "Failed to generate presigned URL for request " + request.getId() + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return requests;
     }
 
     @Transactional
@@ -85,6 +126,7 @@ public class VerificationService {
                 lawyer.setVerificationStatus(VerificationStatus.VERIFIED);
                 lawyer.setVerificationDate(LocalDateTime.now());
                 lawyerRepository.save(lawyer);
+                directoryEntryService.ensureVerifiedLawyerEntry(user, lawyer);
             }
         } else if (user.getRole() == UserRole.NGO) {
             NGO ngo = user.getNgo();
@@ -93,6 +135,7 @@ public class VerificationService {
                 ngo.setVerificationStatus(VerificationStatus.VERIFIED);
                 ngo.setVerificationDate(LocalDateTime.now());
                 ngoRepository.save(ngo);
+                directoryEntryService.ensureVerifiedNgoEntry(user, ngo);
             }
         }
 

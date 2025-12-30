@@ -24,6 +24,7 @@ public class LawyerDocument {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lawyer_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Lawyer lawyer;
 
     @Column(name = "file_name")

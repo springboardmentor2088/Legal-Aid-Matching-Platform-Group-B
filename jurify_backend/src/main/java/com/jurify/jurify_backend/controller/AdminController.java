@@ -15,6 +15,24 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminService adminService;
+    private final com.jurify.jurify_backend.service.DirectoryEntryService directoryEntryService;
+
+    @GetMapping("/directory")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<org.springframework.data.domain.Page<com.jurify.jurify_backend.model.DirectoryEntry>> getDirectoryEntries(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String q,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String state,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String city,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String type,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String specialization,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "0") int page,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "10") int size) {
+
+        // isVerified = null means return BOTH verified and unverified
+        return ResponseEntity
+                .ok(directoryEntryService.searchDirectory(q, state, city, type, specialization, null, null, null, null,
+                        null, null, null, page, size));
+    }
 
     @GetMapping("/stats")
     @PreAuthorize("hasRole('ADMIN')")

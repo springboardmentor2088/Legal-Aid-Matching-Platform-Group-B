@@ -105,6 +105,10 @@ export const api = {
         const response = await axiosInstance.put(endpoint, data);
         return response.data;
     },
+    patch: async (endpoint, data) => {
+        const response = await axiosInstance.patch(endpoint, data);
+        return response.data;
+    },
     delete: async (endpoint) => {
         const response = await axiosInstance.delete(endpoint);
         return response.data;

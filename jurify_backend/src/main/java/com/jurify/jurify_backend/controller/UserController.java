@@ -18,6 +18,22 @@ public class UserController {
 
     private final UserService userService;
     private final UserRepository userRepository;
+    private final com.jurify.jurify_backend.service.DirectoryEntryService directoryEntryService;
+
+    @PatchMapping("/directory-status")
+    public ResponseEntity<Void> updateDirectoryStatus(@RequestBody java.util.Map<String, Boolean> statusUpdate,
+            Principal principal) {
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Boolean isActive = statusUpdate.get("isActive");
+        if (isActive == null) {
+            throw new IllegalArgumentException("isActive field is required");
+        }
+
+        directoryEntryService.updateStatus(user, isActive);
+        return ResponseEntity.ok().build();
+    }
 
     @PutMapping("/profile/location")
     public ResponseEntity<Void> updateProfileLocation(@Valid @RequestBody LocationUpdateDTO locationDTO,

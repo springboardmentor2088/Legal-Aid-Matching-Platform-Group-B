@@ -9,5 +9,8 @@ import java.util.Optional;
 @Repository
 public interface NGORepository extends JpaRepository<NGO, Long> {
     Optional<NGO> findByUser_Id(Long userId);
+
     boolean existsByRegistrationNumber(String registrationNumber);
+
+    java.util.List<NGO> findByIsVerifiedTrue();
 }

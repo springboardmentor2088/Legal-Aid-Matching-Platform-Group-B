@@ -22,55 +22,80 @@ import NgoDashboard from "./components/pages/NgoDashboard";
 import AboutPage from "./components/pages/AboutPage";
 import ServicesPage from "./components/pages/ServicePage";
 import ContactUs from "./components/pages/ContactUs";
+import CaseSubmissionForm from "./components/case/caseSubmissionForm";
+import { ToastProvider } from "./components/common/ToastContext";
+import DirectorySearch from "./components/directory/DirectorySearch";
+
+
+
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          {/* Public Routes (Redirect to Dashboard if logged in) */}
-          <Route element={<PublicRoute />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register-citizen" element={<CitizenRegister />} />
-            <Route path="/register-lawyer" element={<LawyerRegister />} />
-            <Route path="/register-ngo" element={<NgoRegister />} />
-            <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/services" element={<ServicesPage />} />
-            <Route path="/contact-us" element={<ContactUs />} />
-          </Route>
+    <ToastProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            {/* Public Routes (Redirect to Dashboard if logged in) */}
+            <Route element={<PublicRoute />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register-citizen" element={<CitizenRegister />} />
+              <Route path="/register-lawyer" element={<LawyerRegister />} />
+              <Route path="/register-ngo" element={<NgoRegister />} />
+              <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/services" element={<ServicesPage />} />
+              <Route path="/contact-us" element={<ContactUs />} />
+            </Route>
 
-          <Route path="/verify-email" element={<VerifyEmail />} />
-
-
-          <Route element={<ProtectedRoute allowedRoles={['CITIZEN']} />}>
-            <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
-          </Route>
-
-          <Route element={<ProtectedRoute allowedRoles={['LAWYER']} />}>
-            <Route path="/lawyer/dashboard" element={<LawyerDashboard />} />
-          </Route>
-
-          {/* NGO Dashboard */}
-          <Route element={<ProtectedRoute allowedRoles={['NGO']} />}>
-            <Route path="/ngo/dashboard" element={<NgoDashboard />} />
-          </Route>
+            <Route path="/verify-email" element={<VerifyEmail />} />
 
 
-          <Route element={<ProtectedRoute allowedRoles={['LAWYER', 'NGO']} />}>
-            <Route path="/verification" element={<VerificationPage />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRoles={['CITIZEN']} />}>
+              <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+            </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          </Route>
+            <Route element={<ProtectedRoute allowedRoles={['LAWYER']} />}>
+              <Route path="/lawyer/dashboard" element={<LawyerDashboard />} />
+            </Route>
 
-          {/* 404 Route */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </AuthProvider>
-    </ThemeProvider>
+            {/* NGO Dashboard */}
+            <Route element={<ProtectedRoute allowedRoles={['NGO']} />}>
+              <Route path="/ngo/dashboard" element={<NgoDashboard />} />
+            </Route>
+
+
+            <Route element={<ProtectedRoute allowedRoles={['LAWYER', 'NGO']} />}>
+              <Route path="/verification" element={<VerificationPage />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            </Route>
+
+            <Route element={<ProtectedRoute allowedRoles={['CITIZEN']} />}>
+              <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+              <Route path="/citizen/submit-case" element={<CaseSubmissionForm />} />
+            </Route>
+
+            <Route path="/directory" element={<DirectorySearch />} />
+
+
+
+
+            {/* 404 Route */}
+            <Route path="*" element={<NotFoundPage />} />
+
+            {/*Bypass code lines*/}
+            <Route path="/dev/lawyer-dashboard" element={<LawyerDashboard />} />
+            <Route path="/dev/citizen-dashboard" element={<CitizenDashboard />} />
+            <Route path="/dev/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/directory" element={<DirectorySearch />} />
+
+          </Routes>
+        </AuthProvider>
+      </ThemeProvider>
+    </ToastProvider>
   );
 }
 

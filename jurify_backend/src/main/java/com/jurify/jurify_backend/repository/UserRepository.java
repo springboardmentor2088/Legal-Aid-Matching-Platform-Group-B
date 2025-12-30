@@ -18,4 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByVerificationPollingToken(String token);
 
     long countByRole(UserRole role);
+
+    org.springframework.data.domain.Page<User> findByEmailNot(String email,
+            org.springframework.data.domain.Pageable pageable);
 }

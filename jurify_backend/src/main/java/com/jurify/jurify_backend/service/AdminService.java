@@ -7,6 +7,7 @@ import com.jurify.jurify_backend.model.enums.CaseStatus;
 import com.jurify.jurify_backend.repository.UserRepository;
 import com.jurify.jurify_backend.repository.LegalCaseRepository;
 import com.jurify.jurify_backend.repository.VerificationRequestRepository;
+import java.time.LocalDateTime; // Added
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ public class AdminService {
     private final UserRepository userRepository;
     private final LegalCaseRepository legalCaseRepository;
     private final VerificationRequestRepository verificationRequestRepository;
+    private final com.jurify.jurify_backend.repository.DirectoryEntryRepository directoryEntryRepository;
 
     @Transactional(readOnly = true)
     public AdminStatsDTO getStats() {
@@ -55,34 +57,110 @@ public class AdminService {
             // Or better:
             users = userRepository.findAll(pageable); // Placeholder for search
         } else {
-            users = userRepository.findAll(pageable);
+            // Exclude the default admin from the list
+            users = userRepository.findByEmailNot("jurify.springboard@gmail.com", pageable);
         }
 
         return users.map(user -> {
             String name = "User";
-            String status = user.getIsActive() ? "ACTIVE" : "SUSPENDED";
-            boolean isVerified = false;
+            String phone = "-";
+            String city = "-";
+            String state = "-";
+            String accountStatus = user.getIsActive() ? "ACTIVE" : "SUSPENDED";
+            String verificationStatus = "PENDING"; // Default
+
+            // Role specific fields
+            String barCouncilNumber = null;
+            java.util.List<String> specializations = null;
+            Integer yearsOfExperience = null;
+            String rating = "0.0";
+            String availability = "UNKNOWN";
+            Integer casesHandled = 0;
+
+            String ngoDarpanId = null;
+            java.util.List<String> areasOfWork = null;
+            Integer proBonoCapacity = null;
+            Integer activeCases = 0;
+
+            Integer totalCasesSubmitted = 0;
+            LocalDateTime lastCaseDate = null;
 
             if (user.getCitizen() != null) {
                 name = user.getCitizen().getFirstName() + " " + user.getCitizen().getLastName();
-                isVerified = user.getIsEmailVerified();
+                phone = user.getCitizen().getPhoneNumber();
+                if (user.getCitizen().getLocation() != null) {
+                    city = user.getCitizen().getLocation().getCity();
+                    state = user.getCitizen().getLocation().getState();
+                }
+                verificationStatus = user.getIsEmailVerified() ? "APPROVED" : "PENDING";
+                // Citizen specifics
+                totalCasesSubmitted = 0; // TODO: Fetch real count
+                activeCases = 0;
             } else if (user.getLawyer() != null) {
-                name = user.getLawyer().getFirstName() + " " + user.getLawyer().getLastName();
-                isVerified = user.getLawyer().getIsVerified();
+                com.jurify.jurify_backend.model.Lawyer lawyer = user.getLawyer();
+                name = lawyer.getFirstName() + " " + lawyer.getLastName();
+                phone = lawyer.getPhoneNumber();
+                city = lawyer.getCity(); // or getOfficeAddressCity
+                state = lawyer.getState(); // or getOfficeAddressState
+
+                if (lawyer.getVerificationStatus() != null) {
+                    verificationStatus = lawyer.getVerificationStatus().name();
+                } else {
+                    verificationStatus = lawyer.getIsVerified() ? "APPROVED" : "PENDING";
+                }
+
+                barCouncilNumber = lawyer.getBarCouncilNumber();
+                // specializations todo map
+                yearsOfExperience = lawyer.getYearsOfExperience();
+                availability = lawyer.getIsAvailable() ? "AVAILABLE" : "BUSY";
+                casesHandled = 0; // TODO
             } else if (user.getNgo() != null) {
-                name = user.getNgo().getOrganizationName();
-                isVerified = user.getNgo().getIsVerified();
+                com.jurify.jurify_backend.model.NGO ngo = user.getNgo();
+                name = ngo.getOrganizationName();
+                phone = ngo.getOrganizationPhone();
+                city = ngo.getCity(); // or addressCity
+                state = ngo.getState(); // or addressState
+
+                if (ngo.getVerificationStatus() != null) {
+                    verificationStatus = ngo.getVerificationStatus().name();
+                } else {
+                    verificationStatus = ngo.getIsVerified() ? "APPROVED" : "PENDING";
+                }
+
+                ngoDarpanId = ngo.getRegistrationNumber();
+                // areasOfWork todo map
+                proBonoCapacity = ngo.getMaxProBonoCases();
+                activeCases = 0; // TODO
             }
+
+            boolean isVerifiedBool = "APPROVED".equals(verificationStatus) || "VERIFIED".equals(verificationStatus);
 
             return com.jurify.jurify_backend.dto.admin.AdminUserDTO.builder()
                     .id(user.getId())
                     .name(name)
                     .email(user.getEmail())
+                    .phone(phone)
+                    .city(city)
+                    .state(state)
                     .role(user.getRole())
-                    .status(status)
+                    .accountStatus(accountStatus)
+                    .verificationStatus(verificationStatus)
+                    .isVerified(isVerifiedBool)
                     .joinedAt(user.getCreatedAt())
-                    .activity(0) // Logic for activity count later
-                    .isVerified(isVerified)
+                    .lastActive(user.getLastLoginAt())
+                    // Lawyer
+                    .barCouncilNumber(barCouncilNumber)
+                    .yearsOfExperience(yearsOfExperience)
+                    .rating(rating)
+                    .availability(availability)
+                    .casesHandled(casesHandled)
+                    // NGO
+                    .ngoDarpanId(ngoDarpanId)
+                    .proBonoCapacity(proBonoCapacity)
+                    .activeCases(activeCases)
+                    // Citizen
+                    .totalCasesSubmitted(totalCasesSubmitted)
+                    .lastCaseDate(lastCaseDate)
                     .build();
         });
     }
@@ -94,13 +172,23 @@ public class AdminService {
 
         if (user.getRole() == UserRole.LAWYER && user.getLawyer() != null) {
             user.getLawyer().setIsVerified(true);
+            user.getLawyer().setVerificationStatus(VerificationStatus.VERIFIED);
         } else if (user.getRole() == UserRole.NGO && user.getNgo() != null) {
             user.getNgo().setIsVerified(true);
+            user.getNgo().setVerificationStatus(VerificationStatus.VERIFIED);
         }
 
         // Also verify the user account itself (email verification typically implies
         // trust)
         user.setIsEmailVerified(true);
         userRepository.save(user);
+
+        // SYNC: Update Directory Entry
+        com.jurify.jurify_backend.model.DirectoryEntry directoryEntry = directoryEntryRepository.findByUser(user)
+                .orElse(null);
+        if (directoryEntry != null) {
+            directoryEntry.setIsVerified(true);
+            directoryEntryRepository.save(directoryEntry);
+        }
     }
 }

@@ -1,148 +1,228 @@
 # Jurify
 
-A comprehensive legal technology platform designed to streamline legal document management, research, and collaboration.
+**A Next-Generation Legal Technology Platform**
+
+Jurify is a comprehensive web application designed to bridge the gap between legal professionals and citizens. It streamlines legal document management, simplifies lawyer discovery, and facilitates secure collaboration through a modern, role-based ecosystem.
 
 ## 📋 Project Overview
 
-Jurify is a full-stack web application that provides legal professionals with tools for document management, case research, and team collaboration. The platform leverages modern web technologies to deliver a responsive, secure, and scalable solution.
+Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and **Admins**, each tailored with specific tools to enhance productivity and access to justice. The platform leverages modern web technologies to deliver a responsive, secure, and scalable solution for the legal industry.
+
+---
+
+## 🌟 Key Features
+
+### 🏛️ Role-Based Portals
+- **Citizens**: Search for lawyers, submit legal cases, track status, and manage documents.
+- **Lawyers**: Accept/reject cases, manage client portfolios, and update verification details.
+- **NGOs**: Collaborate on pro-bono cases, manage outreach programs, and support legal aid.
+- **Admins**: Full platform oversight including user verification, content moderation, and system analytics.
+
+### 💼 Case Management System
+- **Submission**: Intuitive forms for citizens to submit legal grievances.
+- **Tracking**: Real-time status updates (Pending, In Progress, Resolved).
+- **History**: archival of past cases and legal interactions.
+
+### 🔍 Smart Legal Directory
+- **Advanced Search**: Filter lawyers by specialization (Criminal, Family, Corporate), location, and experience.
+- **Profiles**: Detailed professional profiles with verification badges.
+- **Geospatial Mapping**: Integrated Leaflet maps to visualize legal aid distribution.
+
+### 🔐 Security & Identity
+- **Authentication**: Robust JWT-based sessions and Google OAuth2 integration.
+- **Verification Workflow**: Strict admin-led vetting process for lawyers and NGOs to prevent fraud.
+- **Document Vault**: AWS S3 backed encrypted storage for sensitive legal files.
+- **Privacy**: Role-based access control (RBAC) ensuring data is only visible to authorized parties.
+
+### 💬 Communication & Collaboration
+- **Direct Messaging**: Secure communication channels between clients and lawyers.
+- **Notifications**: Automated email alerts for case updates and verification status.
+- **Contact Support**: Integrated inquiry forms for platform assistance.
+
+---
+
+## 🔮 Implementation Roadmap (Future Ideas)
+
+### 🤖 AI Legal Assistant
+- **Chatbot**: NLP-powered assistant to answer basic legal FAQs and guide users to relevant laws.
+- **Document Summarization**: AI tools to summarize complex legal documents for citizens.
+
+### 📹 Remote Consultations
+- **Video Integration**: Built-in video conferencing for remote client-lawyer meetings.
+- **Scheduling**: Calendar integration for booking appointments.
+
+### 💳 Secure Payments
+- **Payment Gateway**: Integration with Stripe/Razorpay for consultation fees and pro-bono donations.
+- **Escrow**: Secure holding of funds until services are rendered.
+
+### ⛓️ Blockchain Evidence
+- **Immutable Logs**: Using blockchain to create tamper-proof records of submitted evidence and case history.
+- **Smart Contracts**: Automated engagement letters and service agreements.
+
+### 📱 Mobile Ecosystem
+- **Native Apps**: React Native applications for iOS and Android.
+- **Offline Mode**: Access to essential documents and contacts without internet.
+
+### 🌍 Accessibility & Localization
+- **Multi-language Support (i18n)**: Interface available in regional languages.
+- **Voice Commands**: Voice-assisted navigation for differently-abled users.
+
+### 📊 Advanced Analytics
+- **Legal Trends**: Insights into common legal issues by region.
+- **Performance Metrics**: Dashboard for lawyers to track case resolution rates.
+
+---
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **Framework**: Spring Boot 4.0.0
-- **Language**: Java 21
-- **Database**: PostgreSQL
-- **Authentication**: JWT (JSON Web Token)
-- **Authorization**: OAuth2
-- **Real-time Communication**: WebSocket
-- **Cloud Storage**: AWS S3
+### Backend (Robust & Scalable)
+- **Framework**: Spring Boot 3.4.0 (Compatible with Java 21)
+- **Language**: Java 21 LTS
+- **Database**: PostgreSQL (Relational Data Persistence)
+- **Security**: Spring Security, OAuth2 Client, JWT (jjwt 0.12.3)
+- **Storage**: AWS SDK for Java (S3 Integration)
+- **Real-time**: Spring WebSocket
 - **Build Tool**: Maven
 
-### Frontend
+### Frontend (Modern & Reactive)
 - **Framework**: React 19
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS
+- **Build Tool**: Vite 7
+- **Styling**: Tailwind CSS 4
+- **Routing**: React Router DOM 7
 - **HTTP Client**: Axios
-- **Routing**: React Router
-- **Mapping**: Leaflet
-- **Icons**: React Icons
+- **Maps**: Leaflet & React-Leaflet
+- **Icons**: React Icons, Heroicons
+- **Animations**: Framer Motion
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Java 21 (Backend)
-- Node.js 18+ (Frontend)
-- PostgreSQL 12+
-- Maven
-- npm or yarn
+- **Java 21 JDK**
+- **Node.js 18+**
+- **PostgreSQL 12+**
+- **Maven 3.8+**
 
-### Backend Setup
+### 1️⃣ Backend Setup
 
-1. Clone the repository
-```bash
-git clone https://github.com/Antrow15/Jurify.git
-cd Jurify
-```
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/Antrow15/Jurify.git
+    cd Jurify/jurify_backend
+    ```
 
-2. Navigate to the backend directory
-```bash
-cd jurify_backend
-```
+2.  **Configure Environment**
+    Update `src/main/resources/application.properties` with your credentials:
 
-3. Configure PostgreSQL connection in `application.properties` or `application.yml`
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/jurify
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-```
+    ```properties
+    # Database Configuration
+    spring.datasource.url=jdbc:postgresql://localhost:5432/jurify
+    spring.datasource.username=YOUR_DB_USER
+    spring.datasource.password=YOUR_DB_PASSWORD
 
-4. Build and run the application
-```bash
-mvn clean install
-mvn spring-boot:run
-```
+    # JPA / Hibernate
+    spring.jpa.hibernate.ddl-auto=update
 
-The backend will start on `http://localhost:8080`
+    # Mail Configuration (For Verification/Notifications)
+    spring.mail.host=smtp.gmail.com
+    spring.mail.port=587
+    spring.mail.username=YOUR_EMAIL@gmail.com
+    spring.mail.password=YOUR_APP_PASSWORD
+    spring.mail.properties.mail.smtp.auth=true
+    spring.mail.properties.mail.smtp.starttls.enable=true
 
-### Frontend Setup
+    # AWS S3 Configuration (For Document Storage)
+    aws.s3.bucket=YOUR_BUCKET_NAME
+    aws.accessKeyId=YOUR_ACCESS_KEY
+    aws.secretKey=YOUR_SECRET_KEY
+    aws.region=YOUR_REGION
 
-1. Navigate to the frontend directory
-```bash
-cd jurify_frontend
-```
+    # JWT Configuration
+    jwt.secret=YOUR_VERY_LONG_SECRET_KEY
+    ```
 
-2. Install dependencies
-```bash
-npm install
-```
+3.  **Build and Run**
+    ```bash
+    mvn clean install
+    mvn spring-boot:run
+    ```
+    *The server will start on `http://localhost:8080`.*
 
-3. Create a `.env` file with your API configuration
-```env
-VITE_API_BASE_URL=http://localhost:8080
-```
+### 2️⃣ Frontend Setup
 
-4. Start the development server
-```bash
-npm run dev
-```
+1.  **Navigate to frontend**
+    ```bash
+    cd ../jurify_frontend
+    ```
 
-The frontend will start on `http://localhost:5173`
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
 
-## 🔐 Security Features
+3.  **Configure Environment**
+    Create a `.env` file in the `jurify_frontend` root:
 
-- **JWT Authentication**: Secure token-based authentication
-- **OAuth2 Integration**: Third-party authentication support
-- **WebSocket Security**: Secure real-time communication
-- **AWS S3 Integration**: Secure document storage with S3
+    ```env
+    VITE_API_BASE_URL=http://localhost:8080
+    ```
 
-## 📦 Core Features
+4.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+    *The app will be accessible at `http://localhost:5173`.*
 
-- **Document Management**: Upload, organize, and manage legal documents
-- **Search & Filtering**: Advanced search and filtering capabilities
-- **Real-time Collaboration**: WebSocket-based real-time updates
-- **Map Integration**: Location-based legal research using Leaflet
-- **User Management**: OAuth2 and JWT-based user authentication
-- **Cloud Storage**: Secure document storage using AWS S3
+---
 
 ## 📁 Project Structure
 
 ```
 Jurify/
-├── jurify_backend/
+├── jurify_backend/       # Spring Boot Application
+│   ├── src/main/java     # Core Logic (Controllers, Services, Models)
+│   ├── src/main/resources# Config & Templates
+│   └── pom.xml           # Maven Dependencies
+│
+├── jurify_frontend/      # React Application
 │   ├── src/
-│   ├── pom.xml
-│   ├── mvnw
-│   └── ...
-├── jurify_frontend/
-│   ├── src/
-│   ├── vite.config.js
-│   ├── package.json
-│   ├── index.html
-│   └── ...
-└── README.md
+│   │   ├── components/   # Reusable UI Components
+│   │   ├── pages/        # Route Pages (Dashboards, Landing)
+│   │   ├── services/     # API Integration (Axios)
+│   │   └── context/      # Global State (Auth, Theme)
+│   ├── public/           # Static Assets
+│   └── package.json      # NPM Dependencies
+│
+└── README.md             # Project Documentation
 ```
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-2. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-3. Push to the branch (`git push origin feature/AmazingFeature`)
-4. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 👥 Authors
-
-- **Antrow15** - Initial work and project lead
-
-## 📞 Support
-
-For support, please open an issue on the GitHub repository or contact the development team.
 
 ---
 
-**Last Updated**: December 14, 2025
+## 🤝 Contributing
+
+Contributions are welcome!
+
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 👥 Authors
+
+-   **Antrow15** - *Project Lead & Full Stack Developer*
+-   **DharunKumar-V** - *Backend Developer*
+-   **siddhuoo** (siddhesh kumbhar) - *Backend Developer*
+-   **Sriraksha-16** - *Backend Developer*
+-   **Devadharshini152** - *Frontend Developer*
+-   **Divyanshu-2907** (Divyanshu Kumar) - *Frontend Developer*
+-   **Rijithaa** (Rijithaa A R) - *Frontend Developer*

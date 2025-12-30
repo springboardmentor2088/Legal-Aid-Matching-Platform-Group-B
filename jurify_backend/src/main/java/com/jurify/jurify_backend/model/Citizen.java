@@ -28,6 +28,7 @@ public class Citizen {
 
     @OneToOne
     @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
     @Column(name = "first_name", nullable = false)

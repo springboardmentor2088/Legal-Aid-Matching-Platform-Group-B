@@ -24,6 +24,7 @@ public class NGODocument {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ngo_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private NGO ngo;
 
     @Column(name = "document_category")
