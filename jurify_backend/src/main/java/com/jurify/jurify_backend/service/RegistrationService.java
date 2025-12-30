@@ -32,6 +32,10 @@ public class RegistrationService {
 
         private final CloudflareR2Service r2Service;
 
+        private final RegistryIntegrationService registryIntegrationService;
+
+        private final DirectoryEntryService directoryEntryService;
+
         @Transactional
         public RegisterResponse registerCitizen(CitizenRegisterRequest request,
                         org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
@@ -129,7 +133,20 @@ public class RegistrationService {
                                 .verificationPollingToken(UUID.randomUUID().toString())
                                 .build();
 
-                user = userRepository.save(user);
+                try {
+                        user = userRepository.save(user);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                        throw new RuntimeException("Email already registered");
+                }
+
+                // Auto-Verify Check
+                boolean isAutoVerified = false;
+                java.util.Map<String, Object> registryData = registryIntegrationService
+                                .verifyLawyer(request.getBarCouncilNumber());
+                if (registryData != null && Boolean.TRUE.equals(registryData.get("exists"))) {
+                        isAutoVerified = true;
+                        log.info("Auto-verified lawyer: {}", request.getEmail());
+                }
 
                 // Create Lawyer profile
                 Lawyer lawyer = Lawyer.builder()
@@ -152,7 +169,11 @@ public class RegistrationService {
                                 .country(request.getCountry())
                                 .latitude(request.getLatitude())
                                 .longitude(request.getLongitude())
-                                .isVerified(false)
+                                .longitude(request.getLongitude())
+                                .isVerified(isAutoVerified) // Set based on registry check
+                                .verificationStatus(isAutoVerified
+                                                ? com.jurify.jurify_backend.model.enums.VerificationStatus.VERIFIED
+                                                : com.jurify.jurify_backend.model.enums.VerificationStatus.PENDING)
                                 .isAvailable(true)
                                 .build();
 
@@ -172,11 +193,35 @@ public class RegistrationService {
 
                         lawyer.setDocument(document);
 
-                        // AUTOMATICALLY CREATE VERIFICATION REQUEST
-                        createVerificationRequest(user, fileUrl, "Lawyer ID Card");
+                        // AUTOMATICALLY CREATE VERIFICATION REQUEST (Only if not already verified)
+                        if (!isAutoVerified) {
+                                createVerificationRequest(user, fileUrl, "Lawyer ID Card");
+                        } else {
+                                // If auto-verified, we can maybe mark the request as APPROVED immediately or
+                                // skip creating one.
+                                // For record keeping, lets create one as APPROVED.
+                                com.jurify.jurify_backend.model.VerificationRequest req = com.jurify.jurify_backend.model.VerificationRequest
+                                                .builder()
+                                                .user(user)
+                                                .documentUrl(fileUrl)
+                                                .documentType("Lawyer ID Card (Auto-Verified)")
+                                                .status(com.jurify.jurify_backend.model.enums.VerificationStatus.VERIFIED)
+                                                .build();
+                                verificationRequestRepository.save(req);
+                        }
                 }
 
                 lawyerRepository.save(lawyer);
+                directoryEntryService.createLawyerEntry(
+                                user,
+                                lawyer.getFirstName() + " " + lawyer.getLastName(),
+                                lawyer.getPhoneNumber(),
+                                lawyer.getCity(),
+                                lawyer.getState(),
+                                lawyer.getCountry(),
+                                lawyer.getBio(),
+                                isAutoVerified); // Pass verification status
+
                 sendVerificationEmail(user);
 
                 log.info("Lawyer registered successfully: {}", request.getEmail());
@@ -185,7 +230,8 @@ public class RegistrationService {
                                 .userId(user.getId())
                                 .email(user.getEmail())
                                 .role(user.getRole())
-                                .message("Lawyer registered successfully. Please verify your email. Your account will be reviewed for verification.")
+                                .message(isAutoVerified ? "Lawyer registered and verified via Registry."
+                                                : "Lawyer registered successfully. Please verify your email. Your account will be reviewed for verification.")
                                 .pollingToken(user.getVerificationPollingToken())
                                 .build();
         }
@@ -218,6 +264,15 @@ public class RegistrationService {
 
                 user = userRepository.save(user);
 
+                // Auto-Verify Check
+                boolean isAutoVerified = false;
+                java.util.Map<String, Object> registryData = registryIntegrationService
+                                .verifyNgo(request.getRegistrationNumber());
+                if (registryData != null && Boolean.TRUE.equals(registryData.get("exists"))) {
+                        isAutoVerified = true;
+                        log.info("Auto-verified NGO: {}", request.getEmail());
+                }
+
                 // Create NGO profile
                 NGO ngo = NGO.builder()
                                 .user(user)
@@ -249,17 +304,31 @@ public class RegistrationService {
                                 .latitude(request.getLatitude())
                                 .longitude(request.getLongitude())
                                 .serviceAreas(request.getAreasOfWork())
-                                .isVerified(false)
+                                .isVerified(isAutoVerified) // Set based on registry check
+                                .verificationStatus(isAutoVerified
+                                                ? com.jurify.jurify_backend.model.enums.VerificationStatus.VERIFIED
+                                                : com.jurify.jurify_backend.model.enums.VerificationStatus.PENDING)
                                 .isActive(true)
                                 .build();
 
                 // Handle file uploads
-                processNgoFile(file1, "REGISTRATION_CERTIFICATE", "NGO Registration Certificate", user, ngo);
-                processNgoFile(file2, "DARPAN_CERTIFICATE", "NGO Darpan Certificate", user, ngo);
-                processNgoFile(file3, "PAN_CARD", "NGO PAN Card", user, ngo);
-                processNgoFile(file4, "ID_PROOF", "Representative ID Proof", user, ngo);
+                processNgoFile(file1, "REGISTRATION_CERTIFICATE", "NGO Registration Certificate", user, ngo,
+                                isAutoVerified);
+                processNgoFile(file2, "DARPAN_CERTIFICATE", "NGO Darpan Certificate", user, ngo, isAutoVerified);
+                processNgoFile(file3, "PAN_CARD", "NGO PAN Card", user, ngo, isAutoVerified);
+                processNgoFile(file4, "ID_PROOF", "Representative ID Proof", user, ngo, isAutoVerified);
 
                 ngoRepository.save(ngo);
+                directoryEntryService.createNgoEntry(
+                                user,
+                                ngo.getOrganizationName(),
+                                ngo.getOrganizationPhone(),
+                                ngo.getCity(),
+                                ngo.getState(),
+                                ngo.getCountry(),
+                                ngo.getDescription(),
+                                isAutoVerified); // Pass verification status
+
                 sendVerificationEmail(user);
 
                 log.info("NGO registered successfully: {}", request.getEmail());
@@ -347,7 +416,8 @@ public class RegistrationService {
                         String category,
                         String verificationTypeDesc,
                         User user,
-                        NGO ngo) {
+                        NGO ngo,
+                        boolean isVerified) {
                 if (file != null && !file.isEmpty()) {
                         try {
                                 String s3Key = r2Service.uploadFile(file,
@@ -370,7 +440,19 @@ public class RegistrationService {
                                 ngo.getDocuments().add(document);
 
                                 // Create Verification Request for this document
-                                createVerificationRequest(user, fileUrl, verificationTypeDesc);
+                                if (!isVerified) {
+                                        createVerificationRequest(user, fileUrl, verificationTypeDesc);
+                                } else {
+                                        // If auto-verified, create APPROVED/VERIFIED request for record
+                                        com.jurify.jurify_backend.model.VerificationRequest req = com.jurify.jurify_backend.model.VerificationRequest
+                                                        .builder()
+                                                        .user(user)
+                                                        .documentUrl(fileUrl)
+                                                        .documentType(verificationTypeDesc + " (Auto-Verified)")
+                                                        .status(com.jurify.jurify_backend.model.enums.VerificationStatus.VERIFIED)
+                                                        .build();
+                                        verificationRequestRepository.save(req);
+                                }
                         } catch (java.io.IOException e) {
                                 throw new RuntimeException("Failed to upload " + verificationTypeDesc, e);
                         }

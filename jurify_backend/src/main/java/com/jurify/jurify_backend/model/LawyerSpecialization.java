@@ -26,6 +26,7 @@ public class LawyerSpecialization {
 
     @ManyToOne
     @JoinColumn(name = "lawyer_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Lawyer lawyer;
 
     @ManyToOne

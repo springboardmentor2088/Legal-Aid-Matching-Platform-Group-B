@@ -9,6 +9,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.S3Configuration;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
@@ -31,13 +32,26 @@ public class CloudflareR2Service {
     private String bucket;
 
     private S3Client s3Client;
+    private software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
 
     @PostConstruct
     public void init() {
         s3Client = S3Client.builder()
                 .endpointOverride(URI.create(endpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
-                .region(Region.US_EAST_1) // R2 ignores region, but SDK requires it
+                .region(Region.US_EAST_1)
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
+                .build();
+
+        s3Presigner = software.amazon.awssdk.services.s3.presigner.S3Presigner.builder()
+                .endpointOverride(URI.create(endpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)))
+                .region(Region.US_EAST_1)
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
                 .build();
     }
 
@@ -58,5 +72,32 @@ public class CloudflareR2Service {
         s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
         return key;
+    }
+
+    public String generatePresignedUrl(String key) {
+        if (key == null || key.isEmpty())
+            return null;
+
+        try {
+            software.amazon.awssdk.services.s3.model.GetObjectRequest getObjectRequest = software.amazon.awssdk.services.s3.model.GetObjectRequest
+                    .builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+
+            software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest getObjectPresignRequest = software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+                    .builder()
+                    .signatureDuration(java.time.Duration.ofMinutes(60)) // URL valid for 60 minutes
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+
+            software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner
+                    .presignGetObject(getObjectPresignRequest);
+            return presignedGetObjectRequest.url().toString();
+        } catch (Exception e) {
+            System.err.println("Error generating presigned URL for key: " + key);
+            e.printStackTrace();
+            return null;
+        }
     }
 }

@@ -32,6 +32,7 @@ public class User {
     private String email;
 
     @Column(name = "password_hash", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
@@ -58,6 +59,7 @@ public class User {
     private LocalDateTime lastLoginAt;
 
     @Column(name = "verification_polling_token")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private String verificationPollingToken;
 
     // Relationships
@@ -75,17 +77,21 @@ public class User {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<RefreshToken> refreshTokens = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<OAuthAccount> oauthAccounts = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<EmailVerificationToken> emailVerificationTokens = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<PasswordResetToken> passwordResetTokens = new ArrayList<>();
 }

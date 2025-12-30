@@ -1,6 +1,8 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Select from "react-select";
+
 
 // Leaflet Imports
 import {
@@ -27,7 +29,44 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const center = { lat: 20.5937, lng: 78.9629 }; // Default: India
 
-// States to be appear in dropdown
+const indianStates = [
+  { value: "Andhra Pradesh", label: "Andhra Pradesh" },
+  { value: "Arunachal Pradesh", label: "Arunachal Pradesh" },
+  { value: "Assam", label: "Assam" },
+  { value: "Bihar", label: "Bihar" },
+  { value: "Chhattisgarh", label: "Chhattisgarh" },
+  { value: "Goa", label: "Goa" },
+  { value: "Gujarat", label: "Gujarat" },
+  { value: "Haryana", label: "Haryana" },
+  { value: "Himachal Pradesh", label: "Himachal Pradesh" },
+  { value: "Jharkhand", label: "Jharkhand" },
+  { value: "Karnataka", label: "Karnataka" },
+  { value: "Kerala", label: "Kerala" },
+  { value: "Madhya Pradesh", label: "Madhya Pradesh" },
+  { value: "Maharashtra", label: "Maharashtra" },
+  { value: "Manipur", label: "Manipur" },
+  { value: "Meghalaya", label: "Meghalaya" },
+  { value: "Mizoram", label: "Mizoram" },
+  { value: "Nagaland", label: "Nagaland" },
+  { value: "Odisha", label: "Odisha" },
+  { value: "Punjab", label: "Punjab" },
+  { value: "Rajasthan", label: "Rajasthan" },
+  { value: "Sikkim", label: "Sikkim" },
+  { value: "Tamil Nadu", label: "Tamil Nadu" },
+  { value: "Telangana", label: "Telangana" },
+  { value: "Tripura", label: "Tripura" },
+  { value: "Uttar Pradesh", label: "Uttar Pradesh" },
+  { value: "Uttarakhand", label: "Uttarakhand" },
+  { value: "West Bengal", label: "West Bengal" },
+  { value: "Delhi", label: "Delhi" },
+  { value: "Jammu and Kashmir", label: "Jammu and Kashmir" },
+  { value: "Ladakh", label: "Ladakh" },
+  { value: "Chandigarh", label: "Chandigarh" },
+  { value: "Puducherry", label: "Puducherry" },
+  { value: "Andaman and Nicobar Islands", label: "Andaman and Nicobar Islands" },
+  { value: "Dadra and Nagar Haveli and Daman and Diu", label: "Dadra and Nagar Haveli and Daman and Diu" },
+  { value: "Lakshadweep", label: "Lakshadweep" },
+];
 
 
 
@@ -200,6 +239,8 @@ export default function CitizenRegister() {
 
   const fileInputRef = useRef(null);
 
+  const labelClass = "text-xs font-medium text-gray-700 mb-1 block";
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -288,6 +329,9 @@ export default function CitizenRegister() {
     }
 
     if (name === "dateOfBirth") {
+      // Prevent typing more than 10 characters (YYYY-MM-DD)
+      if (value.length > 10) return;
+
       const dobValidation = validateDateOfBirth(value);
       setFieldErrors((prev) => ({
         ...prev,
@@ -321,11 +365,6 @@ export default function CitizenRegister() {
     }
 
     if (name === "state") {
-      const filtered = indianStates.filter((s) =>
-        s.toLowerCase().includes(value.toLowerCase())
-      );
-      setSuggestions(filtered);
-
       if (value.trim().length === 0) {
         setFieldErrors((prev) => ({ ...prev, state: "State is required" }));
       } else if (!/^[a-zA-Z\s]+$/.test(value)) {
@@ -334,10 +373,10 @@ export default function CitizenRegister() {
           state: "State should only contain letters",
         }));
       } else {
+        // Add this line to clear the error as soon as a valid state is typed/selected
         setFieldErrors((prev) => ({ ...prev, state: "" }));
       }
     }
-
 
     if (name === "pincode") {
       if (value.trim().length === 0) {
@@ -438,6 +477,15 @@ export default function CitizenRegister() {
       };
     }
 
+    // Check strict 4-digit year format
+    const year = new Date(dateOfBirth).getFullYear();
+    if (year.toString().length !== 4) {
+      return {
+        isValid: false,
+        message: "Year must be exactly 4 digits",
+      };
+    }
+
     const dob = new Date(dateOfBirth);
     const today = new Date();
     const minAge = 0;
@@ -521,6 +569,8 @@ export default function CitizenRegister() {
       { timeout: 10000 }
     );
   };
+
+
 
   const handleFileUpload = (e, field) => {
     try {
@@ -758,8 +808,13 @@ export default function CitizenRegister() {
 
 
 
+  const inputClass =
+    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 bg-white shadow-sm text-sm " +
+    "focus:outline-none focus:ring-2 focus:ring-[#11676a]/40 focus:border-[#11676a] transition-all duration-200 " +
+    "placeholder:text-gray-400";
+
   const iconWrapperClass =
-    "absolute inset-y-0 left-0 flex items-center pl-2.5 sm:pl-3 pointer-events-none text-gray-400";
+    "absolute top-1/2 -translate-y-1/2 left-3 z-20 pointer-events-none text-gray-400";
 
   const sectionCardClass =
     "rounded-xl sm:rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
@@ -1123,6 +1178,8 @@ export default function CitizenRegister() {
                       name="dateOfBirth"
                       className={getInputClass("dateOfBirth")}
                       onChange={handleChange}
+                      value={formData.dateOfBirth}
+                      max={new Date().toISOString().split("T")[0]}
                       required
                     />
                   </div>
@@ -1477,6 +1534,42 @@ export default function CitizenRegister() {
                     </div>
                   </MapContainer>
                 </div>
+
+                {/* Latitude & Longitude (Read-only) */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Latitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lat}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Longitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lng}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Street Address / Locality{" "}
@@ -1536,30 +1629,109 @@ export default function CitizenRegister() {
 
                   </div>
 
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div>
+                    <span className={labelClass}>
                       State / Province <span className="text-red-500">*</span>
-                    </label>
+                    </span>
                     <div className="relative">
                       <div className={iconWrapperClass}>
-                        <MaterialIcon name="public" className={fieldErrors.state ? "text-red-500" : ""} />
+                        <MaterialIcon
+                          name="public"
+                          className={fieldErrors.state ? "text-red-500" : ""}
+                        />
                       </div>
-                      <input
-                        type="text"
-                        name="state"
-                        placeholder="State"
-                        className={getInputClass("state")}
-                        value={formData.state}
-                        onChange={handleChange}
-                        required
-                        autoComplete="off"
+                      {/* SEARCHABLE STATE DROPDOWN */}
+                      <Select
+                        options={indianStates}
+                        placeholder="Select State"
+                        isSearchable
+                        value={
+                          indianStates.find(
+                            (state) => state.value === formData.state
+                          ) || null
+                        }
+                        onChange={(selected) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            state: selected?.value || "",
+                          }));
+                          setFieldErrors((prev) => ({
+                            ...prev,
+                            state: "",
+                          }));
+                        }}
+                        styles={{
+                          control: (base, state) => ({
+                            ...base,
+                            minHeight: "48px",
+                            height: "48px",
+                            paddingLeft: "2.75rem",
+                            paddingRight: "0.5rem",
+                            borderRadius: "0.75rem",
+                            borderColor: fieldErrors.state
+                              ? "#fca5a5"
+                              : state.isFocused
+                                ? "#11676a"
+                                : "#e5e7eb",
+                            boxShadow: state.isFocused
+                              ? "0 0 0 2px rgba(17,103,106,0.4)"
+                              : "0 1px 2px rgba(0,0,0,0.05)",
+                            backgroundColor: "#ffffff",
+                            "&:hover": {
+                              borderColor: "#11676a",
+                            },
+                          }),
+
+                          valueContainer: (base) => ({
+                            ...base,
+                            padding: "0",
+                          }),
+
+                          input: (base) => ({
+                            ...base,
+                            margin: "0",
+                            padding: "0",
+                          }),
+
+                          singleValue: (base) => ({
+                            ...base,
+                            color: "#111827",
+                            fontSize: "0.875rem",
+                          }),
+
+                          placeholder: (base) => ({
+                            ...base,
+                            color: "#9ca3af",
+                            fontSize: "0.875rem",
+                          }),
+
+                          indicatorSeparator: () => ({
+                            display: "none",
+                          }),
+
+                          dropdownIndicator: (base) => ({
+                            ...base,
+                            color: "#9ca3af",
+                            paddingRight: "12px",
+                            "&:hover": {
+                              color: "#11676a",
+                            },
+                          }),
+
+                          menu: (base) => ({
+                            ...base,
+                            zIndex: 50,
+                            borderRadius: "0.75rem",
+                            boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                          }),
+                        }}
                       />
                     </div>
 
                     {/* Error message */}
                     {fieldErrors.state && (
                       <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">error</span>
+                        <span className="material-symbols-outlined text-sm">error_outline</span>
                         <span>{fieldErrors.state}</span>
                       </div>
                     )}
@@ -1644,47 +1816,41 @@ export default function CitizenRegister() {
                   <span className="text-red-500">*</span>
                 </label>
 
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-[#11676a] transition-all ${fieldErrors.idProof ? "border-red-300 bg-red-50" : "border-gray-300"
-                    }`}
-                >
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <MaterialIcon name="upload_file" className="text-4xl text-gray-400" />
-                    <p className="text-sm text-gray-600">
-                      <span className="font-medium text-gray-700">Click to upload ID Proof</span><br />
-                      <span className="text-xs text-gray-500">PDF, JPG or PNG (Max 5MB)</span>
-                    </p>
-                    {files.idProof && (
-                      <p className="text-green-600 text-xs mt-2 truncate">
-                        Selected: {files.idProof.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => handleFileUpload(e, "idProof")}
-                  required
-                  ref={fileInputRef}
-                  className="hidden"
-                />
-
-                {files.idProof && (
-                  <div className="flex justify-end mt-2">
+                <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer">
+                  {/* Delete icon (only when file exists) */}
+                  {files.idProof && (
                     <button
                       type="button"
-                      onClick={() => handleRemoveFile("idProof")}
-                      className="flex items-center gap-1 text-red-500 hover:text-red-700 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Use existing handler
+                        handleRemoveFile("idProof");
+                      }}
+                      className="absolute top-2 right-2 z-10 bg-white rounded-full p-1 shadow hover:bg-red-50 text-red-600"
                     >
-                      <span className="material-symbols-outlined text-base">delete</span>
-                      <span>Remove File</span>
+                      <MaterialIcon name="delete" className="text-lg" />
                     </button>
+                  )}
+
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => handleFileUpload(e, "idProof")}
+                    onClick={(e) => (e.target.value = null)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    required={!files.idProof}
+                  />
+
+                  <div className="flex flex-col items-center gap-1 pointer-events-none">
+                    <MaterialIcon name={files.idProof ? "description" : "upload_file"} />
+                    <span className="text-sm text-gray-600 font-medium">
+                      {files.idProof ? files.idProof.name : "Click to upload ID Proof"}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      PDF, JPG or PNG (Max 5MB)
+                    </span>
                   </div>
-                )}
+                </div>
                 {fieldErrors.idProof && (
                   <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
                     <span className="material-symbols-outlined text-sm">
@@ -1791,106 +1957,108 @@ export default function CitizenRegister() {
           </form>
 
           {/* Loading/Success Overlay */}
-          {(isSubmitting || isSuccess) && (
-            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 rounded-2xl sm:rounded-3xl flex items-center justify-center p-6">
-              <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
-                {isSuccess ? (
-                  <>
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
-                        mail
-                      </span>
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                      Verify Your Email
-                    </h3>
-                    <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
-                      We've sent a verification link to your email. Please check
-                      your inbox to activate your account.
-                    </p>
-                    <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
-                      Waiting for you to verify...
-                    </div>
-                    {/* fallback button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        fetch(
-                          "http://localhost:8080/api/auth/poll-verification",
-                          {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ pollingToken }),
-                          }
-                        ).then(async (res) => {
-                          if (res.ok) {
-                            const data = await res.json();
-                            localStorage.setItem(
-                              "accessToken",
-                              data.accessToken
-                            );
-                            localStorage.setItem(
-                              "refreshToken",
-                              data.refreshToken
-                            );
+          {
+            (isSubmitting || isSuccess) && (
+              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 rounded-2xl sm:rounded-3xl flex items-center justify-center p-6">
+                <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
+                  {isSuccess ? (
+                    <>
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
+                          mail
+                        </span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                        Verify Your Email
+                      </h3>
+                      <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
+                        We've sent a verification link to your email. Please check
+                        your inbox to activate your account.
+                      </p>
+                      <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
+                        Waiting for you to verify...
+                      </div>
+                      {/* fallback button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          fetch(
+                            "http://localhost:8080/api/auth/poll-verification",
+                            {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ pollingToken }),
+                            }
+                          ).then(async (res) => {
+                            if (res.ok) {
+                              const data = await res.json();
+                              localStorage.setItem(
+                                "accessToken",
+                                data.accessToken
+                              );
+                              localStorage.setItem(
+                                "refreshToken",
+                                data.refreshToken
+                              );
 
-                            const userObj = {
-                              id: data.userId,
-                              email: data.email,
-                              role: data.role,
-                              firstName: data.firstName,
-                              lastName: data.lastName,
-                              isEmailVerified: data.isEmailVerified,
-                            };
-                            localStorage.setItem(
-                              "user",
-                              JSON.stringify(userObj)
-                            );
+                              const userObj = {
+                                id: data.userId,
+                                email: data.email,
+                                role: data.role,
+                                firstName: data.firstName,
+                                lastName: data.lastName,
+                                isEmailVerified: data.isEmailVerified,
+                              };
+                              localStorage.setItem(
+                                "user",
+                                JSON.stringify(userObj)
+                              );
 
-                            localStorage.setItem("userRole", data.role);
-                            localStorage.setItem("userEmail", data.email);
-                            localStorage.setItem("userId", data.userId);
-                            window.dispatchEvent(new Event("storage"));
+                              localStorage.setItem("userRole", data.role);
+                              localStorage.setItem("userEmail", data.email);
+                              localStorage.setItem("userId", data.userId);
+                              window.dispatchEvent(new Event("storage"));
 
-                            syncUser(); // Quick sync, PublicRoute will handle redirect
+                              syncUser(); // Quick sync, PublicRoute will handle redirect
 
 
-                          } else {
-                            alert(
-                              "Verification not detected yet. Please click the link in your email."
-                            );
-                          }
-                        });
-                      }}
-                      className="text-primary hover:text-primary-dark underline text-sm mb-2"
-                    >
-                      I have verified my email
-                    </button>
+                            } else {
+                              alert(
+                                "Verification not detected yet. Please click the link in your email."
+                              );
+                            }
+                          });
+                        }}
+                        className="text-primary hover:text-primary-dark underline text-sm mb-2"
+                      >
+                        I have verified my email
+                      </button>
 
-                    <p className="text-xs text-gray-400">
-                      Keep this tab open. We'll automatically log you in once
-                      verified.
-                    </p>
-                    <p className="text-[10px] text-gray-300 mt-2">
-                      Token: {pollingToken || "None"}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                      Creating Account
-                    </h3>
-                    <p className="text-gray-500 text-sm sm:text-base">
-                      Please wait while we process your details...
-                    </p>
-                  </>
-                )}
+                      <p className="text-xs text-gray-400">
+                        Keep this tab open. We'll automatically log you in once
+                        verified.
+                      </p>
+                      <p className="text-[10px] text-gray-300 mt-2">
+                        Token: {pollingToken || "None"}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                        Creating Account
+                      </h3>
+                      <p className="text-gray-500 text-sm sm:text-base">
+                        Please wait while we process your details...
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+            )
+          }
+        </div >
+      </div >
 
       <style jsx="true">{`
         .custom-scroll::-webkit-scrollbar {

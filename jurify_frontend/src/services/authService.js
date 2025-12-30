@@ -70,6 +70,10 @@ export const authService = {
         return userStr ? JSON.parse(userStr) : null;
     },
 
+    updateDirectoryStatus: async (isActive) => {
+        return api.patch('/users/directory-status', { isActive });
+    },
+
     forgotPassword: async (email) => {
         return api.post('/auth/forgot-password', { email });
     },

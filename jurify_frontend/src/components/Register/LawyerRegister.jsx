@@ -1304,12 +1304,12 @@ export default function LawyerRegistration() {
                         </span>
                         <span
                           className={`font-semibold ${passwordStrength.score <= 2
-                              ? "text-red-600"
-                              : passwordStrength.score <= 4
-                                ? "text-yellow-600"
-                                : passwordStrength.score <= 5
-                                  ? "text-blue-600"
-                                  : "text-green-600"
+                            ? "text-red-600"
+                            : passwordStrength.score <= 4
+                              ? "text-yellow-600"
+                              : passwordStrength.score <= 5
+                                ? "text-blue-600"
+                                : "text-green-600"
                             }`}
                         >
                           {getPasswordStrengthText()}
@@ -1635,6 +1635,7 @@ export default function LawyerRegistration() {
                     name="file"
                     accept="application/pdf,image/*"
                     onChange={(e) => setFile(e.target.files[0])}
+                    onClick={(e) => (e.target.value = null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     required={!file}
                   />
@@ -1935,6 +1936,42 @@ export default function LawyerRegistration() {
                   </MapContainer>
                 </div>
 
+                {/* Latitude & Longitude (Read-only) */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Latitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lat}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Longitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lng}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Office Address Line 1{" "}
@@ -2120,9 +2157,9 @@ export default function LawyerRegistration() {
                         type="text"
                         name="country"
                         placeholder="Country"
-                        className={getInputClass("country")}
-                        onChange={handleChange}
+                        className={`${getInputClass("country")} bg-gray-100 cursor-not-allowed`}
                         value={formData.country}
+                        readOnly
                       />
                     </div>
                   </div>

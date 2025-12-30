@@ -18,6 +18,11 @@ public class LegalCaseDTO {
     private String description;
     private CaseStatus status;
     private String lawyerName;
+    private String category;
+    private String urgency;
+    private String preferredLanguage;
+    private String locationCity;
+    private java.util.List<CaseDocumentDTO> documents;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

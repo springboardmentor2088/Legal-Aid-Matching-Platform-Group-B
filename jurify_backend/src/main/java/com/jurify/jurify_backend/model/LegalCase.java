@@ -37,6 +37,28 @@ public class LegalCase {
     @Builder.Default
     private CaseStatus status = CaseStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category")
+    private com.jurify.jurify_backend.model.enums.CaseCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "urgency")
+    private com.jurify.jurify_backend.model.enums.CaseUrgency urgency;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_language")
+    private com.jurify.jurify_backend.model.enums.Language preferredLanguage;
+
+    @ManyToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "location_id")
+    private Location location;
+
+    @Column(name = "address_line_1")
+    private String addressLine1;
+
+    @Column(name = "category_specific_data", columnDefinition = "TEXT")
+    private String categorySpecificData;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "citizen_id", nullable = false)
     private Citizen citizen;
@@ -52,4 +74,7 @@ public class LegalCase {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "legalCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private java.util.List<CaseDocument> documents;
 }

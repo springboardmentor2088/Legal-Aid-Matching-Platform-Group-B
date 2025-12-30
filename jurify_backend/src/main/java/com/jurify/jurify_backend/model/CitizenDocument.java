@@ -24,6 +24,7 @@ public class CitizenDocument {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "citizen_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Citizen citizen;
 
     @Column(name = "file_name")

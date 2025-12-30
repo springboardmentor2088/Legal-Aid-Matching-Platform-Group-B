@@ -9,6 +9,8 @@ import java.util.Optional;
 @Repository
 public interface LawyerRepository extends JpaRepository<Lawyer, Long> {
     Optional<Lawyer> findByUser_Id(Long userId);
-    boolean existsByBarCouncilNumber(String barCouncilNumber);
-}
 
+    boolean existsByBarCouncilNumber(String barCouncilNumber);
+
+    java.util.List<Lawyer> findByIsVerifiedTrue();
+}

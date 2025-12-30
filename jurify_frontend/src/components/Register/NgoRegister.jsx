@@ -31,38 +31,40 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 
 
-const statesList = [
-  "Andhra Pradesh",
-  "Arunachal Pradesh",
-  "Assam",
-  "Bihar",
-  "Chhattisgarh",
-  "Goa",
-  "Gujarat",
-  "Haryana",
-  "Himachal Pradesh",
-  "Jharkhand",
-  "Karnataka",
-  "Kerala",
-  "Madhya Pradesh",
-  "Maharashtra",
-  "Manipur",
-  "Meghalaya",
-  "Mizoram",
-  "Nagaland",
-  "Odisha",
-  "Punjab",
-  "Rajasthan",
-  "Sikkim",
-  "Tamil Nadu",
-  "Telangana",
-  "Tripura",
-  "Uttar Pradesh",
-  "Uttarakhand",
-  "West Bengal",
-  "Delhi",
-  "Jammu and Kashmir",
-  "Ladakh",
+import Select from "react-select";
+
+const indianStates = [
+  { value: "Andhra Pradesh", label: "Andhra Pradesh" },
+  { value: "Arunachal Pradesh", label: "Arunachal Pradesh" },
+  { value: "Assam", label: "Assam" },
+  { value: "Bihar", label: "Bihar" },
+  { value: "Chhattisgarh", label: "Chhattisgarh" },
+  { value: "Goa", label: "Goa" },
+  { value: "Gujarat", label: "Gujarat" },
+  { value: "Haryana", label: "Haryana" },
+  { value: "Himachal Pradesh", label: "Himachal Pradesh" },
+  { value: "Jharkhand", label: "Jharkhand" },
+  { value: "Karnataka", label: "Karnataka" },
+  { value: "Kerala", label: "Kerala" },
+  { value: "Madhya Pradesh", label: "Madhya Pradesh" },
+  { value: "Maharashtra", label: "Maharashtra" },
+  { value: "Manipur", label: "Manipur" },
+  { value: "Meghalaya", label: "Meghalaya" },
+  { value: "Mizoram", label: "Mizoram" },
+  { value: "Nagaland", label: "Nagaland" },
+  { value: "Odisha", label: "Odisha" },
+  { value: "Punjab", label: "Punjab" },
+  { value: "Rajasthan", label: "Rajasthan" },
+  { value: "Sikkim", label: "Sikkim" },
+  { value: "Tamil Nadu", label: "Tamil Nadu" },
+  { value: "Telangana", label: "Telangana" },
+  { value: "Tripura", label: "Tripura" },
+  { value: "Uttar Pradesh", label: "Uttar Pradesh" },
+  { value: "Uttarakhand", label: "Uttarakhand" },
+  { value: "West Bengal", label: "West Bengal" },
+  { value: "Delhi", label: "Delhi" },
+  { value: "Jammu and Kashmir", label: "Jammu and Kashmir" },
+  { value: "Ladakh", label: "Ladakh" },
 ];
 
 
@@ -113,8 +115,7 @@ export default function NgoRegister() {
     repDob: "",
     repGender: "",
   });
-  // --- ADD THIS NEW STATE VARIABLE FOR DROPDOWN CONTROL ---
-  const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false);
+
 
   const [position, setPosition] = useState({ lat: 20.5937, lng: 78.9629 });
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,11 +280,11 @@ export default function NgoRegister() {
 
   const inputClass =
     "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 bg-white shadow-sm text-sm " +
-    "focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all duration-200 " +
+    "focus:outline-none focus:ring-2 focus:ring-[#11676a]/40 focus:border-[#11676a] transition-all duration-200 " +
     "placeholder:text-gray-400";
 
   const iconWrapperClass =
-    "absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400";
+    "absolute top-1/2 -translate-y-1/2 left-3 z-20 pointer-events-none text-gray-400";
 
   const sectionCardClass =
     "rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
@@ -675,28 +676,6 @@ export default function NgoRegister() {
     }
 
     return { isValid: true, message: "" };
-  };
-  const [stateQuery, setStateQuery] = useState("");
-  const [filteredStates, setFilteredStates] = useState(statesList);
-
-  const handleStateSearch = (query) => {
-    setStateQuery(query);
-    const filtered = statesList
-      .filter((state) =>
-        state.toLowerCase().includes(query.toLowerCase())
-      )
-      .sort((a, b) => {
-        if (a.toLowerCase().startsWith(query.toLowerCase())) return -1;
-        if (b.toLowerCase().startsWith(query.toLowerCase())) return 1;
-        return 0;
-      });
-    setFilteredStates(filtered);
-
-    // NEW: Keep the dropdown open if the user is typing (query has length)
-    // But only if it's currently focused (controlled by onFocus/onBlur on the input)
-    if (query.length > 0) {
-      setIsStateDropdownOpen(true);
-    }
   };
 
 
@@ -1456,6 +1435,42 @@ export default function NgoRegister() {
                   </div>
                 </div>
 
+                {/* Latitude & Longitude (Read-only) */}
+                <div className="sm:col-span-2 grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Latitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lat}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Longitude
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="my_location" />
+                      </div>
+                      <input
+                        type="text"
+                        value={position.lng}
+                        readOnly
+                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Address Fields */}
                 <div className="sm:col-span-2">
                   <span className={labelClass}>Official Address <span className="text-red-500">*</span></span>
@@ -1506,48 +1521,104 @@ export default function NgoRegister() {
                   )}
                 </div>
                 <div>
-                  <span className={labelClass}>State <span className="text-red-500">*</span></span>
+                  <span className={labelClass}>
+                    State / Province <span className="text-red-500">*</span>
+                  </span>
                   <div className="relative">
+                    {/* Globe icon on the left */}
                     <div className={iconWrapperClass}>
-                      <MaterialIcon name="public" className={fieldErrors.state ? "text-red-500" : ""} />
+                      <MaterialIcon
+                        name="public"
+                        className={fieldErrors.state ? "text-red-500" : ""}
+                      />
                     </div>
-                    <input
-                      type="text"
+
+                    {/* SEARCHABLE STATE DROPDOWN */}
+                    <Select
+                      options={indianStates}
                       placeholder="Select State"
-                      className={getInputClass("state")}
-                      value={stateQuery}
-                      onChange={(e) => handleStateSearch(e.target.value)}
-                      onFocus={() => setIsStateDropdownOpen(true)}
-                      onBlur={() => {
-                        setTimeout(() => setIsStateDropdownOpen(false), 150);
+                      isSearchable
+                      value={
+                        indianStates.find(
+                          (state) => state.value === formData.state
+                        ) || null
+                      }
+                      onChange={(selected) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          state: selected?.value || "",
+                        }));
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          state: "",
+                        }));
+                      }}
+                      styles={{
+                        control: (base, state) => ({
+                          ...base,
+                          minHeight: "48px",
+                          height: "48px",
+                          paddingLeft: "2.75rem",
+                          borderRadius: "0.75rem",
+                          borderColor: fieldErrors.state
+                            ? "#fca5a5"
+                            : state.isFocused
+                              ? "#11676a"
+                              : "#e5e7eb",
+                          boxShadow: state.isFocused
+                            ? "0 0 0 2px rgba(17,103,106,0.4)"
+                            : "0 1px 2px rgba(0,0,0,0.05)",
+                          backgroundColor: "#ffffff",
+                          "&:hover": {
+                            borderColor: "#11676a",
+                          },
+                        }),
+
+                        valueContainer: (base) => ({
+                          ...base,
+                          padding: "0",
+                        }),
+
+                        input: (base) => ({
+                          ...base,
+                          margin: 0,
+                          padding: 0,
+                        }),
+
+                        placeholder: (base) => ({
+                          ...base,
+                          color: "#9ca3af",
+                          fontSize: "0.875rem",
+                        }),
+
+                        singleValue: (base) => ({
+                          ...base,
+                          color: "#111827",
+                          fontSize: "0.875rem",
+                        }),
+
+                        indicatorSeparator: () => ({
+                          display: "none",
+                        }),
+
+                        dropdownIndicator: (base) => ({
+                          ...base,
+                          color: "#9ca3af",
+                          "&:hover": {
+                            color: "#11676a",
+                          },
+                        }),
+
+                        menu: (base) => ({
+                          ...base,
+                          zIndex: 50,
+                          borderRadius: "0.75rem",
+                          boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                        }),
                       }}
                     />
-                    {isStateDropdownOpen && filteredStates.length > 0 && (
-                      <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-md">
-                        {filteredStates.map((state, index) => (
-                          <li
-                            key={index}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                            onMouseDown={() => {
-                              setFormData({ ...formData, state });
-                              setStateQuery(state);
-                              setFilteredStates([]);
-                              setIsStateDropdownOpen(false);
-                              setFieldErrors((prev) => ({ ...prev, state: "" }));
-                            }}
-                          >
-                            {state}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+
                   </div>
-                  {fieldErrors.state && (
-                    <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">error_outline</span>
-                      <span>{fieldErrors.state}</span>
-                    </div>
-                  )}
                 </div>
                 <div>
                   <span className={labelClass}>Pincode <span className="text-red-500">*</span></span>
@@ -1847,6 +1918,7 @@ export default function NgoRegister() {
                       name="regCertificate"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
+                      onClick={(e) => (e.target.value = null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       required
                     />
@@ -1887,6 +1959,7 @@ export default function NgoRegister() {
                       name="darpanCertificate"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
+                      onClick={(e) => (e.target.value = null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                     />
                     <div className="flex flex-col items-center gap-1 pointer-events-none">
@@ -1926,6 +1999,7 @@ export default function NgoRegister() {
                       name="panCardFile"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
+                      onClick={(e) => (e.target.value = null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       required
                     />
@@ -1966,6 +2040,7 @@ export default function NgoRegister() {
                       name="repIdProof"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileChange}
+                      onClick={(e) => (e.target.value = null)}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       required
                     />
@@ -2386,6 +2461,6 @@ export default function NgoRegister() {
           `}</style>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
