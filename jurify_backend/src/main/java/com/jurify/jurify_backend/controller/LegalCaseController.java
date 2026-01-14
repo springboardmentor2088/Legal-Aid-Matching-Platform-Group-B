@@ -37,11 +37,16 @@ public class LegalCaseController {
     }
 
     @org.springframework.web.bind.annotation.PostMapping(consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> createCase(
+    public ResponseEntity<LegalCaseDTO> createCase(
             @AuthenticationPrincipal String email,
             @org.springframework.web.bind.annotation.RequestPart("request") com.jurify.jurify_backend.dto.case_management.CreateCaseRequest request,
             @org.springframework.web.bind.annotation.RequestPart(value = "documents", required = false) List<org.springframework.web.multipart.MultipartFile> documents) {
-        legalCaseService.createCase(email, request, documents);
-        return ResponseEntity.ok("Case created successfully");
+        com.jurify.jurify_backend.model.LegalCase legalCase = legalCaseService.createCase(email, request, documents);
+        return ResponseEntity.ok(LegalCaseDTO.builder()
+                .id(legalCase.getId())
+                .title(legalCase.getTitle())
+                .status(legalCase.getStatus())
+                .category(request.getCategory())
+                .build()); // Minimal DTO just for ID and basic confirmation
     }
 }

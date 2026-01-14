@@ -16,4 +16,20 @@ public interface LegalCaseRepository extends JpaRepository<LegalCase, Long> {
     Long countByCitizenId(Long citizenId);
 
     long countByStatus(CaseStatus status);
+
+    List<LegalCase> findByLawyerId(Long lawyerId);
+
+    Long countByLawyerIdAndStatus(Long lawyerId, CaseStatus status);
+
+    Long countByLawyerId(Long lawyerId);
+
+    List<LegalCase> findByNgoId(Long ngoId);
+
+    Long countByNgoIdAndStatus(Long ngoId, CaseStatus status);
+
+    Long countByNgoId(Long ngoId);
+
+    List<LegalCase> findByStatus(CaseStatus status);
+
+    List<LegalCase> findByStatusAndLocationState(CaseStatus status, String state);
 }

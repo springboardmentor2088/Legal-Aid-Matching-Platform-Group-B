@@ -27,6 +27,7 @@ public class LawyerSpecialization {
     @ManyToOne
     @JoinColumn(name = "lawyer_id", nullable = false)
     @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private Lawyer lawyer;
 
     @ManyToOne

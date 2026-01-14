@@ -21,7 +21,50 @@ export const authService = {
                 city: response.city,
                 state: response.state,
                 country: response.country,
-                pincode: response.pincode
+                pincode: response.pincode,
+                languages: response.languages,
+                // Lawyer specific
+                barCouncilNumber: response.barCouncilNumber,
+                barCouncilState: response.barCouncilState,
+                enrollmentYear: response.enrollmentYear,
+                lawFirmName: response.lawFirmName,
+                yearsOfExperience: response.yearsOfExperience,
+                bio: response.bio,
+                // Lawyer specific
+                barCouncilNumber: response.barCouncilNumber,
+                barCouncilState: response.barCouncilState,
+                enrollmentYear: response.enrollmentYear,
+                lawFirmName: response.lawFirmName,
+                yearsOfExperience: response.yearsOfExperience,
+                // NGO specific
+                ngoName: response.ngoName,
+                darpanId: response.darpanId,
+                repName: response.repName,
+                repRole: response.repRole,
+                repEmail: response.repEmail,
+                repGender: response.repGender,
+                organizationPhone: response.organizationPhone,
+                registrationNumber: response.registrationNumber,
+                registrationYear: response.registrationYear,
+                registrationType: response.registrationType,
+                contactPersonName: response.contactPersonName,
+                contactEmail: response.contactEmail,
+                contactPhone: response.contactPhone,
+                organizationEmail: response.organizationEmail,
+                contactPersonDesignation: response.contactPersonDesignation,
+                websiteUrl: response.websiteUrl,
+                serviceAreas: response.serviceAreas,
+                proBonoCommitment: response.proBonoCommitment,
+                maxProBonoCases: response.maxProBonoCases,
+                // Docs
+                documentUrl: response.documentUrl,
+                registrationCertificateUrl: response.registrationCertificateUrl,
+                ngoDarpanCertificateUrl: response.ngoDarpanCertificateUrl,
+                ngoPanCardUrl: response.ngoPanCardUrl,
+                authorizedIdProofUrl: response.authorizedIdProofUrl,
+                // Verification
+                isVerified: response.isVerified,
+                verificationStatus: response.verificationStatus
             }));
         }
         return response;

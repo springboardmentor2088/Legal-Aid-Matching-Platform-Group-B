@@ -1,10 +1,8 @@
 package com.jurify.jurify_backend.service;
 
 import com.jurify.jurify_backend.model.Citizen;
-import com.jurify.jurify_backend.model.Location;
 import com.jurify.jurify_backend.model.OAuthAccount;
 import com.jurify.jurify_backend.model.User;
-import com.jurify.jurify_backend.model.enums.UserRole;
 import com.jurify.jurify_backend.repository.CitizenRepository;
 import com.jurify.jurify_backend.repository.OAuthAccountRepository;
 import com.jurify.jurify_backend.repository.UserRepository;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -81,36 +78,11 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 // unless verified/requested.
                 // But for now, let's leave it safe.
             } else {
-                System.out.println("Creating NEW user.");
-                // Register new user as Citizen
-                user = User.builder()
-                        .email(email)
-                        .passwordHash("") // No password for OAuth users
-                        .role(com.jurify.jurify_backend.model.enums.UserRole.CITIZEN)
-                        .isEmailVerified(true) // OAuth email is verified
-                        .isActive(true)
-                        .build();
-                user = userRepository.save(user);
-                System.out.println("User saved with ID: " + user.getId());
-
-                Location location = Location.builder().country("IN").build();
-                Citizen citizen = Citizen.builder()
-                        .user(user)
-                        .firstName(firstName)
-                        .lastName(lastName)
-                        .location(location)
-                        .build();
-                citizenRepository.save(citizen);
+                System.out.println("User NOT found. Proceeding to role selection flow via success handler.");
+                // We do NOT create the user here anymore.
+                // The SuccessHandler will detect that the user doesn't exist in the DB
+                // and redirect to the role selection page.
             }
-
-            // Link OAuth Account
-            OAuthAccount newOAuthAccount = OAuthAccount.builder()
-                    .user(user)
-                    .provider(provider)
-                    .providerAccountId(providerId)
-                    .build();
-            oauthAccountRepository.save(newOAuthAccount);
-            System.out.println("OAuth Account linked.");
         }
 
         return oAuth2User;

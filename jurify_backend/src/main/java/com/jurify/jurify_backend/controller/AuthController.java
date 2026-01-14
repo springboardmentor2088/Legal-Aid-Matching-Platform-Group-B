@@ -23,15 +23,16 @@ public class AuthController {
     private final com.jurify.jurify_backend.service.EmailService emailService;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest) {
         try {
             AuthResponse response = authenticationService.login(request, httpRequest);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            log.error("Login failed for email: {}", request.getEmail(), e);
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            log.warn("Login failed for email: {}: {}", request.getEmail(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(java.util.Collections.singletonMap("message", e.getMessage()));
         }
     }
 

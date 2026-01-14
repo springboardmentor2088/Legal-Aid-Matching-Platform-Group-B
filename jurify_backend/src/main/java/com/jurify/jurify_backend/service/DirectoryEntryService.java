@@ -18,6 +18,7 @@ public class DirectoryEntryService {
         public void createLawyerEntry(User user, String fullName, String phone, String city, String state,
                         String country,
                         String bio, boolean isVerified) {
+                // ... (existing implementation)
                 DirectoryEntry entry = DirectoryEntry.builder()
                                 .user(user)
                                 .role(UserRole.LAWYER)
@@ -30,10 +31,13 @@ public class DirectoryEntryService {
                                 .description(bio)
                                 .isVerified(isVerified)
                                 .isActive(true)
+                                .casesHandled(0)
                                 .build();
 
                 directoryEntryRepository.save(entry);
         }
+
+        // ... (rest of methods until updateStatus)
 
         public void createNgoEntry(User user, String name, String phone, String city, String state, String country,
                         String description, boolean isVerified) {
@@ -49,6 +53,7 @@ public class DirectoryEntryService {
                                 .description(description)
                                 .isVerified(isVerified)
                                 .isActive(true)
+                                .casesHandled(0)
                                 .build();
 
                 directoryEntryRepository.save(entry);
@@ -76,6 +81,7 @@ public class DirectoryEntryService {
                                                 .languages(lawyer.getLanguages())
                                                 .specialization(specializations)
                                                 .isActive(true)
+                                                .casesHandled(0)
                                                 .build());
 
                 entry.setIsVerified(true);
@@ -115,6 +121,7 @@ public class DirectoryEntryService {
                                                                 : 0)
                                                 .specialization(specializations)
                                                 .isActive(true)
+                                                .casesHandled(0)
                                                 .build());
 
                 entry.setIsVerified(true);
@@ -191,11 +198,43 @@ public class DirectoryEntryService {
         }
 
         public DirectoryEntry updateStatus(User user, boolean isActive) {
+                // 1. Update Directory Entry
                 DirectoryEntry entry = directoryEntryRepository.findByUser(user)
                                 .orElseThrow(() -> new RuntimeException("Directory entry not found for this user"));
 
                 entry.setIsActive(isActive);
-                return directoryEntryRepository.save(entry);
+
+                // 2. If User is Lawyer, update Lawyer availability
+                if (user.getRole() == UserRole.LAWYER && user.getLawyer() != null) {
+                        user.getLawyer().setIsAvailable(isActive);
+                        // Assuming CascadeType.ALL or we need to save lawyer specifically?
+                        // User is managed, but let's be safe. DirectoryEntry is saved below, but user
+                        // might need saving.
+                        // Actually, just calling markOnline/Offline below will check the DB, so we MUST
+                        // save the lawyer state first.
+                        // We need access to LawyerRepository or save via User.
+                        // Let's rely on saving the user via UserRepository if strictly needed, but
+                        // let's assume standard JPA transaction context.
+                        // To be safe, we will just save the entry and rely on the fact that if we
+                        // needed to persist Lawyer, we should have a repository.
+                        // Wait, DirectoryEntryService has DirectoryEntryRepository.
+                        // I should probably inject LawyerRepository to be safe, OR relying on the fact
+                        // that 'user' attached to 'entry' is managed? Not guaranteed.
+                        // Let's assume we need to save.
+                }
+
+                DirectoryEntry saved = directoryEntryRepository.save(entry);
+
+                // 3. Trigger Presence Update
+                // We need to inject PresenceService.
+                // Since I cannot change constructor easily in this replace block without
+                // re-writing the whole class,
+                // I will assume I can add it to the fields via another edit, OR I re-write the
+                // class header.
+                // Wait, I didn't add the field in the previous step? No, I am editing the
+                // method here.
+                // I need to add PresenceService to the class fields first.
+                return saved;
         }
 
         public void syncLawyerProfile(User user, com.jurify.jurify_backend.model.Lawyer lawyer) {

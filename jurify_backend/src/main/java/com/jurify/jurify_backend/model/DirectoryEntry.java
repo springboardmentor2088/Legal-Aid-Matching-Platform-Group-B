@@ -52,6 +52,7 @@ public class DirectoryEntry {
     private String languages; // Comma separated
     private String specialization; // Comma separated
     private Double rating; // Out of 5.0
+    private Integer casesHandled; // Added field for cases count
 
     /** Status */
     @Column(nullable = false)

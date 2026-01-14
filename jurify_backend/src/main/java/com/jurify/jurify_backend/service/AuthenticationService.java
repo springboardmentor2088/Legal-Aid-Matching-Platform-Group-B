@@ -32,6 +32,48 @@ public class AuthenticationService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final MatchingEngineService matchingEngineService;
+
+    private AuthResponse buildAuthResponse(User user, String accessToken, String refreshTokenValue) {
+        AuthResponse.AuthResponseBuilder builder = AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshTokenValue)
+                .userId(user.getId())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .isEmailVerified(user.getIsEmailVerified())
+                .firstName(getFirstName(user))
+                .lastName(getLastName(user));
+
+        if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.CITIZEN && user.getCitizen() != null) {
+            builder.languages(user.getCitizen().getLanguages())
+                    .phone(user.getCitizen().getPhoneNumber())
+                    .dob(user.getCitizen().getDateOfBirth() != null ? user.getCitizen().getDateOfBirth().toString()
+                            : null)
+                    .gender(user.getCitizen().getGender() != null ? user.getCitizen().getGender().name() : null)
+                    .addressLine1(user.getCitizen().getAddressLine1())
+                    .city(user.getCitizen().getLocation() != null ? user.getCitizen().getLocation().getCity() : null);
+        } else if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.LAWYER
+                && user.getLawyer() != null) {
+            builder.languages(user.getLawyer().getLanguages())
+                    .phone(user.getLawyer().getPhoneNumber())
+                    .barCouncilNumber(user.getLawyer().getBarCouncilNumber())
+                    .barCouncilState(user.getLawyer().getBarCouncilState())
+                    .yearsOfExperience(user.getLawyer().getYearsOfExperience())
+                    .lawFirmName(user.getLawyer().getLawFirmName())
+                    .bio(user.getLawyer().getBio());
+            // Mapping specializations might require more logic/DTO change if we want list,
+            // for now assuming languages are main request.
+        } else if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.NGO && user.getNgo() != null) {
+            builder.languages(user.getNgo().getLanguages())
+                    .phone(user.getNgo().getOrganizationPhone()) // Using org phone as main contact
+                    .organizationPhone(user.getNgo().getOrganizationPhone())
+                    .registrationNumber(user.getNgo().getRegistrationNumber())
+                    .contactPersonName(user.getNgo().getContactPersonName());
+        }
+
+        return builder.build();
+    }
 
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest) {
@@ -74,16 +116,7 @@ public class AuthenticationService {
 
         refreshTokenRepository.save(refreshToken);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshTokenValue)
-                .userId(user.getId())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .isEmailVerified(user.getIsEmailVerified())
-                .firstName(getFirstName(user))
-                .lastName(getLastName(user))
-                .build();
+        return buildAuthResponse(user, accessToken, refreshTokenValue);
     }
 
     @Transactional
@@ -127,16 +160,7 @@ public class AuthenticationService {
 
         refreshTokenRepository.save(newRefreshToken);
 
-        return AuthResponse.builder()
-                .accessToken(newAccessToken)
-                .refreshToken(newRefreshTokenValue)
-                .userId(user.getId())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .isEmailVerified(user.getIsEmailVerified())
-                .firstName(getFirstName(user))
-                .lastName(getLastName(user))
-                .build();
+        return buildAuthResponse(user, newAccessToken, newRefreshTokenValue);
     }
 
     @Transactional
@@ -159,6 +183,18 @@ public class AuthenticationService {
         verificationToken.setIsUsed(true);
         emailVerificationTokenRepository.save(verificationToken);
 
+        // Trigger reverse matching for new providers
+        try {
+            if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.LAWYER && user.getLawyer() != null) {
+                matchingEngineService.generateMatchesForProvider(user.getLawyer().getId(), "LAWYER");
+            } else if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.NGO && user.getNgo() != null) {
+                matchingEngineService.generateMatchesForProvider(user.getNgo().getId(), "NGO");
+            }
+        } catch (Exception e) {
+            log.error("Error triggering reverse matching for user {}: {}", user.getId(), e.getMessage());
+            // Don't fail the verification just because matching failed
+        }
+
         // Auto-login logic (Generate tokens)
         String accessToken = jwtUtil.generateAccessToken(
                 user.getId(),
@@ -180,16 +216,7 @@ public class AuthenticationService {
 
         refreshTokenRepository.save(refreshToken);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshTokenValue)
-                .userId(user.getId())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .isEmailVerified(user.getIsEmailVerified())
-                .firstName(getFirstName(user))
-                .lastName(getLastName(user))
-                .build();
+        return buildAuthResponse(user, accessToken, refreshTokenValue);
     }
 
     @Transactional
@@ -304,15 +331,6 @@ public class AuthenticationService {
 
         refreshTokenRepository.save(refreshToken);
 
-        return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshTokenValue)
-                .userId(user.getId())
-                .email(user.getEmail())
-                .role(user.getRole())
-                .isEmailVerified(user.getIsEmailVerified())
-                .firstName(getFirstName(user))
-                .lastName(getLastName(user))
-                .build();
+        return buildAuthResponse(user, accessToken, refreshTokenValue);
     }
 }

@@ -26,6 +26,8 @@ public class NGOSpecialization {
 
     @ManyToOne
     @JoinColumn(name = "ngo_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private NGO ngo;
 
     @ManyToOne

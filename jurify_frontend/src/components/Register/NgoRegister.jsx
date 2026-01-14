@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-
+import { useTheme } from "../../context/ThemeContext";
 
 
 // Leaflet Imports
@@ -67,9 +67,30 @@ const indianStates = [
   { value: "Ladakh", label: "Ladakh" },
 ];
 
+const languageOptions = [
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Tamil", label: "Tamil" },
+  { value: "Telugu", label: "Telugu" },
+  { value: "Kannada", label: "Kannada" },
+  { value: "Malayalam", label: "Malayalam" },
+  { value: "Marathi", label: "Marathi" },
+  { value: "Gujarati", label: "Gujarati" },
+  { value: "Bengali", label: "Bengali" },
+  { value: "Punjabi", label: "Punjabi" },
+  { value: "Urdu", label: "Urdu" },
+  { value: "French", label: "French" },
+  { value: "German", label: "German" },
+  { value: "Spanish", label: "Spanish" },
+];
+
 
 
 export default function NgoRegister() {
+  const location = useLocation();
+  const { preRegToken, preFilledEmail, preFilledName } = location.state || {};
+  const { isDarkMode } = useTheme();
+
   const [formData, setFormData] = useState({
     ngoName: "",
     registrationNumber: "",
@@ -79,7 +100,7 @@ export default function NgoRegister() {
     ngoType: "trust",
 
     // Official Details
-    officialEmail: "",
+    officialEmail: preFilledEmail || "",
     officialPhone: "",
     websiteUrl: "",
     officeAddress: "",
@@ -89,7 +110,7 @@ export default function NgoRegister() {
     country: "India",
 
     // Auth Person Details
-    repName: "",
+    repName: preFilledName || "",
     repRole: "",
     repEmail: "",
     repPhone: "",
@@ -106,6 +127,7 @@ export default function NgoRegister() {
     panCardFile: null, // Check file names in state, might need adjustment
     repIdProof: null,
 
+    languages: [],
     areasOfWork: [],
     latitude: null,
     longitude: null,
@@ -267,42 +289,50 @@ export default function NgoRegister() {
     );
   };
 
-  const Areas = [
-    "Human Rights",
-    "Women Safety",
-    "Child Protection",
-    "Legal Awareness",
-    "Environment",
-    "Education",
-    "Health",
-    "Poverty Alleviation",
+  const [areasOfWorkOptions, setAreasOfWorkOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categories = await import("../../services/api").then(module => module.default.getLegalCategories());
+        setAreasOfWorkOptions(categories.map(cat => cat.name));
+      } catch (error) {
+        console.error("Failed to fetch legal categories", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  const Areas = areasOfWorkOptions.length > 0 ? areasOfWorkOptions : [
+    "Human Rights", "Women Safety", "Child Protection", "Legal Awareness",
+    "Environment", "Education", "Health", "Poverty Alleviation"
   ];
 
   const inputClass =
-    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 bg-white shadow-sm text-sm " +
+    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm text-sm text-gray-900 dark:text-white dark:[color-scheme:dark] " +
     "focus:outline-none focus:ring-2 focus:ring-[#11676a]/40 focus:border-[#11676a] transition-all duration-200 " +
-    "placeholder:text-gray-400";
+    "placeholder:text-gray-400 dark:placeholder-gray-400";
 
   const iconWrapperClass =
     "absolute top-1/2 -translate-y-1/2 left-3 z-20 pointer-events-none text-gray-400";
 
   const sectionCardClass =
-    "rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
+    "rounded-2xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
 
   const sectionTitleClass =
-    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 mb-1";
+    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-1";
 
-  const sectionSubtitleClass = "text-xs text-gray-500";
+  const sectionSubtitleClass = "text-xs text-gray-500 dark:text-gray-400";
 
   const MaterialIcon = ({ name, className = "" }) => (
     <span
-      className={`material-symbols-outlined text-xl text-gray-500 ${className}`}
+      className={`material-symbols-outlined text-xl text-gray-500 dark:text-gray-400 ${className}`}
     >
       {name}
     </span>
   );
 
-  const labelClass = "text-xs font-medium text-gray-700 mb-1 block";
+  const labelClass = "text-xs font-medium text-gray-700 dark:text-gray-200 mb-1 block";
 
   const handleChange = (e) => {
     //const { name, value, type, checked } = e.target;
@@ -441,24 +471,28 @@ export default function NgoRegister() {
       }
     }
 
-    if (name === "password") {
-      validatePasswordStrength(value);
-      if (formData.confirmPassword && value !== formData.confirmPassword) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          confirmPassword: "Passwords do not match",
-        }));
-      } else if (formData.confirmPassword) {
-        setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+    if (!preRegToken) {
+      if (name === "password") {
+        validatePasswordStrength(value);
+        if (formData.confirmPassword && value !== formData.confirmPassword) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            confirmPassword: "Passwords do not match",
+          }));
+        } else if (formData.confirmPassword) {
+          setFieldErrors((prev) => ({ ...prev, confirmPassword: "" }));
+        }
       }
     }
 
-    if (name === "confirmPassword") {
-      if (value !== formData.password) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          confirmPassword: "Passwords do not match",
-        }));
+    if (!preRegToken) {
+      if (name === "confirmPassword") {
+        if (value !== formData.password) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            confirmPassword: "Passwords do not match",
+          }));
+        }
       }
     }
 
@@ -702,10 +736,16 @@ export default function NgoRegister() {
     const newErrors = {};
 
     // Check passwords
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match.");
-      newErrors.confirmPassword = "Passwords do not match";
-      if (!firstInvalidRef) firstInvalidRef = passwordRef;
+    if (!preRegToken) {
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match.");
+        newErrors.confirmPassword = "Passwords do not match";
+        if (!firstInvalidRef) firstInvalidRef = passwordRef;
+      }
+      if (!formData.password) {
+        newErrors.password = "Password is required";
+        if (!firstInvalidRef) firstInvalidRef = passwordRef;
+      }
     }
 
     // Mandatory fields validation
@@ -751,10 +791,7 @@ export default function NgoRegister() {
       newErrors.repGender = "Gender is required";
       if (!firstInvalidRef) firstInvalidRef = repGenderRef;
     }
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-      if (!firstInvalidRef) firstInvalidRef = passwordRef;
-    }
+
 
     setFieldErrors(newErrors);
 
@@ -795,6 +832,7 @@ export default function NgoRegister() {
       registrationDate: formData.registrationDate,
       registeringAuthority: formData.registeringAuthority,
       panNumber: formData.ngoPan, // Text field PAN
+      languages: formData.languages.map(l => l.value).join(", "),
 
       organizationPhone: formData.officialPhone, // New backend field
       organizationEmail: formData.officialEmail, // New backend field
@@ -815,6 +853,7 @@ export default function NgoRegister() {
       latitude: formData.latitude,
       longitude: formData.longitude,
       areasOfWork: formData.areasOfWork,
+      preRegistrationToken: preRegToken || "",
     };
 
     const formDataPayload = new FormData();
@@ -875,6 +914,9 @@ export default function NgoRegister() {
           );
 
           if (response.ok) {
+            if (response.status === 202) {
+              return; // Still pending
+            }
             const data = await response.json();
 
             localStorage.setItem("accessToken", data.accessToken);
@@ -885,8 +927,12 @@ export default function NgoRegister() {
               id: data.userId,
               email: data.email,
               role: data.role,
-              firstName: data.firstName,
-              lastName: data.lastName,
+              // NGO specific
+              organizationName: data.firstName, // mapped to firstName in AuthResponse helper
+              phone: data.organizationPhone,
+              contactPersonName: data.contactPersonName,
+              registrationNumber: data.registrationNumber,
+              languages: data.languages,
               isEmailVerified: data.isEmailVerified,
             };
             localStorage.setItem("user", JSON.stringify(userObj));
@@ -913,23 +959,23 @@ export default function NgoRegister() {
   const getInputClass = (fieldName) => {
     const baseClass =
       "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border text-sm " +
-      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400";
+      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400";
 
     if (fieldErrors[fieldName]) {
       return (
         baseClass +
-        " border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500 text-red-900 placeholder:text-red-300"
+        " border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-500/50 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400"
       );
     }
 
     return (
       baseClass +
-      " border-gray-200 bg-white shadow-sm focus:ring-primary/40 focus:border-primary"
+      " border-gray-200 bg-white shadow-sm focus:ring-primary/40 focus:border-primary dark:focus:ring-teal-500/40 dark:focus:border-teal-500"
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
       <div className="max-w-6xl w-full grid lg:grid-cols-[1fr_1.5fr] gap-6 sm:gap-8 lg:gap-10 items-stretch">
         {/* Left Panel - Hidden on mobile/tablet */}
         <div className="hidden lg:flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-linear-to-br from-[#0a4d68] via-primary to-[#2c3e50] text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
@@ -1031,7 +1077,7 @@ export default function NgoRegister() {
         </div>
 
         {/* Right Panel - Form */}
-        <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-lg p-4 sm:p-5 md:p-6 lg:p-8 max-h-screen overflow-hidden flex flex-col">
+        <div className="relative bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-5 md:p-6 lg:p-8 max-h-screen overflow-hidden flex flex-col">
           <Link
             to="/"
             className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-primary transition-transform duration-200 hover:scale-110"
@@ -1041,7 +1087,7 @@ export default function NgoRegister() {
             </span>
           </Link>
 
-          <header className="mb-5 sm:mb-6 border-b border-gray-100 pb-3 sm:pb-4">
+          <header className="mb-5 sm:mb-6 border-b border-gray-100 dark:border-gray-700 pb-3 sm:pb-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#6692a3] text-white shadow-md">
                 <span className="material-symbols-outlined text-xl sm:text-2xl">
@@ -1049,10 +1095,10 @@ export default function NgoRegister() {
                 </span>
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                   Register as an NGO Partner
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">
                   Share your organization&apos;s details to collaborate on legal
                   aid and justice initiatives.
                 </p>
@@ -1089,7 +1135,7 @@ export default function NgoRegister() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* NGO Name */}
                 <div>
-                  <span className={labelClass}>
+                  <span className={labelClass + " dark:text-gray-300"}>
                     Registered Name of NGO <span className="text-red-500">*</span>
                   </span>
                   <div className="relative">
@@ -1117,7 +1163,7 @@ export default function NgoRegister() {
 
                 {/* Registration Number */}
                 <div>
-                  <span className={labelClass}>Reigstration Number <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Reigstration Number <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="badge" className={fieldErrors.registrationNumber ? "text-red-500" : ""} />
@@ -1142,7 +1188,7 @@ export default function NgoRegister() {
 
                 {/* Date of Registration */}
                 <div>
-                  <span className={labelClass}>Date of Registration <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Date of Registration <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="calendar_today" className={fieldErrors.registrationDate ? "text-red-500" : ""} />
@@ -1167,7 +1213,7 @@ export default function NgoRegister() {
 
                 {/* Registering Authority */}
                 <div>
-                  <span className={labelClass}>Registering Authority <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Registering Authority <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="gavel" className={fieldErrors.registeringAuthority ? "text-red-500" : ""} />
@@ -1192,7 +1238,7 @@ export default function NgoRegister() {
 
                 {/* PAN Number */}
                 <div>
-                  <span className={labelClass}>PAN Number <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>PAN Number <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="credit_card" className={fieldErrors.ngoPan ? "text-red-500" : ""} />
@@ -1222,7 +1268,7 @@ export default function NgoRegister() {
 
                 {/* Type */}
                 <div>
-                  <span className={labelClass}>Type of NGO</span>
+                  <span className={labelClass + " dark:text-gray-300"}>Type of NGO</span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="category" className={fieldErrors.ngoType ? "text-red-500" : ""} />
@@ -1238,7 +1284,7 @@ export default function NgoRegister() {
                       <option value="section8">Section 8 Company</option>
                       <option value="international">International NGO</option>
                     </select>
-                    <span className="pointer-events-none absolute right-3 inset-y-0 my-auto text-gray-500 material-symbols-outlined">
+                    <span className="pointer-events-none absolute right-3 inset-y-0 my-auto text-gray-500 dark:text-gray-400 material-symbols-outlined">
                       expand_more
                     </span>
                   </div>
@@ -1249,10 +1295,10 @@ export default function NgoRegister() {
                 {/* Contact Details (Moved Here) */}
                 {/* Official Phone */}
                 <div>
-                  <span className={labelClass}>Official Phone Number <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Official Phone Number <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className="flex gap-2">
-                      <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 min-w-[85px]">
+                      <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-white min-w-[85px]">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 36 27"
@@ -1313,7 +1359,7 @@ export default function NgoRegister() {
 
                 {/* Official Email */}
                 <div>
-                  <span className={labelClass}>Official Email ID <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Official Email ID <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="mail" className={fieldErrors.officialEmail ? "text-red-500" : ""} />
@@ -1339,7 +1385,7 @@ export default function NgoRegister() {
 
                 {/* Website */}
                 <div className="sm:col-span-2">
-                  <span className={labelClass}>Website (if any)</span>
+                  <span className={labelClass + " dark:text-gray-300"}>Website (if any)</span>
                   <div className="relative">
                     <div className={iconWrapperClass}><MaterialIcon name="language" className={fieldErrors.websiteUrl ? "text-red-500" : ""} /></div>
                     <input type="url" name="websiteUrl" placeholder="https://www.your-ngo.org" className={getInputClass("websiteUrl")} onChange={handleChange} value={formData.websiteUrl} />
@@ -1351,7 +1397,7 @@ export default function NgoRegister() {
                 {/* Map & Search (Moved from Operational) */}
                 <div className="sm:col-span-2 space-y-3 pt-4 border-t border-gray-100 mt-2">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                       <MaterialIcon name="pin_drop" />
                       <span>Pinpoint your NGO's location</span>
                     </div>
@@ -1375,17 +1421,17 @@ export default function NgoRegister() {
                         }
                       />
                       {searchResults.length > 0 && (
-                        <ul className="absolute z-[1000] w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
+                        <ul className="absolute z-[1000] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
                           {searchResults.map((result, index) => (
                             <li
                               key={index}
                               onClick={() => selectSearchResult(result)}
-                              className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 flex items-start gap-2"
+                              className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-700 flex items-start gap-2 text-gray-900 dark:text-gray-100"
                             >
                               <span className="material-symbols-outlined text-gray-400 text-lg mt-0.5">
                                 location_on
                               </span>
-                              <span>{result.display_name}</span>
+                              <span className="text-gray-900 dark:text-gray-100">{result.display_name}</span>
                             </li>
                           ))}
                         </ul>
@@ -1401,7 +1447,7 @@ export default function NgoRegister() {
                   </div>
 
                   {/* Leaflet Map */}
-                  <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
+                  <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 relative z-0">
                     <MapContainer
                       center={position}
                       zoom={13}
@@ -1423,7 +1469,7 @@ export default function NgoRegister() {
                             e.stopPropagation();
                             handleCurrentLocation();
                           }}
-                          className="bg-white p-2 rounded-lg shadow-md hover:bg-gray-50 text-gray-700 transition-colors"
+                          className="bg-white dark:bg-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition-colors"
                           title="Use Current Location"
                         >
                           <span className="material-symbols-outlined text-xl">
@@ -1438,7 +1484,7 @@ export default function NgoRegister() {
                 {/* Latitude & Longitude (Read-only) */}
                 <div className="sm:col-span-2 grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Latitude
                     </label>
                     <div className="relative">
@@ -1449,12 +1495,12 @@ export default function NgoRegister() {
                         type="text"
                         value={position.lat}
                         readOnly
-                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                        className={`${inputClass} bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed`}
                       />
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Longitude
                     </label>
                     <div className="relative">
@@ -1465,7 +1511,7 @@ export default function NgoRegister() {
                         type="text"
                         value={position.lng}
                         readOnly
-                        className={`${inputClass} bg-gray-100 text-gray-500 cursor-not-allowed`}
+                        className={`${inputClass} bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed`}
                       />
                     </div>
                   </div>
@@ -1473,7 +1519,7 @@ export default function NgoRegister() {
 
                 {/* Address Fields */}
                 <div className="sm:col-span-2">
-                  <span className={labelClass}>Official Address <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Official Address <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="location_on" className={fieldErrors.officeAddress ? "text-red-500" : ""} />
@@ -1498,7 +1544,7 @@ export default function NgoRegister() {
 
                 {/* City/State/Pin */}
                 <div>
-                  <span className={labelClass}>City <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>City <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="location_city" className={fieldErrors.city ? "text-red-500" : ""} />
@@ -1521,7 +1567,7 @@ export default function NgoRegister() {
                   )}
                 </div>
                 <div>
-                  <span className={labelClass}>
+                  <span className={labelClass + " dark:text-gray-300"}>
                     State / Province <span className="text-red-500">*</span>
                   </span>
                   <div className="relative">
@@ -1564,11 +1610,13 @@ export default function NgoRegister() {
                             ? "#fca5a5"
                             : state.isFocused
                               ? "#11676a"
-                              : "#e5e7eb",
+                              : isDarkMode
+                                ? "#4b5563"
+                                : "#e5e7eb",
                           boxShadow: state.isFocused
                             ? "0 0 0 2px rgba(17,103,106,0.4)"
                             : "0 1px 2px rgba(0,0,0,0.05)",
-                          backgroundColor: "#ffffff",
+                          backgroundColor: isDarkMode ? "#374151" : "#ffffff",
                           "&:hover": {
                             borderColor: "#11676a",
                           },
@@ -1583,6 +1631,7 @@ export default function NgoRegister() {
                           ...base,
                           margin: 0,
                           padding: 0,
+                          color: isDarkMode ? "#e5e7eb" : "#111827",
                         }),
 
                         placeholder: (base) => ({
@@ -1593,7 +1642,7 @@ export default function NgoRegister() {
 
                         singleValue: (base) => ({
                           ...base,
-                          color: "#111827",
+                          color: isDarkMode ? "#e5e7eb" : "#111827",
                           fontSize: "0.875rem",
                         }),
 
@@ -1614,6 +1663,24 @@ export default function NgoRegister() {
                           zIndex: 50,
                           borderRadius: "0.75rem",
                           boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                          backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                          border: isDarkMode ? "1px solid #374151" : "none",
+                        }),
+
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isFocused
+                            ? isDarkMode
+                              ? "#374151"
+                              : "#f0fdf9"
+                            : "transparent",
+                          color: isDarkMode
+                            ? state.isFocused ? "#ffffff" : "#d1d5db"
+                            : "#374151",
+                          "&:active": {
+                            backgroundColor: "#11676a",
+                            color: "#ffffff",
+                          },
                         }),
                       }}
                     />
@@ -1621,7 +1688,7 @@ export default function NgoRegister() {
                   </div>
                 </div>
                 <div>
-                  <span className={labelClass}>Pincode <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Pincode <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="local_post_office" className={fieldErrors.pincode ? "text-red-500" : ""} />
@@ -1646,7 +1713,7 @@ export default function NgoRegister() {
                 </div>
                 {/* Country */}
                 <div>
-                  <span className={labelClass}>Country</span>
+                  <span className={labelClass + " dark:text-gray-300"}>Country</span>
                   <div className="relative">
                     <div className={iconWrapperClass}>
                       <MaterialIcon name="public" />
@@ -1655,7 +1722,7 @@ export default function NgoRegister() {
                       type="text"
                       name="country"
                       value={formData.country || "India"}
-                      className={`${getInputClass("country")} bg-gray-100 cursor-not-allowed`}
+                      className={`${getInputClass("country")} bg-gray-100 dark:bg-gray-700 cursor-not-allowed`}
                       readOnly
                     />
                   </div>
@@ -1665,9 +1732,77 @@ export default function NgoRegister() {
 
 
 
+                {/* Languages Multi-Select */}
+                <div className="sm:col-span-2">
+                  <span className={labelClass + " dark:text-gray-300"}>
+                    Languages Spoken within Organization
+                  </span>
+                  <Select
+                    isMulti
+                    options={languageOptions}
+                    value={formData.languages}
+                    onChange={(selected) =>
+                      setFormData((prev) => ({ ...prev, languages: selected || [] }))
+                    }
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select languages..."
+                    styles={{
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999,
+                        backgroundColor: isDarkMode ? "#1f2937" : "white",
+                        border: isDarkMode ? "1px solid #374151" : "none",
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isFocused
+                            ? isDarkMode
+                                ? "#374151"
+                                : "#ecfdf5"
+                            : "transparent",
+                        color: isDarkMode
+                            ? state.isFocused ? "white" : "#d1d5db"
+                            : "black",
+                      }),
+                      singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode ? "white" : "black",
+                      }),
+                      control: (base, state) => ({
+                        ...base,
+                        minHeight: "48px",
+                        borderRadius: "0.75rem",
+                        borderColor: state.isFocused ? "#11676a" : isDarkMode ? "#4b5563" : "#e5e7eb",
+                        backgroundColor: isDarkMode ? "#374151" : "white",
+                        boxShadow: state.isFocused ? "0 0 0 2px rgba(17,103,106,0.4)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        "&:hover": { borderColor: "#11676a" },
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#e5e7eb" : "#111827",
+                      }),
+                      multiValue: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode ? "#0f5557" : "#ecfdf5",
+                        borderRadius: "0.375rem",
+                      }),
+                      multiValueLabel: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                      }),
+                      multiValueRemove: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                        "&:hover": { backgroundColor: isDarkMode ? "#11676a" : "#d1fae5", color: isDarkMode ? "white" : "#047857" },
+                      }),
+                    }}
+                  />
+                </div>
+
                 {/* Areas of Work */}
                 <div className="sm:col-span-2 pt-2 border-t border-gray-100">
-                  <span className={labelClass}>Areas of Work (Multi-select) <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Areas of Work (Multi-select) <span className="text-red-500">*</span></span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                     {Areas.map((area) => (
                       <button
@@ -1675,8 +1810,8 @@ export default function NgoRegister() {
                         type="button"
                         onClick={() => handleAreaChange(area)}
                         className={`h-9 sm:h-10 text-[0.7rem] sm:text-xs font-medium rounded-full border px-2 sm:px-3 transition duration-200 ${formData.areasOfWork.includes(area)
-                          ? "bg-primary text-white border-primary shadow-md"
-                          : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                          ? "bg-primary text-white border-primary shadow-md dark:bg-teal-600 dark:border-teal-500"
+                          : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                           }`}
                       >
                         {area}
@@ -1707,7 +1842,7 @@ export default function NgoRegister() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Full Name */}
                 <div>
-                  <span className={labelClass}>Full Name <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Full Name <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}><MaterialIcon name="person" className={fieldErrors.repName ? "text-red-500" : ""} /></div>
                     <input ref={repNameRef} type="text" name="repName" placeholder="Full Name" className={getInputClass("repName")} onChange={handleChange} value={formData.repName} required />
@@ -1721,7 +1856,7 @@ export default function NgoRegister() {
                 </div>
                 {/* Designation */}
                 <div>
-                  <span className={labelClass}>Designation <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Designation <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}><MaterialIcon name="badge" className={fieldErrors.repRole ? "text-red-500" : ""} /></div>
                     <input ref={repRoleRef} type="text" name="repRole" placeholder="e.g. Project Coordinator" className={getInputClass("repRole")} onChange={handleChange} value={formData.repRole} required />
@@ -1735,7 +1870,7 @@ export default function NgoRegister() {
                 </div>
                 {/* Mobile Number */}
                 <div>
-                  <span className={labelClass}>Mobile Number <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Mobile Number <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className="flex gap-2">
                       <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 min-w-[85px]">
@@ -1808,7 +1943,7 @@ export default function NgoRegister() {
                 </div>
                 {/* Email ID */}
                 <div>
-                  <span className={labelClass}>Email ID <span className="text-red-500">*</span></span>
+                  <span className={labelClass + " dark:text-gray-300"}>Email ID <span className="text-red-500">*</span></span>
                   <div className="relative">
                     <div className={iconWrapperClass}><MaterialIcon name="email" className={fieldErrors.repEmail ? "text-red-500" : ""} /></div>
                     <input ref={repEmailRef} type="email" name="repEmail" placeholder="representative@email.com" className={getInputClass("repEmail")} onChange={handleChange} value={formData.repEmail} required />
@@ -1822,7 +1957,7 @@ export default function NgoRegister() {
                 </div>
                 {/* Date of Birth */}
                 <div>
-                  <span className={labelClass}>
+                  <span className={labelClass + " dark:text-gray-300"}>
                     Date of Birth <span className="text-red-500">*</span>
                   </span>
                   <div className="relative">
@@ -1850,7 +1985,7 @@ export default function NgoRegister() {
 
                 {/* Gender */}
                 <div>
-                  <span className={labelClass}>
+                  <span className={labelClass + " dark:text-gray-300"}>
                     Gender <span className="text-red-500">*</span>
                   </span>
                   <div className="relative">
@@ -1870,7 +2005,7 @@ export default function NgoRegister() {
                       <option value="female">Female</option>
                       <option value="other">Other</option>
                     </select>
-                    <span className="pointer-events-none absolute right-3 inset-y-0 my-auto text-gray-500 material-symbols-outlined">
+                    <span className="pointer-events-none absolute right-3 inset-y-0 my-auto text-gray-500 dark:text-gray-400 material-symbols-outlined">
                       expand_more
                     </span>
                   </div>
@@ -1899,8 +2034,8 @@ export default function NgoRegister() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Registration Certificate */}
                 <div>
-                  <label className={labelClass}>Registration Certificate <span className="text-red-500">*</span></label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer ${fieldErrors.regCertificate ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
+                  <label className={labelClass + " dark:text-gray-300"}>Registration Certificate <span className="text-red-500">*</span></label>
+                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center cursor-pointer ${fieldErrors.regCertificate ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-gray-300 dark:border-gray-600"}`}>
                     {formData.regCertificate && (
                       <button
                         type="button"
@@ -1940,8 +2075,8 @@ export default function NgoRegister() {
 
                 {/* Darpan Certificate */}
                 <div>
-                  <label className={labelClass}>NGO Darpan Certificate (if applicable)</label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer ${fieldErrors.darpanCertificate ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
+                  <label className={labelClass + " dark:text-gray-300"}>NGO Darpan Certificate (if applicable)</label>
+                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center cursor-pointer ${fieldErrors.darpanCertificate ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-gray-300 dark:border-gray-600"}`}>
                     {formData.darpanCertificate && (
                       <button
                         type="button"
@@ -1980,8 +2115,8 @@ export default function NgoRegister() {
 
                 {/* NGO PAN Card */}
                 <div>
-                  <label className={labelClass}>NGO PAN Card <span className="text-red-500">*</span></label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer ${fieldErrors.panCardFile ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
+                  <label className={labelClass + " dark:text-gray-300"}>NGO PAN Card <span className="text-red-500">*</span></label>
+                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center cursor-pointer ${fieldErrors.panCardFile ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-gray-300 dark:border-gray-600"}`}>
                     {formData.panCardFile && (
                       <button
                         type="button"
@@ -2021,8 +2156,8 @@ export default function NgoRegister() {
 
                 {/* Representative ID Proof */}
                 <div>
-                  <label className={labelClass}>Authorized Person's ID Proof <span className="text-red-500">*</span></label>
-                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer ${fieldErrors.repIdProof ? "border-red-300 bg-red-50" : "border-gray-300"}`}>
+                  <label className={labelClass + " dark:text-gray-300"}>Authorized Person's ID Proof <span className="text-red-500">*</span></label>
+                  <div className={`relative border-2 border-dashed rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center cursor-pointer ${fieldErrors.repIdProof ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-gray-300 dark:border-gray-600"}`}>
                     {formData.repIdProof && (
                       <button
                         type="button"
@@ -2074,8 +2209,8 @@ export default function NgoRegister() {
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3">
-                <span className="text-xs sm:text-sm font-medium text-slate-700">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 px-3 py-3">
+                <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200">
                   Are you willing to coordinate pro bono legal cases through
                   your NGO?
                 </span>
@@ -2087,7 +2222,7 @@ export default function NgoRegister() {
                     onChange={handleChange}
                     className="sr-only peer"
                   />
-                  <div className="relative w-11 h-6 bg-gray-200 rounded-full transition-colors peer-checked:bg-primary">
+                  <div className="relative w-11 h-6 bg-gray-200 dark:bg-gray-600 rounded-full transition-colors peer-checked:bg-primary">
                     <div
                       className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.proBonoCommitment ? "translate-x-5" : ""
                         }`}
@@ -2101,7 +2236,7 @@ export default function NgoRegister() {
 
               {formData.proBonoCommitment && (
                 <div>
-                  <span className={labelClass}>
+                  <span className={labelClass + " dark:text-gray-300"}>
                     Maximum number of monthly pro-bono cases
                   </span>
                   <div className="relative">
@@ -2140,146 +2275,156 @@ export default function NgoRegister() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Password */}
-                <div>
-                  <span className={labelClass}>
-                    Password <span className="text-red-500">*</span>
-                  </span>
-                  <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="lock" className={fieldErrors.password ? "text-red-500" : ""} />
-                    </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Create Password (8–20 characters)"
-                      className={`${getInputClass("password")} pr-14`}
-                      value={formData.password}
-                      onChange={handleChange}
-                      minLength={8}
-                      maxLength={20}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 p-1 rounded focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <span className="material-symbols-outlined">
-                        {showPassword ? "visibility" : "visibility_off"}
+                {!preRegToken ? (
+                  <>
+                    <div>
+                      <span className={labelClass + " dark:text-gray-300"}>
+                        Password <span className="text-red-500">*</span>
                       </span>
-                    </button>
-                  </div>
-
-                  {fieldErrors.password && (
-                    <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">
-                        error_outline
-                      </span>
-                      <span>{fieldErrors.password}</span>
-                    </div>
-                  )}
-
-                  {/* Password Strength Indicator */}
-                  {formData.password && (
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-600">
-                          Password strength:
-                        </span>
-                        <span
-                          className={`text-xs font-medium ${passwordStrength.score <= 2
-                            ? "text-red-600"
-                            : passwordStrength.score <= 4
-                              ? "text-yellow-600"
-                              : passwordStrength.score <= 5
-                                ? "text-blue-600"
-                                : "text-green-600"
-                            }`}
-                        >
-                          {getPasswordStrengthText()}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                          style={{
-                            width: `${(passwordStrength.score / 6) * 100}%`,
-                          }}
+                      <div className="relative">
+                        <div className={iconWrapperClass}>
+                          <MaterialIcon name="lock" className={fieldErrors.password ? "text-red-500" : ""} />
+                        </div>
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          placeholder="Create Password (8–20 characters)"
+                          className={`${getInputClass("password")} pr-14`}
+                          value={formData.password}
+                          onChange={handleChange}
+                          minLength={8}
+                          maxLength={20}
+                          required
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 p-1 rounded focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        >
+                          <span className="material-symbols-outlined">
+                            {showPassword ? "visibility" : "visibility_off"}
+                          </span>
+                        </button>
                       </div>
 
-                      {passwordStrength.feedback.length > 0 && (
-                        <div className="mt-1">
-                          <p className="text-xs text-gray-600 mb-1">
-                            To strengthen your password:
-                          </p>
-                          <ul className="text-xs text-gray-500 space-y-0.5">
-                            {passwordStrength.feedback.map((item, index) => (
-                              <li key={index} className="flex items-center gap-1">
-                                <span className="material-symbols-outlined text-xs">
-                                  arrow_right
-                                </span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
+                      {fieldErrors.password && (
+                        <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">
+                            error_outline
+                          </span>
+                          <span>{fieldErrors.password}</span>
+                        </div>
+                      )}
+
+                      {/* Password Strength Indicator */}
+                      {formData.password && (
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-600">
+                              Password strength:
+                            </span>
+                            <span
+                              className={`text-xs font-medium ${passwordStrength.score <= 2
+                                ? "text-red-600"
+                                : passwordStrength.score <= 4
+                                  ? "text-yellow-600"
+                                  : passwordStrength.score <= 5
+                                    ? "text-blue-600"
+                                    : "text-green-600"
+                                }`}
+                            >
+                              {getPasswordStrengthText()}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                              style={{
+                                width: `${(passwordStrength.score / 6) * 100}%`,
+                              }}
+                            />
+                          </div>
+
+                          {passwordStrength.feedback.length > 0 && (
+                            <div className="mt-1">
+                              <p className="text-xs text-gray-600 mb-1">
+                                To strengthen your password:
+                              </p>
+                              <ul className="text-xs text-gray-500 space-y-0.5">
+                                {passwordStrength.feedback.map((item, index) => (
+                                  <li key={index} className="flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-xs">
+                                      arrow_right
+                                    </span>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="text-xs text-gray-500 mt-1">
+                        Password must be 8–20 characters and include uppercase, lowercase,
+                        number, and special character.
+                      </p>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div>
+                      <span className={labelClass + " dark:text-gray-300"}>
+                        Confirm Password <span className="text-red-500">*</span>
+                      </span>
+                      <div className="relative">
+                        <div className={iconWrapperClass}>
+                          <MaterialIcon name="lock_reset" className={fieldErrors.confirmPassword ? "text-red-500" : ""} />
+                        </div>
+                        <input
+                          type={showConfirmPassword ? "text" : "password"}
+                          name="confirmPassword"
+                          placeholder="Confirm Password"
+                          className={`${getInputClass("confirmPassword")} pr-14`}
+                          value={formData.confirmPassword}
+                          onChange={handleChange}
+                          minLength={8}
+                          maxLength={20}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          aria-label={
+                            showConfirmPassword
+                              ? "Hide confirm password"
+                              : "Show confirm password"
+                          }
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 p-1 rounded focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        >
+                          <span className="material-symbols-outlined">
+                            {showConfirmPassword ? "visibility" : "visibility_off"}
+                          </span>
+                        </button>
+                      </div>
+
+                      {fieldErrors.confirmPassword && (
+                        <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-sm">
+                            error_outline
+                          </span>
+                          <span>{fieldErrors.confirmPassword}</span>
                         </div>
                       )}
                     </div>
-                  )}
-
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be 8–20 characters and include uppercase, lowercase,
-                    number, and special character.
-                  </p>
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <span className={labelClass}>
-                    Confirm Password <span className="text-red-500">*</span>
-                  </span>
-                  <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="lock_reset" className={fieldErrors.confirmPassword ? "text-red-500" : ""} />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      placeholder="Confirm Password"
-                      className={`${getInputClass("confirmPassword")} pr-14`}
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      minLength={8}
-                      maxLength={20}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={
-                        showConfirmPassword
-                          ? "Hide confirm password"
-                          : "Show confirm password"
-                      }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 p-1 rounded focus:outline-none focus:ring-2 focus:ring-primary/40"
-                    >
-                      <span className="material-symbols-outlined">
-                        {showConfirmPassword ? "visibility" : "visibility_off"}
-                      </span>
-                    </button>
+                  </>
+                ) : (
+                  <div className="col-span-1 sm:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      <span className="font-semibold">Note:</span> You are registering via Google. No password is required.
+                    </p>
                   </div>
-
-                  {fieldErrors.confirmPassword && (
-                    <div className="mt-1 text-xs text-red-600 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">
-                        error_outline
-                      </span>
-                      <span>{fieldErrors.confirmPassword}</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </section>
 

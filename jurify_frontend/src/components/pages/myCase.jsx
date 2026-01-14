@@ -1,298 +1,481 @@
-import React, { useState, useEffect } from 'react';
-import { FaPlus, FaCalendarAlt, FaGavel, FaArrowLeft, FaFilePdf, FaUserTie, FaPhoneAlt, FaEnvelope, FaDownload, FaSpinner } from 'react-icons/fa';
-import { caseService } from '../../services/caseService';
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { caseService } from "../../services/caseService";
+import { authService } from "../../services/authService";
+import { format } from "date-fns";
+import { useToast } from "../common/ToastContext";
 
-const MyCases = ({ onNewCase }) => {
-    const [selectedCase, setSelectedCase] = useState(null);
+const MyCases = ({ onTabChange, onNewCase, userRole: initialUserRole }) => {
     const [cases, setCases] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [stats, setStats] = useState({ total: 0, pending: 0, active: 0, closed: 0 });
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("All");
+    const [viewMode, setViewMode] = useState("compact");
+    const navigate = useNavigate();
+    const { showToast } = useToast();
+    const currentUser = authService.getCurrentUser();
 
-    useEffect(() => {
-        fetchCases();
-    }, []);
-
-    const fetchCases = async () => {
-        try {
-            const data = await caseService.getMyCases();
-            // Transform backend data to match UI expected format
-            // Backend fields: id, title, description, category, status, urgency, user (lawyer info might be here or separate)
-            const formattedCases = data.map(item => ({
-                id: item.id,
-                caseNumber: `CN-${new Date(item.createdAt).getFullYear()}-${String(item.id).padStart(4, '0')}`,
-                title: item.title,
-                category: item.category || "General",
-                status: item.status || "PENDING",
-                filedDate: new Date(item.createdAt).toLocaleDateString(),
-                nextHearing: "TBD", // Backend doesn't have this yet
-                description: item.description,
-                lastUpdate: "Case filed successfully.",
-                documents: item.documents || [],
-                lawyer: item.lawyerName ? {
-                    name: item.lawyerName,
-                    email: "Contact via Directory", // Placeholder until backend sends this
-                    phone: "N/A",
-                    specialization: "Legal Counsel"
-                } : null
-            }));
-            setCases(formattedCases);
-        } catch (err) {
-            console.error("Failed to fetch cases:", err);
-            setError("Failed to load your cases. Please try again.");
-        } finally {
-            setLoading(false);
+    // Helper Mappers for UI Styling
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'PENDING': return "bg-amber-100 text-amber-700";
+            case 'ACTIVE': return "bg-blue-100 text-blue-700";
+            case 'RESOLVED':
+            case 'CLOSED': return "bg-emerald-100 text-emerald-700";
+            default: return "bg-slate-100 text-slate-700";
         }
     };
 
-    const totalCases = cases.length;
-    const activeCases = cases.filter(c => c.status === 'ACTIVE' || c.status === 'OPEN').length;
-    const pendingCases = cases.filter(c => c.status === 'PENDING').length;
+    const getPriorityColor = (urgency) => {
+        switch (urgency) {
+            case 'HIGH':
+            case 'CRITICAL': return "bg-red-100 text-red-700";
+            case 'MEDIUM': return "bg-orange-100 text-orange-700";
+            default: return "bg-blue-50 text-blue-600";
+        }
+    };
 
-    const MaterialIcon = ({ name, className = "" }) => (
-        <span className={`material-symbols-outlined align-middle ${className}`}>
-            {name}
-        </span>
-    );
+    // Fetch Data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const [casesRes, statsRes] = await Promise.all([
+                    caseService.getMyCases(),
+                    caseService.getCaseStats()
+                ]);
+
+                console.log("Fetched Cases:", casesRes);
+
+                // Map Backend DTO to UI Model
+                const mappedCases = casesRes.map(c => {
+                    // Determine Counterparty based on User Role
+                    let otherParty = null;
+                    const isProfessional = currentUser?.role === 'LAWYER' || currentUser?.role === 'NGO';
+
+                    if (isProfessional) {
+                        // Show Citizen Details
+                        otherParty = {
+                            name: c.citizenName,
+                            id: c.citizenId,
+                            email: c.citizenEmail,
+                            phone: c.citizenPhone,
+                            role: 'Client',
+                            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.citizenName || 'Client')}&background=random`,
+                            specialization: "Citizen"
+                        };
+                    } else {
+                        // User is Citizen -> Show Lawyer or NGO
+                        if (c.lawyerId) {
+                            otherParty = {
+                                name: c.lawyerName,
+                                id: c.lawyerId,
+                                email: c.lawyerEmail,
+                                phone: c.lawyerPhone,
+                                role: 'Legal Representative',
+                                specialization: "Legal Counsel",
+                                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.lawyerName)}&background=random`
+                            };
+                        } else if (c.ngoName) {
+                            otherParty = {
+                                name: c.ngoName,
+                                email: c.ngoEmail,
+                                phone: c.ngoPhone,
+                                role: 'NGO Support',
+                                specialization: "Non-Profit Organization",
+                                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.ngoName)}&background=random`
+                            };
+                        }
+                    }
+
+                    return {
+                        ...c,
+                        displayId: `CASE-${new Date(c.createdAt).getFullYear()}-${c.id.toString().padStart(3, '0')}`,
+                        statusColor: getStatusColor(c.status),
+                        priorityColor: getPriorityColor(c.urgency),
+                        filedDate: c.createdAt ? format(new Date(c.createdAt), "MMM dd, yyyy") : "N/A",
+                        counterparty: otherParty
+                    };
+                });
+
+                setCases(mappedCases);
+
+                // Update Stats
+                setStats({
+                    total: statsRes.totalCases || 0,
+                    pending: statsRes.pendingCases || 0,
+                    active: statsRes.activeCases || 0,
+                    closed: statsRes.resolvedCases || 0
+                });
+
+            } catch (err) {
+                console.error("Failed to load cases", err);
+                showToast({ message: "Failed to load cases", type: "error" });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Filter Logic
+    const filteredCases = useMemo(() => {
+        return cases.filter((c) => {
+            const matchesSearch = (c.title?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+                (c.displayId?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+
+            const matchesStatus = statusFilter === "All" ||
+                (statusFilter === "Pending" && c.status === "PENDING") ||
+                (statusFilter === "Active" && c.status === "ACTIVE") ||
+                (statusFilter === "Closed" && (c.status === "RESOLVED" || c.status === "CLOSED"));
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [searchTerm, statusFilter, cases]);
+
+    const handleCaseClick = (caseId) => {
+        navigate(`/cases/${caseId}`);
+    };
+
+    const [selectedCase, setSelectedCase] = useState(null);
 
     if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center p-12 h-64">
-                <FaSpinner className="animate-spin text-4xl text-primary mb-4" />
-                <p className="text-gray-500 font-medium">Loading your legal matters...</p>
-            </div>
-        );
+        return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div></div>;
     }
 
-    if (error) {
-        return (
-            <div className="p-8 text-center bg-red-50 rounded-xl border border-red-100">
-                <p className="text-red-600 font-bold mb-2">Error Loading Cases</p>
-                <p className="text-sm text-red-500 mb-4">{error}</p>
-                <button
-                    onClick={fetchCases}
-                    className="px-4 py-2 bg-white text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition text-sm font-semibold"
-                >
-                    Try Again
-                </button>
+    return (
+        <div className="bg-gray-50 dark:bg-black min-h-screen flex flex-col font-sans p-6 space-y-6">
+
+            {/* 1. Header & Back Button */}
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-slate-800 dark:text-white">My Cases</h1>
+                {selectedCase && (
+                    <button
+                        onClick={() => setSelectedCase(null)}
+                        className="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-primary transition font-semibold text-sm bg-white dark:bg-gray-800 px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-700 shadow-sm hover:bg-slate-50 dark:hover:bg-gray-700"
+                    >
+                        <span className="material-symbols-outlined text-sm">arrow_back</span> Back to List
+                    </button>
+                )}
             </div>
-        );
-    }
 
-    // --- CASE DETAIL VIEW ---
-    if (selectedCase) {
-        return (
-            <div className="space-y-6 animate-fadeIn">
-                <button
-                    onClick={() => setSelectedCase(null)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-primary transition font-bold text-sm bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm"
-                >
-                    <FaArrowLeft size={12} /> Back to My Cases
-                </button>
-
-                <div className="bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden">
-                    <div className="bg-primary p-8 text-white">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <span className="bg-white/20 px-3 py-1 rounded text-xs font-mono mb-2 inline-block">
-                                    {selectedCase.caseNumber}
-                                </span>
-                                <h2 className="text-3xl font-bold">{selectedCase.title}</h2>
-                                <p className="text-white/80 mt-2 flex items-center gap-2">
-                                    <FaGavel /> {selectedCase.category}
-                                </p>
-                            </div>
-                            <span className={`px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase border-2 ${selectedCase.status === 'ACTIVE' ? 'bg-green-500 border-green-400' : 'bg-yellow-500 border-yellow-400'
-                                }`}>
-                                {selectedCase.status}
-                            </span>
-                        </div>
+            {/* 2. Stats Bar (List View Only) */}
+            {!selectedCase && (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-gray-800 space-y-4 transition-colors">
+                    <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Case Distribution</span>
+                        <span className="text-2xl font-bold text-slate-900 dark:text-white">{stats.total}</span>
                     </div>
 
-                    <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-10">
-                        <div className="lg:col-span-2 space-y-8">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 uppercase tracking-wider text-sm">Case Details</h3>
-                                <p className="text-gray-600 leading-relaxed">{selectedCase.description}</p>
-                            </div>
+                    {/* Progress Bar */}
+                    <div className="h-4 w-full bg-slate-100 dark:bg-gray-700 rounded-full overflow-hidden flex">
+                        <div className="bg-amber-400 transition-all duration-500" style={{ width: `${stats.total ? (stats.pending / stats.total) * 100 : 0}%` }} />
+                        <div className="bg-blue-500 transition-all duration-500" style={{ width: `${stats.total ? (stats.active / stats.total) * 100 : 0}%` }} />
+                        <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${stats.total ? (stats.closed / stats.total) * 100 : 0}%` }} />
+                    </div>
 
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-800 border-b pb-2 mb-4 uppercase tracking-wider text-sm">Documents</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {selectedCase.documents && selectedCase.documents.length > 0 ? (
-                                        selectedCase.documents.map((doc, idx) => (
-                                            <div
-                                                key={idx}
-                                                onClick={() => {
-                                                    const url = doc.fileUrl || (typeof doc === 'string' ? doc : null);
-                                                    if (url) window.open(url, '_blank');
-                                                }}
-                                                className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100 group hover:border-primary transition cursor-pointer"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <FaFilePdf className="text-red-500 text-xl" />
-                                                    <div className="overflow-hidden">
-                                                        <p className="text-sm font-bold text-gray-700 truncate max-w-[150px]">
-                                                            {doc.fileName || (typeof doc === 'string' ? "Document" : "Unknown File")}
-                                                        </p>
-                                                        {/* File size not available from basic string list usually */}
+                    {/* Legend */}
+                    <div className="flex gap-6 text-[11px] font-bold uppercase tracking-wide">
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-gray-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> Pending ({stats.pending})
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-gray-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500" /> Active ({stats.active})
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-600 dark:text-gray-400">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Closed ({stats.closed})
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 3. Search & Toolbar */}
+            {!selectedCase && (
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">search</span>
+                        <input
+                            type="text"
+                            placeholder="Search by title or case ID..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm font-medium text-slate-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                        />
+                    </div>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setViewMode(viewMode === "compact" ? "detailed" : "compact")}
+                            className="p-3.5 rounded-xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 hover:text-primary hover:border-primary transition-colors shadow-sm"
+                        >
+                            <span className="material-symbols-outlined">{viewMode === "compact" ? "view_agenda" : "grid_view"}</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. Cases Grid / List */}
+            {!selectedCase && (
+                <>
+                    {filteredCases.length === 0 ? (
+                        <div className="text-center py-20 opacity-60">
+                            <span className="material-symbols-outlined text-4xl mb-2 text-gray-400 dark:text-gray-600">folder_off</span>
+                            <p className="text-gray-500 dark:text-gray-400">No cases found matching your criteria.</p>
+                        </div>
+                    ) : (
+                        <div className={viewMode === "compact"
+                            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+                            : "flex flex-col gap-4"
+                        }>
+                            {filteredCases.map((c) => (
+                                <div
+                                    key={c.id}
+                                    onClick={() => setSelectedCase(c)}
+                                    className={`group relative cursor-pointer bg-white dark:bg-gray-900 rounded-2xl border border-slate-200 dark:border-gray-800 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden
+                        ${viewMode === 'detailed' ? 'flex p-0' : 'p-6'}`}
+                                >
+
+                                    {/* Compact View */}
+                                    {viewMode === "compact" && (
+                                        <>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <span className="text-[10px] font-black text-slate-400 tracking-widest uppercase">{c.displayId}</span>
+                                                {c.urgency === 'HIGH' && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>}
+                                            </div>
+
+                                            <h3 className="font-bold text-lg text-slate-800 dark:text-white leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
+                                                {c.title}
+                                            </h3>
+                                            <p className="text-xs font-medium text-slate-500 dark:text-gray-400 mb-6 uppercase tracking-wide">{c.category}</p>
+
+                                            <div className="pt-4 border-t border-slate-100 dark:border-gray-800 flex justify-between items-center">
+                                                <span className={`text-[10px] font-bold px-3 py-1 rounded-full ${c.statusColor}`}>
+                                                    {c.status}
+                                                </span>
+                                                <span className="material-symbols-outlined text-slate-300 dark:text-gray-600 group-hover:translate-x-1 transition-transform text-lg">arrow_forward</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Detailed View */}
+                                    {viewMode === "detailed" && (
+                                        <div className="flex flex-1 items-center p-6 gap-6">
+                                            <div className={`hidden md:flex w-14 h-14 rounded-full items-center justify-center shrink-0 ${c.statusColor} bg-opacity-20`}>
+                                                <span className="material-symbols-outlined text-2xl">
+                                                    {c.status === 'RESOLVED' ? 'check_circle' : 'pending'}
+                                                </span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs font-bold text-primary">{c.displayId}</span>
+                                                    <span className="text-slate-300 dark:text-gray-600">•</span>
+                                                    <span className="text-xs font-bold text-slate-500 dark:text-gray-500 uppercase">{c.category}</span>
+                                                </div>
+                                                <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors">{c.title}</h3>
+                                                <div className="flex flex-wrap gap-4 mt-3">
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 bg-slate-50 dark:bg-gray-800 px-2.5 py-1 rounded-md">
+                                                        <span className="material-symbols-outlined text-sm">calendar_today</span> {c.filedDate}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-gray-400 bg-slate-50 dark:bg-gray-800 px-2.5 py-1 rounded-md">
+                                                        <span className="material-symbols-outlined text-sm">person</span>
+                                                        {c.counterparty ? c.counterparty.name : (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onTabChange && onTabChange("directory");
+                                                                }}
+                                                                className="text-primary hover:underline font-bold"
+                                                            >
+                                                                Find Professional
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
-                                                <FaDownload className="text-gray-300 group-hover:text-primary transition" />
                                             </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-sm text-gray-400 italic">No documents attached.</p>
+                                            <div className="flex flex-col items-end justify-center gap-2">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${c.priorityColor}`}>
+                                                    {c.urgency || 'Normal'} Priority
+                                                </span>
+                                            </div>
+                                        </div>
                                     )}
+
                                 </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* 5. Case Details View */}
+            {selectedCase && (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-slate-200 dark:border-gray-800 overflow-hidden animate-fadeIn">
+                    {/* Header */}
+                    <div className={`p-8 border-b border-slate-100 dark:border-gray-800 border-t-4 ${selectedCase.urgency === 'HIGH' ? 'border-t-red-500' : 'border-t-blue-500'
+                        }`}>
+                        <div className="flex flex-col md:flex-row justify-between md:items-start gap-4 mb-6">
+                            <div>
+                                <span className="text-xs font-black text-primary uppercase tracking-widest">{selectedCase.displayId}</span>
+                                <h2 className="text-3xl font-bold text-slate-900 dark:text-white mt-2 mb-3">{selectedCase.title}</h2>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-semibold text-slate-600 dark:text-gray-300 bg-slate-100 dark:bg-gray-800 px-3 py-1 rounded-lg">
+                                        {selectedCase.category}
+                                    </span>
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${selectedCase.priorityColor}`}>
+                                        {selectedCase.urgency} Priority
+                                    </span>
+                                </div>
+                            </div>
+                            <div className={`self-start px-4 py-1.5 rounded-full text-sm font-bold border ${selectedCase.statusColor}`}>
+                                {selectedCase.status}
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-                                <h3 className="text-primary font-bold flex items-center gap-2 mb-4 uppercase text-xs tracking-wider">
-                                    <FaUserTie /> Assigned Lawyer
-                                </h3>
-                                {selectedCase.lawyer ? (
-                                    <div className="space-y-4">
-                                        <div>
-                                            <h4 className="text-xl font-bold text-gray-800">{selectedCase.lawyer.name}</h4>
-                                            <p className="text-sm text-gray-500 font-medium">{selectedCase.lawyer.specialization}</p>
-                                        </div>
-                                        <div className="space-y-2 pt-4 border-t border-blue-100">
-                                            <p className="flex items-center gap-3 text-sm text-gray-600"><FaPhoneAlt className="text-primary" size={12} /> {selectedCase.lawyer.phone}</p>
-                                            <p className="flex items-center gap-3 text-sm text-gray-600"><FaEnvelope className="text-primary" size={12} /> {selectedCase.lawyer.email}</p>
+                        <h4 className="text-xs font-black uppercase text-slate-400 mb-3 tracking-wide">Case Summary</h4>
+                        <p className="text-slate-600 dark:text-gray-300 leading-relaxed max-w-4xl">
+                            {selectedCase.description || "No description provided."}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-slate-100 dark:divide-gray-800">
+                        {/* Left Col: Lawyer & Docs */}
+                        <div className="col-span-2 p-8 space-y-8">
+                            {/* Counterparty/Lawyer Card */}
+                            <div>
+                                <h4 className="text-xs font-black uppercase text-slate-400 mb-4 tracking-wide">
+                                    {selectedCase.counterparty ? selectedCase.counterparty.role : 'Legal Representative'}
+                                </h4>
+                                {selectedCase.counterparty ? (
+                                    <div className="bg-slate-50 dark:bg-gray-800 rounded-xl p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6 border border-slate-100 dark:border-gray-700">
+                                        <img src={selectedCase.counterparty.avatar} alt="Avatar" className="w-20 h-20 rounded-full shadow-md object-cover ring-2 ring-white dark:ring-gray-600" />
+                                        <div className="flex-1 text-center sm:text-left">
+                                            <h3 className="text-lg font-bold text-slate-900 dark:text-white">{selectedCase.counterparty.name}</h3>
+                                            <p className="text-primary font-medium text-sm mb-2">{selectedCase.counterparty.specialization}</p>
+
+                                            {/* Contact Info */}
+                                            <div className="space-y-1 mb-4 text-sm text-slate-600 dark:text-gray-400">
+                                                {selectedCase.counterparty.email && (
+                                                    <div className="flex items-center gap-2 justify-center sm:justify-start">
+                                                        <span className="material-symbols-outlined text-[16px] text-slate-400">mail</span>
+                                                        {selectedCase.counterparty.email}
+                                                    </div>
+                                                )}
+                                                {selectedCase.counterparty.phone && (
+                                                    <div className="flex items-center gap-2 justify-center sm:justify-start">
+                                                        <span className="material-symbols-outlined text-[16px] text-slate-400">call</span>
+                                                        {selectedCase.counterparty.phone}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <button
+                                                    onClick={() => {
+                                                        const rolePath = currentUser?.role?.toLowerCase() || 'citizen';
+                                                        navigate(`/${rolePath}/dashboard?tab=messages&caseId=${selectedCase.id}`);
+                                                    }}
+                                                    className="flex-1 bg-primary text-white px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:brightness-110 transition shadow-sm bg-blue-600">
+                                                    <span className="material-symbols-outlined text-lg">chat</span> Message
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        try {
+                                                            console.log('[MyCases] Schedule button clicked for case:', selectedCase.id);
+                                                            console.log('[MyCases] Current user role:', currentUser?.role);
+                                                            const rolePath = currentUser?.role?.toLowerCase() || 'citizen';
+                                                            const targetUrl = `/${rolePath}/dashboard?tab=schedule&caseId=${selectedCase.id}`;
+                                                            console.log('[MyCases] Navigating to:', targetUrl);
+                                                            navigate(targetUrl);
+                                                        } catch (error) {
+                                                            console.error('[MyCases] Navigation error:', error);
+                                                        }
+                                                    }}
+                                                    className="flex-1 bg-white dark:bg-gray-700 text-slate-700 dark:text-white border border-slate-200 dark:border-gray-600 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-gray-600 transition">
+                                                    <span className="material-symbols-outlined text-lg">calendar_month</span> Schedule
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-6 text-gray-500">
-                                        <p className="text-sm mb-2">No lawyer assigned yet.</p>
-                                        <p className="text-xs text-gray-400">Your case is being reviewed.</p>
+                                    <div className="border-2 border-dashed border-slate-200 dark:border-gray-700 rounded-xl p-8 text-center bg-slate-50 dark:bg-gray-800/50">
+                                        <span className="material-symbols-outlined text-4xl text-slate-300 dark:text-gray-600 mb-2">person_add</span>
+                                        <h3 className="text-sm font-bold text-slate-700 dark:text-gray-300">No Representative Assigned</h3>
+                                        <p className="text-xs text-slate-500 dark:text-gray-500 mt-1 mb-6">Pending assignment.</p>
+                                        <button
+                                            onClick={() => onTabChange && onTabChange("directory")}
+                                            className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 text-primary border border-primary/20 px-6 py-2 rounded-lg text-sm font-bold hover:bg-primary hover:text-white transition shadow-sm"
+                                        >
+                                            <span className="material-symbols-outlined text-lg">search</span>
+                                            Find Lawyer/NGO
+                                        </button>
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
-    // --- CASE LIST VIEW ---
-    return (
-        <div className="space-y-6 animate-fadeIn">
-
-            {/* STATS SECTION */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Total Cases */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Records</p>
-                        <p className="text-3xl font-black text-gray-800">{totalCases}</p>
-                    </div>
-                    <div className="w-14 h-14 bg-blue-50 text-primary rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <MaterialIcon name="folder_open" className="text-3xl" />
-                    </div>
-                </div>
-
-                {/* Active Cases */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Matters</p>
-                        <p className="text-3xl font-black text-gray-800">{activeCases}</p>
-                    </div>
-                    <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <MaterialIcon name="gavel" className="text-3xl" />
-                    </div>
-                </div>
-
-                {/* Pending Cases */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pending Review</p>
-                        <p className="text-3xl font-black text-gray-800">{pendingCases}</p>
-                    </div>
-                    <div className="w-14 h-14 bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <MaterialIcon name="history" className="text-3xl" />
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-4">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-800 tracking-tight">My Legal Cases</h2>
-                    <p className="text-gray-500 text-sm">Manage your active filings and legal representation</p>
-                </div>
-                <button onClick={onNewCase} className="bg-primary text-white px-5 py-2.5 rounded-lg font-bold hover:bg-[#0e5658] transition flex items-center gap-2 shadow-md">
-                    <FaPlus size={14} /> Submit New Case
-                </button>
-            </div>
-
-            {/* Case Cards */}
-            <div className="grid grid-cols-1 gap-5">
-                {cases.length > 0 ? (
-                    cases.map((item) => (
-                        <div key={item.id} className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all overflow-hidden border-l-4 border-l-primary">
-                            <div className="p-6">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-lg bg-blue-50 text-primary flex items-center justify-center shrink-0">
-                                            <FaGavel className="text-xl" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900 leading-tight">{item.title}</h3>
-                                            <p className="text-sm text-gray-500 font-mono mt-1">{item.caseNumber}</p>
-                                        </div>
+                            {/* Documents */}
+                            <div>
+                                <h4 className="text-xs font-black uppercase text-slate-400 mb-4 tracking-wide">Case Documents</h4>
+                                {selectedCase.documents && selectedCase.documents.length > 0 ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {selectedCase.documents.map((doc) => (
+                                            <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" key={doc.id}
+                                                className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 dark:border-gray-700 hover:border-primary/50 hover:bg-blue-50/30 dark:hover:bg-gray-800 transition group bg-white dark:bg-gray-800/50">
+                                                <div className="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center shrink-0">
+                                                    <span className="material-symbols-outlined">description</span>
+                                                </div>
+                                                <div className="overflow-hidden">
+                                                    <p className="font-bold text-sm text-slate-700 dark:text-gray-200 truncate group-hover:text-primary transition-colors">{doc.fileName}</p>
+                                                    <p className="text-[10px] text-slate-400 uppercase font-bold mt-0.5">{doc.fileType?.split('/')[1] || 'FILE'}</p>
+                                                </div>
+                                            </a>
+                                        ))}
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider ${item.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            {item.status}
-                                        </span>
-                                        <span className="text-xs text-gray-400 font-medium">Filed: {item.filedDate}</span>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-5 border-y border-gray-50 my-4">
-                                    <div>
-                                        <label className="text-[10px] text-gray-400 uppercase font-black block mb-1">Legal Category</label>
-                                        <p className="text-sm font-semibold text-gray-700 uppercase tracking-tight">{item.category}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-gray-400 uppercase font-black block mb-1">Assigned Counsel</label>
-                                        <p className="text-sm font-semibold text-gray-700">{item.lawyer ? item.lawyer.name : "Pending Assignment"}</p>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] text-gray-400 uppercase font-black block mb-1">Next Hearing</label>
-                                        <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                            <FaCalendarAlt className="text-primary" /> {item.nextHearing}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        onClick={() => setSelectedCase(item)}
-                                        className="flex items-center gap-2 px-6 py-2.5 text-sm font-bold bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg transition-all"
-                                    >
-                                        <MaterialIcon name="visibility" className="text-lg" /> View Full Details
-                                    </button>
-                                </div>
+                                ) : (
+                                    <div className="text-sm text-slate-500 dark:text-gray-500 italic">No documents uploaded.</div>
+                                )}
                             </div>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <FaPlus className="text-2xl text-gray-400" />
+
+                        {/* Right Col: Timeline */}
+                        <div className="p-8 bg-slate-50 dark:bg-slate-800/20">
+                            <h4 className="text-xs font-black uppercase text-slate-400 mb-6 tracking-wide">Timeline</h4>
+                            <ol className="relative border-l border-slate-200 dark:border-gray-700 ml-3">
+                                <li className="mb-10 ml-6">
+                                    <span className="absolute flex items-center justify-center w-6 h-6 bg-emerald-100 dark:bg-emerald-900/30 rounded-full -left-3 ring-4 ring-white dark:ring-gray-900">
+                                        <span className="material-symbols-outlined text-xs text-emerald-600 dark:text-emerald-400">check</span>
+                                    </span>
+                                    <h3 className="flex items-center mb-1 text-sm font-bold text-slate-900 dark:text-white">Case Filed</h3>
+                                    <time className="block mb-2 text-xs font-normal leading-none text-slate-400">{selectedCase.filedDate}</time>
+                                    <p className="mb-4 text-xs font-normal text-slate-500 dark:text-gray-400">Case was officially registered in the system.</p>
+                                </li>
+                                <li className="mb-10 ml-6">
+                                    <span className={`absolute flex items-center justify-center w-6 h-6 rounded-full -left-3 ring-4 ring-white dark:ring-gray-900 ${selectedCase.counterparty ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-blue-100 dark:bg-blue-900/30 animate-pulse'}`}>
+                                        <span className={`material-symbols-outlined text-xs ${selectedCase.counterparty ? 'text-emerald-600 dark:text-emerald-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                                            {selectedCase.counterparty ? 'check' : 'person_search'}
+                                        </span>
+                                    </span>
+                                    <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">
+                                        {selectedCase.counterparty?.role || 'Representation'}
+                                    </h3>
+                                    <p className="text-xs font-normal text-slate-500 dark:text-gray-400">
+                                        {selectedCase.counterparty ? `Assigned to ${selectedCase.counterparty.name}` : "Awaiting assignment."}
+                                    </p>
+                                </li>
+                                <li className="ml-6">
+                                    <span className="absolute flex items-center justify-center w-6 h-6 bg-slate-200 dark:bg-gray-700 rounded-full -left-3 ring-4 ring-white dark:ring-gray-900">
+                                        <span className="material-symbols-outlined text-xs text-slate-500 dark:text-gray-400">gavel</span>
+                                    </span>
+                                    <h3 className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Resolution</h3>
+                                    <p className="text-xs font-normal text-slate-500 dark:text-gray-400">Pending final verdict or settlement.</p>
+                                </li>
+                            </ol>
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No cases filed yet</h3>
-                        <p className="text-gray-500 mb-6 max-w-sm mx-auto">Get started by submitting a new legal case. We'll help you find the right lawyer.</p>
-                        <button onClick={onNewCase} className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0e5658] transition shadow-md">
-                            Submit a Case
-                        </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
+
         </div>
     );
 };

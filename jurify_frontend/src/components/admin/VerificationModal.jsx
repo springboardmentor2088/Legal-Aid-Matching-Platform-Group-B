@@ -40,6 +40,34 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
             status: req.status
           }));
 
+        // Fallback: If no pending request found but user has profile document
+        if (userDocs.length === 0) {
+          if (user.documents && user.documents.length > 0) {
+            // Use pre-mapped documents from dashboard if available
+            // Ensure they match the shape we need
+            const mappedProfileDocs = user.documents.map(d => ({
+              ...d,
+              id: d.id || 'profile-doc-' + Math.random(),
+              type: 'FILE',
+              size: d.size || 0,
+              uploadDate: d.uploadDate || user.lastUpdated || new Date().toISOString(),
+              status: user.verificationStatus || 'PENDING'
+            }));
+            userDocs.push(...mappedProfileDocs);
+          } else if (user.documentUrl) {
+            // Use raw documentUrl from user profile
+            userDocs.push({
+              id: 'profile-doc',
+              name: user.documentType || 'Profile Document',
+              type: 'FILE',
+              size: 0,
+              url: user.documentUrl,
+              uploadDate: user.lastUpdated || new Date().toISOString(),
+              status: user.verificationStatus || 'PENDING'
+            });
+          }
+        }
+
         setDocuments(userDocs);
       } catch (error) {
         console.error("Failed to fetch documents", error);
@@ -148,22 +176,22 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="border-b border-gray-200 px-6 py-4">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                 {getRoleIcon(user.role)}
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">Verification Review</h2>
-                <p className="text-sm text-gray-500">{user.name} - {user.id}</p>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Verification Review</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{user.name} - {user.id}</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
             >
               <FiX className="text-xl" />
             </button>
@@ -178,44 +206,44 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
             <div className="lg:col-span-2 space-y-6">
 
               {/* User Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiUser />
                   User Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-500">Name:</span>
-                    <p className="font-medium text-gray-900">{user.name}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Name:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{user.name}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Role:</span>
-                    <p className="font-medium text-gray-900">{user.role}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Role:</span>
+                    <p className="font-medium text-gray-900 dark:text-white">{user.role}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Email:</span>
-                    <p className="font-medium text-gray-900 flex items-center gap-1">
+                    <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
                       <FiMail className="text-xs" />
                       {user.email}
                     </p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Phone:</span>
-                    <p className="font-medium text-gray-900 flex items-center gap-1">
+                    <span className="text-gray-500 dark:text-gray-400">Phone:</span>
+                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
                       <FiPhone className="text-xs" />
                       {user.phone}
                     </p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Location:</span>
-                    <p className="font-medium text-gray-900 flex items-center gap-1">
+                    <span className="text-gray-500 dark:text-gray-400">Location:</span>
+                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
                       <FiMapPin className="text-xs" />
                       {user.city}, {user.state}
                     </p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Member Since:</span>
-                    <p className="font-medium text-gray-900 flex items-center gap-1">
+                    <span className="text-gray-500 dark:text-gray-400">Member Since:</span>
+                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1">
                       <FiCalendar className="text-xs" />
                       {new Date(user.createdAt).toLocaleDateString()}
                     </p>
@@ -224,57 +252,56 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
                 {/* Role-specific information */}
                 {user.role === 'LAWYER' && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="font-medium text-gray-900 mb-2">Professional Details</h4>
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-200 mb-2">Professional Details</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500">Bar Council Number:</span>
-                        <p className="font-medium text-gray-900">{user.barCouncilNumber}</p>
+                        <span className="text-gray-500 dark:text-gray-400">Bar Council Number:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.barCouncilNumber}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Experience:</span>
-                        <p className="font-medium text-gray-900">{user.yearsOfExperience} years</p>
+                        <span className="text-gray-500 dark:text-gray-400">Experience:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.yearsOfExperience} years</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Specializations:</span>
-                        <p className="font-medium text-gray-900">{user.specializations?.join(', ')}</p>
+                        <span className="text-gray-500 dark:text-gray-400">Specializations:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.specializations?.join(', ')}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Cases Handled:</span>
-                        <p className="font-medium text-gray-900">{user.casesHandled}</p>
+                        <span className="text-gray-500 dark:text-gray-400">Cases Handled:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.casesHandled}</p>
                       </div>
                     </div>
                   </div>
                 )}
 
                 {user.role === 'NGO' && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <h4 className="font-medium text-gray-900 mb-2">NGO Details</h4>
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-200 mb-2">NGO Details</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500">NGO Darpan ID:</span>
-                        <p className="font-medium text-gray-900">{user.ngoDarpanId}</p>
+                        <span className="text-gray-500 dark:text-gray-400">NGO Darpan ID:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.ngoDarpanId}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Areas of Work:</span>
-                        <p className="font-medium text-gray-900">{user.areasOfWork?.join(', ')}</p>
+                        <span className="text-gray-500 dark:text-gray-400">Areas of Work:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.areasOfWork?.join(', ')}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Pro Bono Capacity:</span>
-                        <p className="font-medium text-gray-900">{user.proBonoCapacity} cases/month</p>
+                        <span className="text-gray-500 dark:text-gray-400">Pro Bono Capacity:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.proBonoCapacity} cases/month</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Active Cases:</span>
-                        <p className="font-medium text-gray-900">{user.activeCases}</p>
+                        <span className="text-gray-500 dark:text-gray-400">Active Cases:</span>
+                        <p className="font-medium text-gray-900 dark:text-white">{user.activeCases}</p>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Documents */}
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiFile />
                   Uploaded Documents
                 </h3>
@@ -287,14 +314,14 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
                     </div>
                   ) : (
                     documents.map((doc) => (
-                      <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
+                      <div key={doc.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                              <FiFile className="text-blue-600" />
+                            <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                              <FiFile className="text-blue-600 dark:text-blue-400" />
                             </div>
                             <div>
-                              <h4 className="font-medium text-gray-900">{doc.name}</h4>
+                              <h4 className="font-medium text-gray-900 dark:text-white">{doc.name}</h4>
                               <div className="flex items-center gap-4 text-sm text-gray-500">
                                 <span>{doc.type}</span>
                                 <span>{formatFileSize(doc.size)}</span>
@@ -306,14 +333,14 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
                             {getStatusBadge(doc.status)}
                             <button
                               onClick={() => window.open(doc.url, '_blank')}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                              className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg"
                               title="View Document"
                             >
                               <FiEye />
                             </button>
                             <button
                               onClick={() => window.open(doc.url, '_blank')}
-                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg"
+                              className="p-2 text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 rounded-lg"
                               title="Download Document"
                             >
                               <FiDownload />
@@ -327,25 +354,25 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
               {/* Verification History */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <FiClock />
                   Verification History
                 </h3>
                 <div className="space-y-3">
                   {verificationHistory.map((history) => (
-                    <div key={history.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
-                        <FiClock className="text-blue-600 text-sm" />
+                    <div key={history.id} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center shrink-0">
+                        <FiClock className="text-blue-600 dark:text-blue-400 text-sm" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-900">{history.action.replace('_', ' ')}</h4>
-                          <span className="text-sm text-gray-500">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-200">{history.action.replace('_', ' ')}</h4>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
                             {new Date(history.timestamp).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1">{history.notes}</p>
-                        <p className="text-xs text-gray-500 mt-1">By: {history.admin}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{history.notes}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">By: {history.admin}</p>
                       </div>
                     </div>
                   ))}
@@ -357,12 +384,12 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
             <div className="space-y-6">
 
               {/* Current Status */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Current Status</h3>
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Current Status</h3>
                 <div className="flex items-center gap-2 mb-3">
                   {getStatusBadge(user.verificationStatus)}
                 </div>
-                <p className="text-sm text-blue-700">
+                <p className="text-sm text-blue-700 dark:text-blue-400">
                   {user.verificationStatus === 'PENDING' && 'Verification is pending review.'}
                   {user.verificationStatus === 'APPROVED' && 'User has been verified.'}
                   {user.verificationStatus === 'REJECTED' && 'Verification was rejected.'}
@@ -372,7 +399,7 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
               {/* Verification Actions */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Verification Actions</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Verification Actions</h3>
 
                 <div className="space-y-4">
                   {/* Approve Button */}
@@ -386,12 +413,12 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
                   </button>
 
                   {/* Reject Section */}
-                  <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <button
                       onClick={() => setVerificationStatus('REJECTED')}
                       className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${verificationStatus === 'REJECTED'
                         ? 'bg-red-600 text-white'
-                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
                         }`}
                     >
                       <FiX />
@@ -400,14 +427,14 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
                     {verificationStatus === 'REJECTED' && (
                       <div className="mt-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Rejection Reason *
                         </label>
                         <textarea
                           value={rejectionReason}
                           onChange={(e) => setRejectionReason(e.target.value)}
                           placeholder="Please specify the reason for rejection..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                           rows={3}
                         />
                         <button
@@ -422,12 +449,12 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
                   </div>
 
                   {/* Request Re-upload Section */}
-                  <div className="border border-gray-200 rounded-lg p-4">
+                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                     <button
                       onClick={() => setRequestReupload(!requestReupload)}
                       className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${requestReupload
                         ? 'bg-orange-600 text-white'
-                        : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                        : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30'
                         }`}
                     >
                       <FiAlertCircle />
@@ -436,14 +463,14 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
                     {requestReupload && (
                       <div className="mt-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                           Re-upload Reason *
                         </label>
                         <textarea
                           value={reuploadReason}
                           onChange={(e) => setReuploadReason(e.target.value)}
                           placeholder="Specify which documents need to be re-uploaded and why..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                           rows={3}
                         />
                         <button
@@ -461,29 +488,29 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
 
               {/* Admin Notes */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Admin Notes</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Admin Notes</h3>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
                   placeholder="Add internal notes about this verification..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={4}
                 />
               </div>
 
               {/* Quick Actions */}
-              <div className="border-t border-gray-200 pt-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
                 <div className="space-y-2">
-                  <button className="w-full px-4 py-2 text-left bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 flex items-center gap-2">
+                  <button className="w-full px-4 py-2 text-left bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2 transition text-sm">
                     <FiMail />
                     Send Notification to User
                   </button>
-                  <button className="w-full px-4 py-2 text-left bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 flex items-center gap-2">
+                  <button className="w-full px-4 py-2 text-left bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2 transition text-sm">
                     <FiUser />
                     View Full Profile
                   </button>
-                  <button className="w-full px-4 py-2 text-left bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 flex items-center gap-2">
+                  <button className="w-full px-4 py-2 text-left bg-gray-50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 flex items-center gap-2 transition text-sm">
                     <FiShield />
                     Suspend Account
                   </button>
@@ -494,15 +521,15 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-800">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Last updated: {new Date(user.lastUpdated || user.createdAt).toLocaleString()}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition"
               >
                 Close
               </button>

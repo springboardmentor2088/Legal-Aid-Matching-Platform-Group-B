@@ -1,11 +1,41 @@
 /* eslint-disable react-hooks/static-components */
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { formatRelativeTime } from "../../utils/timeUtils";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { authService } from "../../services/authService";
+import api from "../../services/api";
+import Select from "react-select";
+
+// Language Options (Same as Registration)
+const languageOptions = [
+    { value: "English", label: "English" },
+    { value: "Hindi", label: "Hindi" },
+    { value: "Tamil", label: "Tamil" },
+    { value: "Telugu", label: "Telugu" },
+    { value: "Kannada", label: "Kannada" },
+    { value: "Malayalam", label: "Malayalam" },
+    { value: "Marathi", label: "Marathi" },
+    { value: "Gujarati", label: "Gujarati" },
+    { value: "Bengali", label: "Bengali" },
+    { value: "Punjabi", label: "Punjabi" },
+    { value: "Urdu", label: "Urdu" },
+    { value: "French", label: "French" },
+    { value: "German", label: "German" },
+    { value: "Spanish", label: "Spanish" },
+];
 import { caseService } from "../../services/caseService";
 import Logo from "../common/Logo";
 import { FiMenu, FiX } from "react-icons/fi";
+import NgoChat from "../chat/views/NgoChat";
+import { useToast } from "../common/ToastContext";
+import { useNotifications } from "../notifications/useNotifications";
+import NotificationPage from "../notifications/NotificationPage";
+import NotificationPanel from "../notifications/NotificationPanel";
+import ScheduleDashboard from "./ScheduleDashboard";
+import MyCases from "./myCase";
+import DarkModeToggle from "../common/DarkModeToggle";
 
 import {
     FaHome,
@@ -20,6 +50,7 @@ import {
     FaTimes,
     FaBell,
 } from "react-icons/fa";
+import { FiBriefcase } from "react-icons/fi";
 
 // List of Indian States
 const INDIAN_STATES = [
@@ -89,17 +120,17 @@ const SuccessModal = ({ show, onClose }) => {
     );
 };
 
-const NotificationDropdown = ({ show, onClose, notifications }) => {
+const NotificationDropdown = ({ show, onClose, notifications, onNotificationClick, onViewAll }) => {
     if (!show) return null;
 
     return (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-            <div className="p-4 border-b border-gray-100">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Notifications</h3>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition"
+                        className="text-gray-400 hover:text-primary transition"
                     >
                         <FaTimes className="w-4 h-4" />
                     </button>
@@ -108,25 +139,27 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
 
             <div className="max-h-96 overflow-y-auto">
                 {notifications && notifications.length > 0 ? (
-                    <div className="divide-y divide-gray-100">
+                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
                         {notifications.map((notification, index) => (
                             <div
                                 key={index}
-                                className="p-3 hover:bg-gray-50 transition cursor-pointer"
+                                className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer ${!notification.read ? 'bg-primary-light/30 dark:bg-primary/10 border-l-4 border-l-primary' : ''
+                                    }`}
+                                onClick={() => onNotificationClick && onNotificationClick(notification)}
                             >
                                 <div className="flex items-start gap-2">
-                                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                                        <FaBell className="text-blue-600 text-xs" />
+                                    <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                        <FaBell className="text-primary text-xs" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-gray-800 truncate">
+                                        <p className="text-xs font-medium text-gray-800 dark:text-white truncate">
                                             {notification.title || "New Notification"}
                                         </p>
-                                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                                             {notification.message || notification.description}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-1">
-                                            {notification.time || "Just now"}
+                                            {formatRelativeTime(notification.createdAt || notification.timestamp)}
                                         </p>
                                     </div>
                                 </div>
@@ -135,10 +168,10 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
                     </div>
                 ) : (
                     <div className="p-6 text-center">
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <FaBell className="text-gray-400 text-sm" />
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FaBell className="text-gray-400 dark:text-gray-500 text-sm" />
                         </div>
-                        <p className="text-sm text-gray-500 font-medium">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
                             No notifications
                         </p>
                         <p className="text-xs text-gray-400 mt-1">You're all caught up!</p>
@@ -147,8 +180,14 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
             </div>
 
             {notifications && notifications.length > 0 && (
-                <div className="p-3 border-t border-gray-100">
-                    <button className="w-full text-center text-xs text-primary font-medium hover:text-primary-dark transition">
+                <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => {
+                            onClose();
+                            onViewAll && onViewAll();
+                        }}
+                        className="w-full text-center text-xs text-primary font-medium hover:text-primary-dark transition"
+                    >
                         View all notifications
                     </button>
                 </div>
@@ -158,17 +197,26 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
 };
 
 const NgoDashboard = () => {
+    const { theme } = useTheme();
+    const isDarkMode = theme === 'dark';
     const { user, logout } = useAuth();
+    const { showToast } = useToast();
     const navigate = useNavigate();
-    // const location = useLocation(); // Not needed for tab nav
+    const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    const [activeTab, setActiveTab] = useState("overview");
+    const getInitialTab = () => {
+        const params = new URLSearchParams(location.search);
+        return params.get("tab") || "overview";
+    };
+
+    const [activeTab, setActiveTab] = useState(getInitialTab());
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [profile, setProfile] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
-
-    // Dynamic Data State
+    const [leads, setLeads] = useState([]);
+    const [selectedLead, setSelectedLead] = useState(null);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalCases: 0,
@@ -177,6 +225,57 @@ const NgoDashboard = () => {
         resolvedCases: 0,
     });
     const [recentCases, setRecentCases] = useState([]);
+    const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+    const [loadingAppointments, setLoadingAppointments] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+    const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+    const [showComingSoon, setShowComingSoon] = useState(false);
+    const [comingSoonFeature, setComingSoonFeature] = useState("");
+
+    // Use notifications hook
+    const {
+        notifications,
+        unreadCount,
+        markAsRead
+    } = useNotifications();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get("tab");
+        if (tab) {
+            setActiveTab(tab);
+        }
+    }, [location.search]);
+
+    useEffect(() => {
+        if (user?.id) {
+            fetchUpcomingAppointments();
+        }
+    }, [user?.id]);
+
+    const fetchUpcomingAppointments = async () => {
+        try {
+            const response = await api.get('/appointments/upcoming');
+            setUpcomingAppointments(response || []);
+        } catch (error) {
+            console.error("Error fetching upcoming appointments:", error);
+            setUpcomingAppointments([]);
+        } finally {
+            setLoadingAppointments(false);
+        }
+    };
+
+    const fetchLeads = async () => {
+        if (!user?.email) return;
+        try {
+            const response = await api.get("/consultation/leads");
+            setLeads(response || []);
+        } catch (error) {
+            console.error("Error fetching leads", error);
+        }
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -205,15 +304,39 @@ const NgoDashboard = () => {
 
         if (user) {
             fetchDashboardData();
+            fetchLeads();
         }
     }, [user]);
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login");
+    };
+
+    const handleNotificationClick = (notification) => {
+        if (!notification.read) {
+            markAsRead([notification.id]);
+        }
+        setShowNotificationDropdown(false);
+        setActiveTab("messages");
+    };
+
+    const handleProfileChange = (e) => {
+        const { name, value } = e.target;
+        if (
+            ["phone", "phoneNumber", "contactPhone", "organizationPhone"].includes(name)
+        ) {
+            const clean = value.replace(/\D/g, "").slice(0, 10);
+            setEditForm((prev) => ({ ...prev, [name]: clean }));
+            return;
+        }
+        setEditForm((prev) => ({ ...prev, [name]: value }));
+    };
 
     useEffect(() => {
         // Show coming soon modal for specific tabs
         if (
             activeTab === "verification" ||
-            activeTab === "schedule" ||
-            activeTab === "messages" ||
             activeTab === "settings"
         ) {
             setShowComingSoon(true);
@@ -221,45 +344,119 @@ const NgoDashboard = () => {
         }
     }, [activeTab]);
 
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
-    };
-
-    const handleProfileChange = (e) => {
-        const { name, value } = e.target;
-
-        // Strict number-only input for phone fields
-        if (
-            ["phone", "phoneNumber", "contactPhone", "organizationPhone"].includes(
-                name
-            )
-        ) {
-            const clean = value.replace(/\D/g, "").slice(0, 10);
-            setEditForm((prev) => ({ ...prev, [name]: clean }));
-            return;
+    const toggleEditMode = () => {
+        if (isEditing) {
+            setEditForm(profile); // Revert
         }
-
-        setEditForm((prev) => ({ ...prev, [name]: value }));
+        setIsEditing(!isEditing);
     };
 
-    const [isSaving, setIsSaving] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [showNotificationDropdown, setShowNotificationDropdown] =
-        useState(false);
-    const [notifications, setNotifications] = useState([]);
-    const [showComingSoon, setShowComingSoon] = useState(false);
-    const [comingSoonFeature, setComingSoonFeature] = useState("");
+    const MaterialIcon = ({ name, className = "" }) => (
+        <span className={`material-symbols-outlined align-middle ${className}`}>
+            {name}
+        </span>
+    );
+
+    const ComingSoonModal = ({ show, onClose, feature }) => {
+        if (!show) return null;
+
+        const getFeatureIcon = () => {
+            switch (feature) {
+                case "verification":
+                    return <FaUserCheck className="w-10 h-10 text-white animate-pulse" />;
+                case "settings":
+                    return <FaCog className="w-10 h-10 text-white animate-pulse" />;
+                default:
+                    return <FaCog className="w-10 h-10 text-white animate-pulse" />;
+            }
+        };
+
+        const getFeatureTitle = () => {
+            switch (feature) {
+                case "verification":
+                    return "Verification";
+                case "settings":
+                    return "Settings";
+                default:
+                    return "Feature";
+            }
+        };
+
+        const getFeatureDescription = () => {
+            switch (feature) {
+                case "verification":
+                    return "This feature is coming soon! We're working hard to bring you comprehensive verification management.";
+                case "settings":
+                    return "This feature is coming soon! We're working hard to bring you comprehensive settings.";
+                default:
+                    return "This feature is coming soon! We're working hard to bring you this functionality.";
+            }
+        };
+
+        return (
+            <div
+                role="dialog"
+                aria-modal="true"
+                className="fixed inset-0 flex items-center justify-center p-4 z-50 animate-fade-in"
+            >
+                <div
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                    onClick={onClose}
+                />
+                <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 text-center transform transition-all duration-300 scale-100 hover:scale-[1.02]">
+                    <div className="relative mb-6">
+                        <div className="bg-linear-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mx-auto mb-4 w-20 h-20 shadow-lg border-4 border-white">
+                            {getFeatureIcon()}
+                        </div>
+                    </div>
+
+                    <h2 className="text-3xl font-bold text-gray-900 mb-3 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                        {getFeatureTitle()}
+                    </h2>
+                    <p className="text-gray-600 mb-8 leading-relaxed text-lg">
+                        {getFeatureDescription()}
+                    </p>
+
+                    <button
+                        onClick={onClose}
+                        className="px-8 py-3 bg-linear-to-r from-primary to-primary-dark text-white rounded-xl font-semibold hover:from-primary-dark hover:to-primary transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
+                    >
+                        Got it
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    // ... existing code
+
+    const handleAcceptCase = async (caseId) => {
+        try {
+            const token = localStorage.getItem("accessToken");
+            await api.post(`/consultation/accept/${caseId}`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchLeads(); // Refresh leads
+            // Refresh other stats if needed
+            showToast({ message: "Case Accepted Successfully!", type: "success" });
+        } catch (err) {
+            console.error(err);
+            showToast({ message: "Failed to accept case", type: "error" });
+        }
+    };
+
+    // ... existing code
 
     const handleStatusToggle = async () => {
         try {
             const newStatus = !profile?.isActive;
             setProfile((prev) => ({ ...prev, isActive: newStatus }));
             await authService.updateDirectoryStatus(newStatus);
+            showToast({ message: "Visibility status updated", type: "success" });
         } catch (error) {
             console.error("Failed to update directory status", error);
             setProfile((prev) => ({ ...prev, isActive: !prev.isActive }));
-            alert("Failed to update visibility status.");
+            showToast({ message: "Failed to update visibility status.", type: "error" });
         }
     };
 
@@ -274,21 +471,24 @@ const NgoDashboard = () => {
         // Optional: Lawyers use 'phone', NGOs use 'organizationPhone' and 'contactPhone'
         // We validate whichever fields are present and non-empty
         if (phone && !validatePhone(phone)) {
-            alert(
-                "Main Phone number must be a valid 10-digit Indian number starting with 6-9."
-            );
+            showToast({
+                message: "Main Phone number must be a valid 10-digit Indian number starting with 6-9.",
+                type: "error"
+            });
             return;
         }
         if (contactPhone && !validatePhone(contactPhone)) {
-            alert(
-                "Contact Person Phone must be a valid 10-digit Indian number starting with 6-9."
-            );
+            showToast({
+                message: "Contact Person Phone must be a valid 10-digit Indian number starting with 6-9.",
+                type: "error"
+            });
             return;
         }
         if (orgPhone && !validatePhone(orgPhone)) {
-            alert(
-                "Organization Phone must be a valid 10-digit Indian number starting with 6-9."
-            );
+            showToast({
+                message: "Organization Phone must be a valid 10-digit Indian number starting with 6-9.",
+                type: "error"
+            });
             return;
         }
 
@@ -331,9 +531,16 @@ const NgoDashboard = () => {
                 lawFirm: editForm.lawFirmName,
                 firmName: editForm.lawFirmName,
 
+                // Mapping Front-end Aliases to Backend DTO
+                organizationName: editForm.ngoName || editForm.organizationName,
+                contactPersonName: editForm.repName || editForm.contactPersonName,
+                contactPersonDesignation: editForm.repRole || editForm.contactPersonDesignation,
+                contactEmail: editForm.repEmail || editForm.contactEmail,
+                representativeGender: editForm.repGender || editForm.representativeGender,
+                representativeDob: editForm.dob || editForm.representativeDob, // Map generic dob to representativeDob
+
                 // NGO Fields
                 organizationEmail: editForm.organizationEmail,
-                contactPersonDesignation: editForm.contactPersonDesignation,
                 proBonoCommitment:
                     editForm.proBonoCommitment === "true" ||
                     editForm.proBonoCommitment === true,
@@ -359,104 +566,6 @@ const NgoDashboard = () => {
         }
     };
 
-    const toggleEditMode = () => {
-        if (isEditing) {
-            setEditForm(profile); // Revert
-        }
-        setIsEditing(!isEditing);
-    };
-
-    const MaterialIcon = ({ name, className = "" }) => (
-        <span className={`material-symbols-outlined align-middle ${className}`}>
-            {name}
-        </span>
-    );
-
-    const ComingSoonModal = ({ show, onClose, feature }) => {
-        if (!show) return null;
-
-        const getFeatureIcon = () => {
-            switch (feature) {
-                case "verification":
-                    return <FaUserCheck className="w-10 h-10 text-white animate-pulse" />;
-                case "schedule":
-                    return (
-                        <FaCalendarAlt className="w-10 h-10 text-white animate-pulse" />
-                    );
-                case "messages":
-                    return <FaEnvelope className="w-10 h-10 text-white animate-pulse" />;
-                case "settings":
-                    return <FaCog className="w-10 h-10 text-white animate-pulse" />;
-                default:
-                    return <FaCog className="w-10 h-10 text-white animate-pulse" />;
-            }
-        };
-
-        const getFeatureTitle = () => {
-            switch (feature) {
-                case "verification":
-                    return "Verification";
-                case "schedule":
-                    return "Schedule";
-                case "messages":
-                    return "Messages";
-                case "settings":
-                    return "Settings";
-                default:
-                    return "Feature";
-            }
-        };
-
-        const getFeatureDescription = () => {
-            switch (feature) {
-                case "verification":
-                    return "This feature is coming soon! We're working hard to bring you comprehensive verification management.";
-                case "schedule":
-                    return "This feature is coming soon! We're working hard to bring you advanced scheduling capabilities.";
-                case "messages":
-                    return "This feature is coming soon! We're working hard to bring you a secure messaging system.";
-                case "settings":
-                    return "This feature is coming soon! We're working hard to bring you comprehensive NGO settings.";
-                default:
-                    return "This feature is coming soon! We're working hard to bring you this functionality.";
-            }
-        };
-
-        return (
-            <div
-                role="dialog"
-                aria-modal="true"
-                className="fixed inset-0 flex items-center justify-center p-4 z-50 animate-fade-in"
-            >
-                <div
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                    onClick={onClose}
-                />
-                <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 text-center transform transition-all duration-300 scale-100 hover:scale-[1.02]">
-                    <div className="relative mb-6">
-                        <div className="bg-linear-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mx-auto mb-4 w-20 h-20 shadow-lg border-4 border-white">
-                            {getFeatureIcon()}
-                        </div>
-                    </div>
-
-                    <h2 className="text-3xl font-bold text-gray-900 mb-3 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                        {getFeatureTitle()}
-                    </h2>
-                    <p className="text-gray-600 mb-8 leading-relaxed text-lg">
-                        {getFeatureDescription()}
-                    </p>
-
-                    <button
-                        onClick={onClose}
-                        className="px-8 py-3 bg-linear-to-r from-primary to-primary-dark text-white rounded-xl font-semibold hover:from-primary-dark hover:to-primary transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-lg"
-                    >
-                        Got it
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
     // Sidebar links (ids match activeTab)
     const links = [
         { id: "overview", name: "Overview", icon: FaHome },
@@ -469,7 +578,7 @@ const NgoDashboard = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans">
+        <div className="h-screen bg-gray-50 dark:bg-gray-900 flex font-sans transition-colors duration-300">
             {/* Custom Success Modal */}
             <SuccessModal
                 show={showSuccessModal}
@@ -478,12 +587,12 @@ const NgoDashboard = () => {
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    } lg:translate-x-0 shadow-xl`}
+                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary dark:bg-gray-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    } lg:translate-x-0 shadow-xl border-r border-transparent dark:border-gray-800`}
             >
                 <div className="flex flex-col h-full">
                     {/* Logo Area */}
-                    <div className="h-30 flex items-center px-5 border-b border-primary-dark gap-5 shrink-0">
+                    <div className="h-30 flex items-center px-5 border-b border-primary-dark dark:border-gray-800 gap-5 shrink-0">
                         {/* Logo */}
                         <div className="flex items-center w-2rem h-10">
                             <Logo />
@@ -498,16 +607,16 @@ const NgoDashboard = () => {
                         </button>
                     </div>
                     {/* User Info */}
-                    <div className="p-6 border-b border-primary-dark">
+                    <div className="p-6 border-b border-primary-dark dark:border-gray-800">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold">
                                 {user?.firstName?.charAt(0).toUpperCase() || "N"}
                             </div>
                             <div className="overflow-hidden">
-                                <p className="font-semibold truncate">
+                                <p className="font-semibold truncate text-white dark:text-gray-200">
                                     {user?.firstName || "NGO User"}
                                 </p>
-                                <p className="text-xs text-blue-100 capitalize">
+                                <p className="text-xs text-blue-100 dark:text-gray-400 capitalize">
                                     {user?.role?.toLowerCase() || "ngo"}
                                 </p>
                             </div>
@@ -519,23 +628,30 @@ const NgoDashboard = () => {
                         {links.map(({ id, name, icon: Icon }) => (
                             <button
                                 key={id}
-                                onClick={() => setActiveTab(id)}
+                                onClick={() => {
+                                    setActiveTab(id);
+                                    setSidebarOpen(false);
+                                    if (id === 'schedule') {
+                                        setSearchParams({});
+                                    }
+                                }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition ${activeTab === id
-                                        ? "bg-white/10 text-white"
-                                        : "text-blue-100 hover:bg-white/5 hover:text-white"
+                                    ? "bg-white/10 dark:bg-gray-800 text-white border-l-4 border-white dark:border-primary"
+                                    : "text-blue-100 dark:text-gray-400 hover:bg-white/5 dark:hover:bg-gray-800 hover:text-white"
                                     }`}
                             >
-                                <Icon /> {name}
+                                <Icon className="text-xl shrink-0" />
+                                <span className="text-base truncate">{name}</span>
                             </button>
                         ))}
                     </nav>
                 </div>
 
                 {/* Bottom Logout Button */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark dark:border-gray-800">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark hover:bg-red-600 transition"
+                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark dark:bg-gray-800 hover:bg-red-600 dark:hover:bg-red-900/50 transition"
                     >
                         <FaSignOutAlt className="text-xl shrink-0" />
                         <span>Logout</span>
@@ -552,21 +668,22 @@ const NgoDashboard = () => {
             )}
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-h-screen overflow-hidden lg:ml-64">
+            <div className="flex-1 flex flex-col h-screen overflow-hidden lg:ml-64">
                 {/* Top Header */}
-                <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
+                <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden text-gray-600 hover:text-primary"
+                            className="lg:hidden text-gray-600 dark:text-gray-300 hover:text-primary"
                         >
                             <FiMenu className="w-6 h-6" />
                         </button>
-                        <h1 className="text-lg md:text-xl font-bold text-[#11676a]">
+                        <h1 className="text-lg md:text-xl font-bold text-[#11676a] dark:text-[#198f93]">
                             {links.find((l) => l.id === activeTab)?.name || "NGO Dashboard"}
                         </h1>
                     </div>
                     <div className="flex items-center gap-2 md:gap-4 relative">
+                        <DarkModeToggle />
                         <button
                             onClick={() =>
                                 setShowNotificationDropdown(!showNotificationDropdown)
@@ -574,8 +691,8 @@ const NgoDashboard = () => {
                             className="p-2 text-gray-400 hover:text-primary transition relative"
                         >
                             <MaterialIcon name="notifications" className="text-2xl" />
-                            {notifications && notifications.length > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                            {unreadCount > 0 && (
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
                             )}
                         </button>
 
@@ -583,12 +700,14 @@ const NgoDashboard = () => {
                             show={showNotificationDropdown}
                             onClose={() => setShowNotificationDropdown(false)}
                             notifications={notifications}
+                            onNotificationClick={handleNotificationClick}
+                            onViewAll={() => setShowNotificationPanel(true)}
                         />
                     </div>
                 </header>
 
                 {/* Dashboard Content */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                <div className={`flex-1 ${activeTab === 'messages' ? 'overflow-hidden' : 'overflow-y-auto'} p-4 md:p-6 lg:p-8`}>
                     {/* OVERVIEW TAB */}
                     {activeTab === "overview" && (
                         <>
@@ -615,41 +734,41 @@ const NgoDashboard = () => {
                                         label: "Active Cases",
                                         value: stats.activeCases,
                                         icon: "gavel",
-                                        color: "bg-blue-50 text-primary",
+                                        color: "bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-blue-400",
                                     },
                                     {
                                         label: "Pending Requests",
                                         value: stats.pendingCases,
                                         icon: "pending_actions",
-                                        color: "bg-yellow-50 text-primary",
+                                        color: "bg-yellow-50 dark:bg-yellow-900/30 text-primary dark:text-yellow-400",
                                     },
                                     {
                                         label: "Total Cases",
                                         value: stats.totalCases,
                                         icon: "folder",
-                                        color: "bg-purple-50 text-primary",
+                                        color: "bg-purple-50 dark:bg-purple-900/30 text-primary dark:text-purple-400",
                                     },
                                     {
                                         label: "Verification",
                                         value: profile?.isVerified ? "Verified" : "Pending",
                                         icon: "verified_user",
                                         color: profile?.isVerified
-                                            ? "bg-green-50 text-green-700"
-                                            : "bg-yellow-50 text-yellow-700",
+                                            ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                                            : "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
                                     },
                                 ].map((stat, i) => (
                                     <div
                                         key={i}
-                                        className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition transform hover:-translate-y-1 flex flex-col justify-between h-40"
+                                        className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition transform hover:-translate-y-1 flex flex-col justify-between h-40"
                                     >
                                         <div className={`p-2 rounded-lg inline-flex ${stat.color}`}>
                                             <MaterialIcon name={stat.icon} />
                                         </div>
                                         <div>
-                                            <p className="text-gray-500 text-sm font-medium">
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
                                                 {stat.label}
                                             </p>
-                                            <h3 className="text-3xl font-bold text-gray-900">
+                                            <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
                                                 {stat.value}
                                             </h3>
                                         </div>
@@ -659,101 +778,218 @@ const NgoDashboard = () => {
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-xl font-bold text-gray-800">
-                                            Recent Cases
+                                    {/* NEW LEADS SECTION */}
+                                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
+                                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                                            <FiBriefcase className="text-primary dark:text-[#198f93]" /> New Consultation Leads
                                         </h2>
-                                        <button className="text-sm text-primary font-medium hover:underline">
-                                            View All
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {recentCases.length > 0 ? (
-                                            recentCases.slice(0, 5).map((c, i) => (
-                                                <div
-                                                    key={c.id || i}
-                                                    className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition flex justify-between items-center"
-                                                >
-                                                    <div>
-                                                        <p className="font-bold text-gray-800">
-                                                            Case ID: {c.caseNumber || c.id}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600">
-                                                            Title: {c.title}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500">
-                                                            Status: {c.status}
-                                                        </p>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span
-                                                            className={`px-2 py-1 rounded text-xs font-semibold mb-2 inline-block ${c.status === "ACTIVE"
-                                                                    ? "bg-green-100 text-green-700"
-                                                                    : c.status === "PENDING"
-                                                                        ? "bg-yellow-100 text-yellow-700"
-                                                                        : "bg-gray-100 text-gray-600"
-                                                                }`}
-                                                        >
-                                                            {c.status}
-                                                        </span>
-                                                        <button className="block text-sm text-primary font-medium hover:underline">
-                                                            View Case
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))
+                                        {!leads || leads.length === 0 ? (
+                                            <div className="text-center py-10 bg-slate-50 dark:bg-white/5 rounded-xl border border-dashed border-slate-200 dark:border-gray-600">
+                                                <p className="text-slate-500 dark:text-slate-400 font-medium">No new leads available at the moment.</p>
+                                            </div>
                                         ) : (
-                                            <p className="text-gray-500 italic">No cases found.</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {leads.map((lead) => (
+                                                    <div key={lead.caseId} className="bg-slate-50 dark:bg-gray-700/50 rounded-xl p-5 border border-slate-200 dark:border-gray-600 hover:shadow-md transition-all relative">
+                                                        {lead.matchStatus === "CONTACTED" && (
+                                                            <span className="absolute top-3 right-3 bg-primary/10 text-primary font-bold px-2 py-1 rounded-full text-[10px] uppercase tracking-wider">
+                                                                Specific Request
+                                                            </span>
+                                                        )}
+                                                        <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-1">{lead.caseTitle}</h3>
+                                                        <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">{lead.citizenName} • {lead.location}</p>
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${lead.urgency === 'HIGH' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                                                {lead.urgency} Priority
+                                                            </span>
+                                                            <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 dark:bg-gray-600 text-slate-600 dark:text-gray-300 uppercase tracking-wider">
+                                                                {new Date(lead.requestedAt).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                onClick={() => setSelectedLead(lead)}
+                                                                className="px-3 py-2 bg-slate-100 dark:bg-gray-600 text-slate-600 dark:text-gray-200 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-500 transition-colors"
+                                                                title="View Details"
+                                                            >
+                                                                <MaterialIcon name="visibility" className="text-lg" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleAcceptCase(lead.caseId)}
+                                                                className="flex-1 py-2 bg-slate-900 dark:bg-[#11676a] text-white rounded-lg font-bold text-sm hover:bg-primary dark:hover:bg-[#0e5658] transition-colors">
+                                                                Accept Case
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
+
+                                    {selectedLead && (
+                                        <CaseDetailsModal
+                                            lead={selectedLead}
+                                            onClose={() => setSelectedLead(null)}
+                                            onAccept={(id) => {
+                                                handleAcceptCase(id);
+                                                setSelectedLead(null);
+                                            }}
+                                        />
+                                    )}
+
+
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6 transition-colors duration-300">
+                                        <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-lg">
+                                            Recent Cases
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {recentCases.length > 0 ? (
+                                                recentCases.slice(0, 3).map((legalCase) => (
+                                                    <div
+                                                        key={legalCase.id}
+                                                        className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                                                                <MaterialIcon name="description" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                                                                    {legalCase.title}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    Updated{" "}
+                                                                    {new Date(
+                                                                        legalCase.updatedAt
+                                                                    ).toLocaleDateString()}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            className={`px-2 py-1 text-xs font-semibold rounded shrink-0 ${legalCase.status === "PENDING"
+                                                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                                                : legalCase.status === "ACTIVE"
+                                                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                                                    : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                                }`}
+                                                        >
+                                                            {legalCase.status}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                                                    No recent cases found.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-8">
-                                    <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+                                <div className="space-y-6">
+                                    {/* PENDING APPOINTMENTS SECTION */}
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 transition-colors duration-300">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800">
-                                                Upcoming Schedule
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
+                                                <MaterialIcon name="pending_actions" className="text-orange-500" />
+                                                Pending Appointments
                                             </h3>
-                                            <button className="text-xs text-primary font-medium hover:underline">
-                                                Full Calendar
+                                            <button
+                                                onClick={() => setActiveTab("schedule")}
+                                                className="text-sm text-primary dark:text-[#198f93] font-medium hover:underline"
+                                            >
+                                                Manage
                                             </button>
                                         </div>
-                                        <div className="space-y-4">
-                                            <div className="flex gap-4 items-start">
-                                                <div className="p-2 bg-blue-50 text-blue-800 rounded-lg text-center min-w-[3.5rem]">
-                                                    <span className="block text-xs font-bold uppercase">
-                                                        Oct
-                                                    </span>
-                                                    <span className="block text-xl font-bold">25</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-800">
-                                                        Hearing: Doe v. State
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">
-                                                        9:00 AM - 11:00 AM
-                                                    </p>
-                                                    <p className="text-xs text-gray-400">
-                                                        City Courthouse, Room 3B
-                                                    </p>
-                                                </div>
+                                        {loadingAppointments ? (
+                                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading...</div>
+                                        ) : !upcomingAppointments || upcomingAppointments.filter(app => app.status === 'PENDING').length === 0 ? (
+                                            <div className="text-center py-6 bg-slate-50 dark:bg-white/5 rounded-xl border border-dashed border-slate-200 dark:border-gray-600">
+                                                <p className="text-slate-500 dark:text-slate-400 font-medium">No pending appointment requests.</p>
                                             </div>
-                                            <div className="flex gap-4 items-start">
-                                                <div className="p-2 bg-blue-50 text-blue-800 rounded-lg text-center min-w-[3.5rem]">
-                                                    <span className="block text-xs font-bold uppercase">
-                                                        Oct
-                                                    </span>
-                                                    <span className="block text-xl font-bold">26</span>
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-800">
-                                                        Meeting with John
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">
-                                                        2:30 PM - Virtual
-                                                    </p>
-                                                </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {upcomingAppointments
+                                                    .filter(app => app.status === 'PENDING')
+                                                    .slice(0, 3)
+                                                    .map(app => (
+                                                        <div key={app.id} className="bg-orange-50 dark:bg-orange-900/10 p-3 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <p className="font-bold text-gray-800 dark:text-white text-sm">
+                                                                    {new Date(app.date).toLocaleDateString()}
+                                                                </p>
+                                                                <span className="text-xs bg-white dark:bg-gray-700 px-2 py-0.5 rounded border border-orange-200 dark:border-orange-900/50 text-orange-700 dark:text-orange-400 font-medium">
+                                                                    {app.time}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-1">
+                                                                {app.caseId ? `Case #${app.caseId}` : 'Consultation'}
+                                                            </p>
+                                                            <button
+                                                                onClick={() => setActiveTab("schedule")}
+                                                                className="w-full py-1.5 bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50 rounded text-xs font-bold hover:bg-orange-100 dark:hover:bg-gray-600 transition"
+                                                            >
+                                                                View Request
+                                                            </button>
+                                                        </div>
+                                                    ))}
                                             </div>
+                                        )}
+                                    </div>
+
+                                    {/* UPCOMING SCHEDULE SECTION */}
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 transition-colors duration-300">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
+                                                <MaterialIcon name="event" className="text-blue-500" />
+                                                Upcoming Schedule
+                                            </h3>
                                         </div>
+                                        {loadingAppointments ? (
+                                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading...</div>
+                                        ) : !upcomingAppointments || upcomingAppointments.filter(app => app.status === 'CONFIRMED').length === 0 ? (
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-2">No confirmed appointments</p>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {upcomingAppointments
+                                                    .filter(app => app.status === 'CONFIRMED')
+                                                    .slice(0, 3)
+                                                    .map(app => (
+                                                        <div key={app.id} className="flex gap-3 items-start">
+                                                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg text-center min-w-[3rem] shrink-0">
+                                                                <span className="block text-[10px] font-bold uppercase">
+                                                                    {new Date(app.date).toLocaleString('default', { month: 'short' })}
+                                                                </span>
+                                                                <span className="block text-lg font-bold leading-none">
+                                                                    {new Date(app.date).getDate()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
+                                                                    {app.providerName || 'Consultation'}
+                                                                </p>
+                                                                {app.caseId && (
+                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                                        Case #{app.caseId}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                                    {app.time} • Virtual
+                                                                </p>
+                                                                {app.meetLink && (
+                                                                    <a
+                                                                        href={app.meetLink}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className="text-[10px] inline-block bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
+                                                                    >
+                                                                        Join
+                                                                    </a>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -765,7 +1001,7 @@ const NgoDashboard = () => {
                         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 {/* GREEN HEADER BAND */}
-                                <div className="bg-emerald-50 px-5 sm:px-6 py-4 flex items-center justify-between">
+                                <div className="bg-emerald-50 dark:bg-emerald-900/10 px-5 sm:px-6 py-4 flex items-center justify-between transition-colors duration-300">
                                     {/* LEFT: avatar + title + description */}
                                     <div className="flex items-start gap-3 sm:gap-4">
                                         {/* Avatar */}
@@ -775,21 +1011,21 @@ const NgoDashboard = () => {
 
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1.5">
-                                                <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                                                <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
                                                     NGO Profile
                                                 </h2>
 
                                                 {/* Verification badge */}
                                                 <span
                                                     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${profile?.isVerified
-                                                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                                                            : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                                        : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
                                                         }`}
                                                 >
                                                     <span
                                                         className={`h-1.5 w-1.5 rounded-full ${profile?.isVerified
-                                                                ? "bg-emerald-500"
-                                                                : "bg-amber-500"
+                                                            ? "bg-emerald-500"
+                                                            : "bg-amber-500"
                                                             }`}
                                                     />
                                                     {profile?.verificationStatus || "Pending"}
@@ -805,12 +1041,12 @@ const NgoDashboard = () => {
                                                     >
                                                         <span
                                                             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${profile?.isActive
-                                                                    ? "translate-x-6"
-                                                                    : "translate-x-1"
+                                                                ? "translate-x-6"
+                                                                : "translate-x-1"
                                                                 }`}
                                                         />
                                                     </button>
-                                                    <span className="text-xs sm:text-sm font-medium text-emerald-900">
+                                                    <span className="text-xs sm:text-sm font-medium text-emerald-900 dark:text-emerald-300">
                                                         {profile?.isActive
                                                             ? "Available for cases"
                                                             : "Offline"}
@@ -818,7 +1054,7 @@ const NgoDashboard = () => {
                                                 </div>
                                             </div>
 
-                                            <p className="text-xs sm:text-[13px] text-emerald-900/80">
+                                            <p className="text-xs sm:text-[13px] text-emerald-900/80 dark:text-emerald-200/80">
                                                 Manage your professional information, office address,
                                                 and public visibility.
                                             </p>
@@ -869,9 +1105,9 @@ const NgoDashboard = () => {
                                                         href={profile.authorizedIdProofUrl}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100"
+                                                        className="inline-flex items-center gap-2 rounded-full border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs font-medium text-emerald-800 dark:text-emerald-300 hover:text-emerald-900 dark:hover:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
                                                     >
-                                                        <FaUserCheck className="text-emerald-600" />
+                                                        <FaUserCheck className="text-emerald-600 dark:text-emerald-400" />
                                                         <span>Authorized Person ID Proof</span>
                                                     </a>
                                                 )}
@@ -922,7 +1158,7 @@ const NgoDashboard = () => {
                                 </div>
 
                                 {/* WHITE BODY WITH ONLY YOUR FIELDS */}
-                                <div className="bg-white border-t border-emerald-100 p-6 lg:p-8">
+                                <div className="bg-white dark:bg-gray-800 border-t border-emerald-100 dark:border-gray-700 p-6 lg:p-8 transition-colors duration-300">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
                                         {/* Registration */}
                                         <div className="md:col-span-2">
@@ -932,7 +1168,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 NGO name
                                             </label>
                                             <input
@@ -946,14 +1182,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Darpan ID
                                             </label>
                                             <input
@@ -967,14 +1203,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Registration number
                                             </label>
                                             <input
@@ -988,14 +1224,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Registration year
                                             </label>
                                             <input
@@ -1009,8 +1245,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
@@ -1023,7 +1259,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Official email
                                             </label>
                                             <input
@@ -1037,19 +1273,19 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Official phone
                                             </label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-gray-200 text-xs text-gray-600">
+                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300">
                                                         <span className="text-[11px] font-medium">IN</span>
                                                         <span className="h-3 w-px bg-gray-300" />
                                                         <span className="font-semibold text-[11px]">
@@ -1074,8 +1310,8 @@ const NgoDashboard = () => {
                                                     disabled={!isEditing}
                                                     placeholder="9845693235"
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 pl-20 shadow-sm focus:outline-none transition ${isEditing
-                                                            ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                            : "bg-gray-50 border-gray-200 text-gray-700"
+                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                         }`}
                                                 />
                                             </div>
@@ -1088,6 +1324,88 @@ const NgoDashboard = () => {
                                                 )}
                                         </div>
 
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Languages Spoken
+                                            </label>
+                                            {isEditing ? (
+                                                <Select
+                                                    isMulti
+                                                    name="languages"
+                                                    options={languageOptions}
+                                                    className="basic-multi-select text-sm"
+                                                    classNamePrefix="select"
+                                                    value={
+                                                        editForm.languages
+                                                            ? editForm.languages.split(", ").map((lang) => ({
+                                                                value: lang,
+                                                                label: lang,
+                                                            }))
+                                                            : []
+                                                    }
+                                                    onChange={(selectedOptions) => {
+                                                        const value = selectedOptions
+                                                            ? selectedOptions.map((opt) => opt.value).join(", ")
+                                                            : "";
+                                                        handleProfileChange({
+                                                            target: { name: "languages", value: value },
+                                                        });
+                                                    }}
+                                                    styles={{
+                                                        control: (base) => ({
+                                                            ...base,
+                                                            borderColor: isDarkMode ? "#4b5563" : "#e5e7eb",
+                                                            borderRadius: "0.5rem",
+                                                            paddingTop: "2px",
+                                                            paddingBottom: "2px",
+                                                            boxShadow: "none",
+                                                            backgroundColor: isDarkMode ? "#374151" : "white",
+                                                            color: isDarkMode ? "white" : "inherit",
+                                                            "&:hover": {
+                                                                borderColor: isDarkMode ? "#9ca3af" : "#d1d5db",
+                                                            },
+                                                        }),
+                                                        menu: (base) => ({
+                                                            ...base,
+                                                            zIndex: 9999,
+                                                            backgroundColor: isDarkMode ? "#1f2937" : "white",
+                                                        }),
+                                                        option: (base, { isFocused, isSelected }) => ({
+                                                            ...base,
+                                                            backgroundColor: isSelected
+                                                                ? "#11676a"
+                                                                : isFocused
+                                                                    ? isDarkMode
+                                                                        ? "#374151"
+                                                                        : "#f3f4f6"
+                                                                    : "transparent",
+                                                            color: isSelected ? "white" : isDarkMode ? "white" : "gray",
+                                                        }),
+                                                        singleValue: (base) => ({
+                                                            ...base,
+                                                            color: isDarkMode ? "white" : "gray",
+                                                        }),
+                                                        multiValue: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+                                                        }),
+                                                        multiValueLabel: (base) => ({
+                                                            ...base,
+                                                            color: isDarkMode ? "white" : "gray",
+                                                        }),
+                                                    }}
+                                                />
+                                            ) : (
+                                                <input
+                                                    type="text"
+                                                    name="languages"
+                                                    value={profile?.languages || "Not specified"}
+                                                    disabled
+                                                    className="w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                                                />
+                                            )}
+                                        </div>
+
                                         {/* Representative */}
                                         <div className="md:col-span-2">
                                             <h3 className="border-b border-gray-100 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -1096,7 +1414,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Name
                                             </label>
                                             <input
@@ -1110,14 +1428,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Role / designation
                                             </label>
                                             <input
@@ -1131,14 +1449,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Representative email
                                             </label>
                                             <input
@@ -1152,19 +1470,19 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Representative phone
                                             </label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-gray-200 text-xs text-gray-600">
+                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300">
                                                         <span className="text-[11px] font-medium">IN</span>
                                                         <span className="h-3 w-px bg-gray-300" />
                                                         <span className="font-semibold text-[11px]">
@@ -1189,8 +1507,8 @@ const NgoDashboard = () => {
                                                     disabled={!isEditing}
                                                     placeholder="9845693235"
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 pl-20 shadow-sm focus:outline-none transition ${isEditing
-                                                            ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                            : "bg-gray-50 border-gray-200 text-gray-700"
+                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                         }`}
                                                 />
                                             </div>
@@ -1204,7 +1522,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Rep date of birth
                                             </label>
                                             <div className="relative">
@@ -1238,15 +1556,15 @@ const NgoDashboard = () => {
                                                     }}
                                                     disabled={!isEditing}
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                            ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                            : "bg-gray-50 border-gray-200 text-gray-700"
+                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                         }`}
                                                 />
                                             </div>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Rep gender
                                             </label>
                                             <select
@@ -1259,8 +1577,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             >
                                                 <option value="">Select</option>
@@ -1278,7 +1596,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Address
                                             </label>
                                             <textarea
@@ -1292,14 +1610,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 City
                                             </label>
                                             <input
@@ -1311,14 +1629,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 State
                                             </label>
                                             {isEditing ? (
@@ -1326,11 +1644,11 @@ const NgoDashboard = () => {
                                                     name="state"
                                                     value={editForm.state || ""}
                                                     onChange={handleProfileChange}
-                                                    className="w-full p-2 border rounded-lg border-primary bg-white focus:ring-2 ring-primary/20"
+                                                    className="w-full p-2 border rounded-lg border-primary bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 ring-primary/20 dark:text-white"
                                                 >
                                                     <option value="">Select state</option>
                                                     {INDIAN_STATES.map((s) => (
-                                                        <option key={s} value={s}>
+                                                        <option key={s} value={s} className="dark:bg-gray-800">
                                                             {s}
                                                         </option>
                                                     ))}
@@ -1341,13 +1659,13 @@ const NgoDashboard = () => {
                                                     name="state"
                                                     value={profile?.state || ""}
                                                     disabled
-                                                    className="w-full p-2 bg-gray-50 border border-gray-200 text-gray-600 rounded-lg"
+                                                    className="w-full p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg"
                                                 />
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Pincode
                                             </label>
                                             <input
@@ -1361,37 +1679,49 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
 
                                         {/* Areas of work & location */}
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Areas of work
                                             </label>
-                                            <input
-                                                type="text"
-                                                name="areasOfWork"
-                                                value={
-                                                    isEditing
-                                                        ? editForm.areasOfWork || ""
-                                                        : profile?.areasOfWork || ""
-                                                }
-                                                onChange={handleProfileChange}
-                                                disabled={!isEditing}
-                                                placeholder="Legal aid, child rights, community outreach..."
-                                                className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
-                                                    }`}
-                                            />
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    name="areasOfWork"
+                                                    value={editForm.serviceAreas || ""}
+                                                    onChange={handleProfileChange}
+                                                    disabled={!isEditing}
+                                                    placeholder="Legal aid, child rights, community outreach..."
+                                                    className="w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                />
+                                            ) : (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {profile?.caseTypes && profile.caseTypes.length > 0 ? (
+                                                        profile.caseTypes.map((type, index) => (
+                                                            <span
+                                                                key={index}
+                                                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                                            >
+                                                                {type}
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-sm text-gray-500 italic">
+                                                            {profile?.serviceAreas || "No areas of work listed."}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                                 Location (optional)
                                             </label>
                                             <input
@@ -1405,8 +1735,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white focus:ring-2 focus:ring-primary/20"
-                                                        : "bg-gray-50 border-gray-200 text-gray-700"
+                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
                                                     }`}
                                             />
                                         </div>
@@ -1415,13 +1745,19 @@ const NgoDashboard = () => {
                             </div>
                         </div>
                     )}
+                    {activeTab === "cases" && (
+                        <div className="w-full">
+                            <MyCases userRole="NGO" user={user} onTabChange={setActiveTab} />
+                        </div>
+                    )}
+
                     {/* Coming Soon Tabs */}
                     {activeTab === "verification" && (
                         <div className="w-full">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                                 <div className="text-center py-8">
-                                    <FaUserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">
+                                    <FaUserCheck className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                                    <p className="text-gray-600 dark:text-gray-400">
                                         Verification management coming soon...
                                     </p>
                                 </div>
@@ -1430,34 +1766,20 @@ const NgoDashboard = () => {
                     )}
                     {activeTab === "schedule" && (
                         <div className="w-full">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                <div className="text-center py-8">
-                                    <FaCalendarAlt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">
-                                        Schedule management coming soon...
-                                    </p>
-                                </div>
-                            </div>
+                            <ScheduleDashboard userRole="NGO" user={user} />
                         </div>
                     )}
                     {activeTab === "messages" && (
-                        <div className="w-full">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                <div className="text-center py-8">
-                                    <FaEnvelope className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">
-                                        Messaging system coming soon...
-                                    </p>
-                                </div>
-                            </div>
+                        <div className="w-full h-full">
+                            <NgoChat />
                         </div>
                     )}
                     {activeTab === "settings" && (
                         <div className="w-full">
-                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
                                 <div className="text-center py-8">
-                                    <FaCog className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-600">
+                                    <FaCog className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                                    <p className="text-gray-600 dark:text-gray-400">
                                         Settings management coming soon...
                                     </p>
                                 </div>
@@ -1473,6 +1795,82 @@ const NgoDashboard = () => {
                 onClose={() => setShowComingSoon(false)}
                 feature={comingSoonFeature}
             />
+
+            {/* Notification Panel Overlay */}
+            {showNotificationPanel && (
+                <NotificationPanel onClose={() => setShowNotificationPanel(false)}>
+                    <NotificationPage onClose={() => setShowNotificationPanel(false)} />
+                </NotificationPanel>
+            )}
+        </div>
+    );
+};
+
+const CaseDetailsModal = ({ lead, onClose, onAccept }) => {
+    if (!lead) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl transform transition-all scale-100 animate-bounceIn relative border border-gray-200 dark:border-gray-700">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                >
+                    <FaTimes className="text-xl" />
+                </button>
+
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{lead.caseTitle}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
+                    <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{lead.caseId}</span>
+                    <span>•</span>
+                    <span className="text-primary dark:text-[#198f93] font-bold">{lead.category}</span>
+                </p>
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Description</h4>
+                        <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-sm">
+                            {lead.description || "No description provided."}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Citizen</h4>
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{lead.citizenName}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Location</h4>
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{lead.location}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Urgency</h4>
+                            <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${lead.urgency === 'HIGH' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                                {lead.urgency} Priority
+                            </span>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Received</h4>
+                            <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{new Date(lead.requestedAt).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
+                    >
+                        Close
+                    </button>
+                    <button
+                        onClick={() => onAccept(lead.caseId)}
+                        className="px-6 py-2 bg-slate-900 dark:bg-[#11676a] text-white font-bold text-sm rounded-lg hover:bg-primary dark:hover:bg-[#0e5658] transition shadow-md"
+                    >
+                        Accept Case
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

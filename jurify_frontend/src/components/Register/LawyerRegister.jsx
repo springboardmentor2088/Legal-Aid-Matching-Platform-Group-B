@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import Select from "react-select";
 // Leaflet Imports
 import {
@@ -77,11 +78,46 @@ const indianStates = [
   { value: "Lakshadweep", label: "Lakshadweep" },
 ];
 
+const languageOptions = [
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Tamil", label: "Tamil" },
+  { value: "Telugu", label: "Telugu" },
+  { value: "Kannada", label: "Kannada" },
+  { value: "Malayalam", label: "Malayalam" },
+  { value: "Marathi", label: "Marathi" },
+  { value: "Gujarati", label: "Gujarati" },
+  { value: "Bengali", label: "Bengali" },
+  { value: "Punjabi", label: "Punjabi" },
+  { value: "Urdu", label: "Urdu" },
+  { value: "French", label: "French" },
+  { value: "German", label: "German" },
+  { value: "Spanish", label: "Spanish" },
+];
+
+
+
 export default function LawyerRegistration() {
+  // Retrieve state from RoleSelection (Google Auth)
+  const location = useLocation();
+  const { preRegToken, preFilledEmail, preFilledName } = location.state || {};
+  const { isDarkMode } = useTheme();
+
+  const parseName = (fullName) => {
+    if (!fullName) return { firstName: "", lastName: "" };
+    const parts = fullName.split(" ");
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+    };
+  };
+
+  const { firstName: googleFirstName, lastName: googleLastName } = parseName(preFilledName);
+
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    firstName: googleFirstName || "",
+    lastName: googleLastName || "",
+    email: preFilledEmail || "",
     password: "",
     confirmPassword: "",
     phoneNumber: "",
@@ -97,12 +133,27 @@ export default function LawyerRegistration() {
     pincode: "",
     country: "India",
     bio: "",
-    languages: "English",
+    languages: [],
+    caseTypes: [],
     latitude: null,
     longitude: null,
     dateOfBirth: "",
     gender: "",
   });
+
+  const [caseTypeOptions, setCaseTypeOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categories = await import("../../services/api").then(module => module.default.getLegalCategories());
+        setCaseTypeOptions(categories.map(cat => ({ value: cat.name, label: cat.name })));
+      } catch (error) {
+        console.error("Failed to fetch legal categories", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const [position, setPosition] = useState({ lat: 20.5937, lng: 78.9629 });
   const [searchQuery, setSearchQuery] = useState("");
@@ -127,6 +178,7 @@ export default function LawyerRegistration() {
     location: "",
     bio: "",
     languages: "",
+    caseTypes: "",
     password: "",
     confirmPassword: "",
   });
@@ -668,14 +720,18 @@ export default function LawyerRegistration() {
     else if (!/^[0-9]{4,10}$/.test(formData.pincode))
       errors.pincode = "Please enter a valid postal code";
 
-    if (!formData.password) errors.password = "Password is required";
-    else if (passwordStrength.score < 6)
-      errors.password = "Password does not meet all requirements";
+    if (!preRegToken) {
+      if (!formData.password) errors.password = "Password is required";
+      else if (passwordStrength.score < 6)
+        errors.password = "Password does not meet all requirements";
+    }
 
-    if (!formData.confirmPassword)
-      errors.confirmPassword = "Please confirm your password";
-    else if (formData.password !== formData.confirmPassword)
-      errors.confirmPassword = "Passwords do not match";
+    if (!preRegToken) {
+      if (!formData.confirmPassword)
+        errors.confirmPassword = "Please confirm your password";
+      else if (formData.password !== formData.confirmPassword)
+        errors.confirmPassword = "Passwords do not match";
+    }
 
 
 
@@ -756,6 +812,9 @@ export default function LawyerRegistration() {
       role: "lawyer",
       enrollmentYear: parseInt(formData.enrollmentYear),
       yearsOfExperience: parseInt(formData.yearsOfExperience),
+      languages: formData.languages.map(l => l.value).join(", "),
+      caseTypes: formData.caseTypes.map(c => c.value),
+      preRegistrationToken: preRegToken || "",
     };
 
     const finalFormData = new FormData();
@@ -803,6 +862,9 @@ export default function LawyerRegistration() {
           );
 
           if (response.ok) {
+            if (response.status === 202) {
+              return; // Still pending
+            }
             const data = await response.json();
 
             localStorage.setItem("accessToken", data.accessToken);
@@ -815,6 +877,18 @@ export default function LawyerRegistration() {
               firstName: data.firstName,
               lastName: data.lastName,
               isEmailVerified: data.isEmailVerified,
+              phone: data.phone,
+              barCouncilNumber: data.barCouncilNumber,
+              barCouncilState: data.barCouncilState,
+              enrollmentYear: data.enrollmentYear,
+              lawFirmName: data.lawFirmName,
+              yearsOfExperience: data.yearsOfExperience,
+              bio: data.bio,
+              languages: data.languages,
+              caseTypes: data.specializations, // DTO field name needs check, AuthResponse has no specializations list logic yet in backend
+              officeAddressLine1: data.addressLine1,
+              city: data.city,
+              state: data.state
             };
             localStorage.setItem("user", JSON.stringify(userObj));
 
@@ -843,45 +917,45 @@ export default function LawyerRegistration() {
   const getInputClass = (fieldName) => {
     const baseClass =
       "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border text-sm " +
-      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400";
+      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400";
 
     if (fieldErrors[fieldName]) {
       return (
         baseClass +
-        " border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500 text-red-900 placeholder:text-red-300"
+        " border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-500/50 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400"
       );
     }
 
     return (
       baseClass +
-      " border-gray-200 bg-white shadow-sm focus:ring-[#11676a]/40 focus:border-[#11676a]"
+      " border-gray-200 bg-white shadow-sm focus:ring-[#11676a]/40 focus:border-[#11676a] dark:focus:ring-teal-500/40 dark:focus:border-teal-500"
     );
   };
 
   const inputClass =
-    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 bg-white shadow-sm text-sm " +
+    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm text-sm text-gray-900 dark:text-white dark:[color-scheme:dark] " +
     "focus:outline-none focus:ring-2 focus:ring-[#11676a]/40 focus:border-[#11676a] transition-all duration-200 " +
-    "placeholder:text-gray-400";
+    "placeholder:text-gray-400 dark:placeholder-gray-400";
 
   const iconWrapperClass =
     "absolute top-1/2 -translate-y-1/2 left-3 z-20 pointer-events-none text-gray-400";
 
   const sectionCardClass =
-    "rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
+    "rounded-2xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
 
   const sectionTitleClass =
-    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 mb-1";
+    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-1";
 
-  const sectionSubtitleClass = "text-xs text-gray-500";
+  const sectionSubtitleClass = "text-xs text-gray-500 dark:text-gray-400";
 
   const MaterialIcon = ({ name }) => (
-    <span className="material-symbols-outlined text-xl text-gray-500">
+    <span className="material-symbols-outlined text-xl text-gray-500 dark:text-gray-400">
       {name}
     </span>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
       <div className="max-w-6xl w-full grid lg:grid-cols-[1.05fr_1.5fr] gap-6 sm:gap-8 lg:gap-10 items-stretch">
         {/* Left Panel - Hidden on mobile, visible on lg+ */}
         <div className="hidden lg:flex flex-col justify-between rounded-3xl bg-linear-to-br from-[#0a4d68] via-primary to-[#2c3e50] text-white p-8 shadow-xl relative overflow-hidden">
@@ -980,7 +1054,7 @@ export default function LawyerRegistration() {
         </div>
 
         {/* Right Panel - Form */}
-        <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-lg p-4 sm:p-5 md:p-6 lg:p-8">
+        <div className="relative bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-5 md:p-6 lg:p-8">
           {/* Home Link */}
           <Link
             to="/"
@@ -992,7 +1066,7 @@ export default function LawyerRegistration() {
           </Link>
 
           {/* Header */}
-          <header className="mb-5 sm:mb-6 border-b border-gray-100 pb-3 sm:pb-4">
+          <header className="mb-5 sm:mb-6 border-b border-gray-100 dark:border-gray-700 pb-3 sm:pb-4">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#6692a3] text-white shadow-md">
                 <span className="material-symbols-outlined text-xl sm:text-2xl">
@@ -1000,10 +1074,10 @@ export default function LawyerRegistration() {
                 </span>
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                   Register as a Lawyer
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1">
                   Create your professional Jurify account for pro bono legal
                   assistance.
                 </p>
@@ -1038,7 +1112,7 @@ export default function LawyerRegistration() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1066,7 +1140,7 @@ export default function LawyerRegistration() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Last Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1096,7 +1170,7 @@ export default function LawyerRegistration() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email Address <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1124,11 +1198,11 @@ export default function LawyerRegistration() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
-                    <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 min-w-[85px]">
+                    <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-white min-w-[85px]">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 36 27"
@@ -1213,7 +1287,7 @@ export default function LawyerRegistration() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1241,7 +1315,7 @@ export default function LawyerRegistration() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Gender <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -1255,8 +1329,8 @@ export default function LawyerRegistration() {
                         aria-pressed={formData.gender === g}
                         className={
                           formData.gender === g
-                            ? `${genderButtonBase} bg-primary text-white shadow-md border-primary`
-                            : `${genderButtonBase} bg-white text-gray-700 hover:bg-gray-50 border-gray-200`
+                            ? `${genderButtonBase} bg-primary text-white shadow-md border-primary dark:bg-teal-600 dark:border-teal-500`
+                            : `${genderButtonBase} bg-white text-gray-700 hover:bg-gray-50 border-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 dark:border-gray-600`
                         }
                       >
                         {g.charAt(0) + g.slice(1).toLowerCase()}
@@ -1267,200 +1341,208 @@ export default function LawyerRegistration() {
               </div>
 
               {/* Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password <span className="text-red-500">*</span>
-                  </label>
+              {!preRegToken ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="lock" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="lock" />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        placeholder="Create strong password"
+                        className={getInputClass("password")}
+                        onChange={handleChange}
+                        value={formData.password}
+                        required
+                        minLength={8}
+                        maxLength={20}
+                      />
+                      <span
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
+                      >
+                        {showPassword ? "visibility" : "visibility_off"}
+                      </span>
                     </div>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Create strong password"
-                      className={getInputClass("password")}
-                      onChange={handleChange}
-                      value={formData.password}
-                      required
-                      minLength={8}
-                      maxLength={20}
-                    />
-                    <span
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
-                    >
-                      {showPassword ? "visibility" : "visibility_off"}
-                    </span>
-                  </div>
 
-                  {/* Password Strength Indicator */}
-                  {formData.password && (
-                    <div className="mt-3 space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-600 font-medium">
-                          Password Strength:
-                        </span>
-                        <span
-                          className={`font-semibold ${passwordStrength.score <= 2
-                            ? "text-red-600"
-                            : passwordStrength.score <= 4
-                              ? "text-yellow-600"
-                              : passwordStrength.score <= 5
-                                ? "text-blue-600"
-                                : "text-green-600"
-                            }`}
-                        >
-                          {getPasswordStrengthText()}
-                        </span>
-                      </div>
+                    {/* Password Strength Indicator */}
+                    {formData.password && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600 font-medium">
+                            Password Strength:
+                          </span>
+                          <span
+                            className={`font-semibold ${passwordStrength.score <= 2
+                              ? "text-red-600"
+                              : passwordStrength.score <= 4
+                                ? "text-yellow-600"
+                                : passwordStrength.score <= 5
+                                  ? "text-blue-600"
+                                  : "text-green-600"
+                              }`}
+                          >
+                            {getPasswordStrengthText()}
+                          </span>
+                        </div>
 
-                      {/* Strength Bar */}
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                          style={{
-                            width: `${(passwordStrength.score / 6) * 100}%`,
-                          }}
-                        />
-                      </div>
+                        {/* Strength Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                            style={{
+                              width: `${(passwordStrength.score / 6) * 100}%`,
+                            }}
+                          />
+                        </div>
 
-                      {/* Requirements Checklist */}
-                      {passwordStrength.feedback.length > 0 && (
-                        <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
-                          <p className="text-xs font-medium text-gray-700 mb-2">
-                            Password must include:
-                          </p>
-                          {passwordStrength.feedback.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-2 text-xs text-gray-600"
-                            >
-                              <span className="material-symbols-outlined text-sm text-red-500">
-                                close
-                              </span>
-                              <span>{item}</span>
-                            </div>
-                          ))}
-                          {passwordStrength.score > 0 &&
-                            passwordStrength.score < 6 && (
-                              <>
-                                {formData.password.length >= 8 &&
-                                  formData.password.length <= 20 && (
-                                    <div className="flex items-center gap-2 text-xs text-green-600">
+                        {/* Requirements Checklist */}
+                        {passwordStrength.feedback.length > 0 && (
+                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-1.5">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Password must include:
+                            </p>
+                            {passwordStrength.feedback.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+                              >
+                                <span className="material-symbols-outlined text-sm">
+                                  close
+                                </span>
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                            {passwordStrength.score > 0 &&
+                              passwordStrength.score < 6 && (
+                                <>
+                                  {formData.password.length >= 8 &&
+                                    formData.password.length <= 20 && (
+                                      <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                                        <span className="material-symbols-outlined text-sm">
+                                          check_circle
+                                        </span>
+                                        <span>8-20 characters</span>
+                                      </div>
+                                    )}
+                                  {/[A-Z]/.test(formData.password) && (
+                                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                                       <span className="material-symbols-outlined text-sm">
                                         check_circle
                                       </span>
-                                      <span>8-20 characters</span>
+                                      <span>Uppercase letter</span>
                                     </div>
                                   )}
-                                {/[A-Z]/.test(formData.password) && (
-                                  <div className="flex items-center gap-2 text-xs text-green-600">
-                                    <span className="material-symbols-outlined text-sm">
-                                      check_circle
-                                    </span>
-                                    <span>Uppercase letter</span>
-                                  </div>
-                                )}
-                                {/[a-z]/.test(formData.password) && (
-                                  <div className="flex items-center gap-2 text-xs text-green-600">
-                                    <span className="material-symbols-outlined text-sm">
-                                      check_circle
-                                    </span>
-                                    <span>Lowercase letter</span>
-                                  </div>
-                                )}
-                                {/[0-9]/.test(formData.password) && (
-                                  <div className="flex items-center gap-2 text-xs text-green-600">
-                                    <span className="material-symbols-outlined text-sm">
-                                      check_circle
-                                    </span>
-                                    <span>Number</span>
-                                  </div>
-                                )}
-                                {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/\?]/.test(
-                                  formData.password
-                                ) && (
-                                    <div className="flex items-center gap-2 text-xs text-green-600">
+                                  {/[a-z]/.test(formData.password) && (
+                                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                                       <span className="material-symbols-outlined text-sm">
                                         check_circle
                                       </span>
-                                      <span>Special character</span>
+                                      <span>Lowercase letter</span>
                                     </div>
                                   )}
-                              </>
-                            )}
-                        </div>
-                      )}
+                                  {/[0-9]/.test(formData.password) && (
+                                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                                      <span className="material-symbols-outlined text-sm">
+                                        check_circle
+                                      </span>
+                                      <span>Number</span>
+                                    </div>
+                                  )}
+                                  {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/\?]/.test(
+                                    formData.password
+                                  ) && (
+                                      <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                                        <span className="material-symbols-outlined text-sm">
+                                          check_circle
+                                        </span>
+                                        <span>Special character</span>
+                                      </div>
+                                    )}
+                                </>
+                              )}
+                          </div>
+                        )}
 
-                      {/* Success Message */}
-                      {passwordStrength.score === 6 && (
-                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                          <span className="material-symbols-outlined text-green-600 text-lg">
-                            verified
-                          </span>
-                          <span className="text-xs text-green-700 font-medium">
-                            Excellent! Your password is strong and secure.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="lock_reset" />
-                    </div>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      name="confirmPassword"
-                      placeholder="Repeat password"
-                      className={getInputClass("confirmPassword")}
-                      onChange={handleChange}
-                      value={formData.confirmPassword}
-                      required
-                      maxLength={20}
-                    />
-                    <span
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
-                    >
-                      {showConfirmPassword ? "visibility" : "visibility_off"}
-                    </span>
+                        {/* Success Message */}
+                        {passwordStrength.score === 6 && (
+                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                            <span className="material-symbols-outlined text-green-600 text-lg">
+                              verified
+                            </span>
+                            <span className="text-xs text-green-700 font-medium">
+                              Excellent! Your password is strong and secure.
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Password Match Indicator */}
-                  {formData.confirmPassword && (
-                    <div className="mt-2">
-                      {formData.password === formData.confirmPassword ? (
-                        <div className="flex items-center gap-2 text-xs text-green-600">
-                          <span className="material-symbols-outlined text-sm">
-                            check_circle
-                          </span>
-                          <span>Passwords match</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-xs text-red-600">
-                          <span className="material-symbols-outlined text-sm">
-                            cancel
-                          </span>
-                          <span>Passwords do not match</span>
-                        </div>
-                      )}
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="lock_reset" />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        placeholder="Repeat password"
+                        className={getInputClass("confirmPassword")}
+                        onChange={handleChange}
+                        value={formData.confirmPassword}
+                        required
+                        maxLength={20}
+                      />
+                      <span
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
+                      >
+                        {showConfirmPassword ? "visibility" : "visibility_off"}
+                      </span>
                     </div>
-                  )}
+
+                    {/* Password Match Indicator */}
+                    {formData.confirmPassword && (
+                      <div className="mt-2">
+                        {formData.password === formData.confirmPassword ? (
+                          <div className="flex items-center gap-2 text-xs text-green-600">
+                            <span className="material-symbols-outlined text-sm">
+                              check_circle
+                            </span>
+                            <span>Passwords match</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-red-600">
+                            <span className="material-symbols-outlined text-sm">
+                              cancel
+                            </span>
+                            <span>Passwords do not match</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <span className="font-semibold">Note:</span> You are registering via Google. No password is required.
+                  </p>
+                </div>
+              )}
 
               {/* Security Tips */}
-              <div className="rounded-lg sm:rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-[0.7rem] text-blue-800 space-y-1">
+              <div className="rounded-lg sm:rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2.5 text-[0.7rem] text-blue-800 dark:text-blue-200 space-y-1">
                 <div className="flex gap-2 items-start">
                   <span className="material-symbols-outlined text-base mt-px shrink-0">
                     shield
@@ -1493,7 +1575,7 @@ export default function LawyerRegistration() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Bar Council Registration Number{" "}
                     <span className="text-red-500">*</span>
                   </label>
@@ -1512,7 +1594,7 @@ export default function LawyerRegistration() {
                   </div>
                 </div>
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Bar Council State <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1550,11 +1632,13 @@ export default function LawyerRegistration() {
                             ? "#fca5a5"
                             : state.isFocused
                               ? "#11676a"
-                              : "#e5e7eb",
+                              : isDarkMode
+                                ? "#4b5563"
+                                : "#e5e7eb",
                           boxShadow: state.isFocused
                             ? "0 0 0 2px rgba(17,103,106,0.4)"
                             : "0 1px 2px rgba(0,0,0,0.05)",
-                          backgroundColor: "#ffffff",
+                          backgroundColor: isDarkMode ? "#374151" : "#ffffff",
                           "&:hover": {
                             borderColor: "#11676a",
                           },
@@ -1569,11 +1653,12 @@ export default function LawyerRegistration() {
                           ...base,
                           margin: "0",
                           padding: "0",
+                          color: isDarkMode ? "#e5e7eb" : "#111827",
                         }),
 
                         singleValue: (base) => ({
                           ...base,
-                          color: "#111827",
+                          color: isDarkMode ? "#e5e7eb" : "#111827",
                           fontSize: "0.875rem",
                         }),
 
@@ -1601,6 +1686,24 @@ export default function LawyerRegistration() {
                           zIndex: 50,
                           borderRadius: "0.75rem",
                           boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                          backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                          border: isDarkMode ? "1px solid #374151" : "none",
+                        }),
+
+                        option: (base, state) => ({
+                          ...base,
+                          backgroundColor: state.isFocused
+                            ? isDarkMode
+                              ? "#374151"
+                              : "#f0fdf9"
+                            : "transparent",
+                          color: isDarkMode
+                            ? state.isFocused ? "#ffffff" : "#d1d5db"
+                            : "#374151",
+                          "&:active": {
+                            backgroundColor: "#11676a",
+                            color: "#ffffff",
+                          },
                         }),
                       }}
                     />
@@ -1610,12 +1713,12 @@ export default function LawyerRegistration() {
 
               {/* File Upload Section */}
               <div data-error="file" className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Upload Bar Council ID Card{" "}
                   <span className="text-red-500">*</span>
                 </label>
 
-                <div className="relative border-2 border-dashed border-gray-300 rounded-xl p-4 hover:bg-gray-50 transition-colors text-center cursor-pointer">
+                <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-center cursor-pointer">
                   {/* Delete icon (only when file exists) */}
                   {file && (
                     <button
@@ -1642,7 +1745,7 @@ export default function LawyerRegistration() {
 
                   <div className="flex flex-col items-center gap-1 pointer-events-none">
                     <MaterialIcon name={file ? "description" : "upload_file"} />
-                    <span className="text-sm text-gray-600 font-medium">
+                    <span className="text-sm text-gray-600 dark:text-gray-300 font-medium">
                       {file ? file.name : "Click to upload ID Card"}
                     </span>
                     <span className="text-xs text-gray-400">
@@ -1658,7 +1761,7 @@ export default function LawyerRegistration() {
                 )}
               </div>
 
-              <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[0.7rem] text-amber-800 flex gap-2 items-start">
+              <div className="mt-1 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800/50 px-3 py-2.5 text-[0.7rem] text-amber-800 dark:text-amber-200 flex gap-2 items-start">
                 <span className="material-symbols-outlined text-base mt-px shrink-0">
                   info
                 </span>
@@ -1684,7 +1787,7 @@ export default function LawyerRegistration() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* Enrollment Year */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Enrollment Year <span className="text-red-500">*</span>
                   </label>
 
@@ -1758,7 +1861,7 @@ export default function LawyerRegistration() {
 
                 {/* Years of Experience (Auto-calculated) */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Years of Experience <span className="text-red-500">*</span>
                   </label>
 
@@ -1782,7 +1885,7 @@ export default function LawyerRegistration() {
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Chamber / Firm Name{" "}
                   <span className="text-gray-400 font-normal">(Optional)</span>
                 </label>
@@ -1801,51 +1904,153 @@ export default function LawyerRegistration() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                {/* Languages Multi-Select */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Languages Spoken{" "}
-                    <span className="text-gray-400 font-normal">
-                      (Default: English)
-                    </span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Languages Spoken
                   </label>
-                  <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="translate" />
-                    </div>
-                    <select
-                      name="languages"
-                      className={`${inputClass} appearance-none`}
-                      value={formData.languages}
-                      onChange={handleChange}
-                    >
-                      <option value="English">English</option>
-                      <option value="English, Hindi">English & Hindi</option>
-                      <option value="English, Hindi, Regional">
-                        English, Hindi & Regional Language
-                      </option>
-                    </select>
-                  </div>
+                  <Select
+                    isMulti
+                    options={languageOptions}
+                    value={formData.languages}
+                    onChange={(selected) =>
+                      setFormData((prev) => ({ ...prev, languages: selected || [] }))
+                    }
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select languages..."
+                    styles={{
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999,
+                        backgroundColor: isDarkMode ? "#1f2937" : "white",
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isFocused
+                            ? isDarkMode
+                                ? "#374151"
+                                : "#ecfdf5"
+                            : isDarkMode
+                                ? "#1f2937"
+                                : "white",
+                        color: isDarkMode ? "white" : "black",
+                      }),
+                      singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode ? "white" : "black",
+                      }),
+                      control: (base, state) => ({
+                        ...base,
+                        minHeight: "48px",
+                        borderRadius: "0.75rem",
+                        borderColor: state.isFocused ? "#11676a" : isDarkMode ? "#4b5563" : "#e5e7eb",
+                        backgroundColor: isDarkMode ? "#374151" : "white",
+                        boxShadow: state.isFocused ? "0 0 0 2px rgba(17,103,106,0.4)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        "&:hover": { borderColor: "#11676a" },
+                      }),
+                      multiValue: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode ? "#0f5557" : "#ecfdf5",
+                        borderRadius: "0.375rem",
+                      }),
+                      multiValueLabel: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                      }),
+                      multiValueRemove: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                        "&:hover": { backgroundColor: isDarkMode ? "#11676a" : "#d1fae5", color: isDarkMode ? "white" : "#047857" },
+                      }),
+                    }}
+                  />
                 </div>
 
+                {/* Case Types Multi-Select */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Professional Bio{" "}
-                    <span className="text-gray-400 font-normal">
-                      (Optional)
-                    </span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Case Types / Specializations
                   </label>
-                  <div className="relative">
-                    <div className={iconWrapperClass}>
-                      <MaterialIcon name="description" />
-                    </div>
-                    <textarea
-                      name="bio"
-                      rows={1}
-                      placeholder="Short bio..."
-                      className={`${getInputClass("bio")} resize-none`}
-                      onChange={handleChange}
-                    />
+                  <Select
+                    isMulti
+                    options={caseTypeOptions}
+                    value={formData.caseTypes}
+                    onChange={(selected) =>
+                      setFormData((prev) => ({ ...prev, caseTypes: selected || [] }))
+                    }
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select areas of practice..."
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        minHeight: "48px",
+                        borderRadius: "0.75rem",
+                        borderColor: state.isFocused ? "#11676a" : isDarkMode ? "#4b5563" : "#e5e7eb",
+                        backgroundColor: isDarkMode ? "#374151" : "white",
+                        boxShadow: state.isFocused ? "0 0 0 2px rgba(17,103,106,0.4)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        "&:hover": { borderColor: "#11676a" },
+                      }),
+                      input: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#e5e7eb" : "#111827",
+                      }),
+                      multiValue: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode ? "#0f5557" : "#eff6ff",
+                        borderRadius: "0.375rem",
+                      }),
+                      multiValueLabel: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#1e40af",
+                      }),
+                      multiValueRemove: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#1e40af",
+                        "&:hover": { backgroundColor: isDarkMode ? "#11676a" : "#dbeafe", color: isDarkMode ? "white" : "#1e3a8a" },
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999,
+                        backgroundColor: isDarkMode ? "#1f2937" : "white",
+                        border: isDarkMode ? "1px solid #374151" : "none",
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isFocused
+                          ? isDarkMode
+                            ? "#374151"
+                            : "#eff6ff"
+                          : "transparent",
+                        color: isDarkMode
+                          ? state.isFocused ? "#ffffff" : "#d1d5db"
+                          : "#1e3a8a",
+                        cursor: "pointer",
+                      }),
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Professional Bio{" "}
+                  <span className="text-gray-400 font-normal">
+                    (Optional)
+                  </span>
+                </label>
+                <div className="relative">
+                  <div className={iconWrapperClass}>
+                    <MaterialIcon name="description" />
                   </div>
+                  <textarea
+                    name="bio"
+                    rows={3}
+                    placeholder="Briefly describe your experience and expertise..."
+                    className={`${getInputClass("bio")} resize-none h-auto`}
+                    onChange={handleChange}
+                  />
                 </div>
               </div>
 
@@ -1877,17 +2082,17 @@ export default function LawyerRegistration() {
                       }
                     />
                     {searchResults.length > 0 && (
-                      <ul className="absolute z-[1000] w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
+                      <ul className="absolute z-[1000] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
                         {searchResults.map((result, index) => (
                           <li
                             key={index}
                             onClick={() => selectSearchResult(result)}
-                            className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 flex items-start gap-2"
+                            className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-700 flex items-start gap-2"
                           >
                             <span className="material-symbols-outlined text-gray-400 text-lg mt-0.5">
                               location_on
                             </span>
-                            <span>{result.display_name}</span>
+                            <span className="text-gray-900 dark:text-gray-100">{result.display_name}</span>
                           </li>
                         ))}
                       </ul>
@@ -1903,7 +2108,7 @@ export default function LawyerRegistration() {
                 </div>
 
                 {/* Leaflet Map */}
-                <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
+                <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 relative z-0">
                   <MapContainer
                     center={position}
                     zoom={13}
@@ -1939,7 +2144,7 @@ export default function LawyerRegistration() {
                 {/* Latitude & Longitude (Read-only) */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Latitude
                     </label>
                     <div className="relative">
@@ -1955,7 +2160,7 @@ export default function LawyerRegistration() {
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Longitude
                     </label>
                     <div className="relative">
@@ -1973,7 +2178,7 @@ export default function LawyerRegistration() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Office Address Line 1{" "}
                     <span className="text-red-500">*</span>
                   </label>
@@ -1995,7 +2200,7 @@ export default function LawyerRegistration() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       City <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -2014,7 +2219,7 @@ export default function LawyerRegistration() {
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       State / Province <span className="text-red-500">*</span>
                     </label>
 
@@ -2055,11 +2260,13 @@ export default function LawyerRegistration() {
                               ? "#fca5a5"
                               : state.isFocused
                                 ? "#11676a"
-                                : "#e5e7eb",
+                                : isDarkMode
+                                  ? "#4b5563"
+                                  : "#e5e7eb",
                             boxShadow: state.isFocused
                               ? "0 0 0 2px rgba(17,103,106,0.4)"
                               : "0 1px 2px rgba(0,0,0,0.05)",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: isDarkMode ? "#374151" : "#ffffff",
                             "&:hover": {
                               borderColor: "#11676a",
                             },
@@ -2074,6 +2281,7 @@ export default function LawyerRegistration() {
                             ...base,
                             margin: 0,
                             padding: 0,
+                            color: isDarkMode ? "#e5e7eb" : "#111827",
                           }),
 
                           placeholder: (base) => ({
@@ -2084,7 +2292,7 @@ export default function LawyerRegistration() {
 
                           singleValue: (base) => ({
                             ...base,
-                            color: "#111827",
+                            color: isDarkMode ? "#e5e7eb" : "#111827",
                             fontSize: "0.875rem",
                           }),
 
@@ -2105,6 +2313,24 @@ export default function LawyerRegistration() {
                             zIndex: 50,
                             borderRadius: "0.75rem",
                             boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                            backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                            border: isDarkMode ? "1px solid #374151" : "none",
+                          }),
+
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isFocused
+                              ? isDarkMode
+                                ? "#374151"
+                                : "#f0fdf9"
+                              : "transparent",
+                            color: isDarkMode
+                              ? state.isFocused ? "#ffffff" : "#d1d5db"
+                              : "#374151",
+                            "&:active": {
+                              backgroundColor: "#11676a",
+                              color: "#ffffff",
+                            },
                           }),
                         }}
                       />
@@ -2123,7 +2349,7 @@ export default function LawyerRegistration() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Postal / Zip Code <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -2143,7 +2369,7 @@ export default function LawyerRegistration() {
                   </div>
 
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Country{" "}
                       <span className="text-gray-400 font-normal">
                         {/* (Optional) */}
@@ -2177,7 +2403,7 @@ export default function LawyerRegistration() {
                   checked={isAgreed}
                   onChange={(e) => setIsAgreed(e.target.checked)}
                 />
-                <label htmlFor="terms" className="leading-relaxed">
+                <label htmlFor="terms" className="leading-relaxed dark:text-gray-300">
                   I certify that all information provided above is accurate and
                   I agree to the{" "}
                   <a
@@ -2235,11 +2461,11 @@ export default function LawyerRegistration() {
                 </Link>
               </div>
 
-              <p className="text-center text-xs sm:text-sm text-gray-600">
+              <p className="text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?{" "}
                 <Link
                   to="/login"
-                  className="font-semibold text-[#11676a] hover:underline"
+                  className="font-semibold text-[#11676a] dark:text-teal-400 hover:underline"
                 >
                   Login here
                 </Link>
@@ -2258,10 +2484,10 @@ export default function LawyerRegistration() {
                         mail
                       </span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
                       Verify Your Email
                     </h3>
-                    <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
+                    <p className="text-gray-500 dark:text-gray-300 max-w-xs mx-auto text-sm sm:text-base mb-4">
                       We've sent a verification link to your email. Please check
                       your inbox to activate your account.
                     </p>
@@ -2270,10 +2496,10 @@ export default function LawyerRegistration() {
                         mark_email_unread
                       </span>
                     </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
                       Verify Your Email
                     </h3>
-                    <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
+                    <p className="text-gray-500 dark:text-gray-300 max-w-xs mx-auto text-sm sm:text-base mb-4">
                       We've sent a verification link to your email.
                     </p>
                     <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
@@ -2287,10 +2513,10 @@ export default function LawyerRegistration() {
                 ) : (
                   <>
                     <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
                       Creating Account
                     </h3>
-                    <p className="text-gray-500 text-sm sm:text-base">
+                    <p className="text-gray-500 dark:text-gray-300 text-sm sm:text-base">
                       Please wait while we process your details...
                     </p>
                   </>

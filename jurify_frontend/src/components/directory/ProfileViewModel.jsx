@@ -10,7 +10,7 @@ const ProfileViewModel = ({ profile, onClose }) => {
       <div className="absolute inset-0 backdrop-blur-[2px]" />
 
       {/* Modal box */}
-      <div className="relative bg-white rounded-2xl shadow-2xl border-4 border-teal-600 p-6 sm:p-8 w-full max-w-3xl">
+      <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border-4 border-teal-600 dark:border-teal-700 p-6 sm:p-8 w-full max-w-3xl">
         
         {/* Close button */}
         <button
@@ -21,15 +21,15 @@ const ProfileViewModel = ({ profile, onClose }) => {
         </button>
 
         {/* Header */}
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
           {profile.name}
         </h1>
-        <p className="text-sm sm:text-base text-gray-600 mb-4">
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 mb-4">
           {profile.type?.toUpperCase()} • {profile.city}, {profile.state}
         </p>
 
         {/* Meta info grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700 dark:text-gray-300 mb-6">
           <div className="flex items-center gap-2">
             <FiMail className="text-blue-600" />
             <a href={`mailto:${profile.email}`} className="hover:underline">
@@ -44,15 +44,15 @@ const ProfileViewModel = ({ profile, onClose }) => {
           </div>
           {profile.experience && (
             <div className="flex items-center gap-2">
-              <FiClock className="text-gray-500" />
+              <FiClock className="text-gray-500 dark:text-gray-400" />
               <span>{profile.experience} yrs experience</span>
             </div>
           )}
           {profile.rating && (
             <div className="flex items-center gap-2 text-yellow-500">
               <FiStar className="fill-current" />
-              <span className="text-gray-800 font-medium">{profile.rating}</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-gray-800 dark:text-white font-medium">{profile.rating}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 ({profile.casesHandled} cases)
               </span>
             </div>
@@ -60,20 +60,20 @@ const ProfileViewModel = ({ profile, onClose }) => {
         </div>
 
         {/* Divider */}
-        <hr className="my-4 border-gray-200" />
+        <hr className="my-4 border-gray-200 dark:border-gray-700" />
 
-        <div className="text-sm text-gray-700 mb-2">
-  🎓 <span className="font-medium">Qualification:</span> {profile.qualification || "Not specified"}
+        <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+  🎓 <span className="font-medium text-gray-900 dark:text-white">Qualification:</span> {profile.qualification || "Not specified"}
 </div>
 
         {profile.mission && (
-          <div className="text-sm text-gray-700 mb-2">
-            🎯 <span className="font-medium">Mission:</span> {profile.mission}
+          <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+            🎯 <span className="font-medium text-gray-900 dark:text-white">Mission:</span> {profile.mission}
           </div>
         )}
         {profile.languages?.length > 0 && (
-          <div className="text-sm text-gray-700 mb-2">
-            🗣️ <span className="font-medium">Languages:</span> {profile.languages.join(", ")}
+          <div className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+            🗣️ <span className="font-medium text-gray-900 dark:text-white">Languages:</span> {profile.languages.join(", ")}
           </div>
         )}
 

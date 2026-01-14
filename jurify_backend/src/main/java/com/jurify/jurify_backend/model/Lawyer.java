@@ -64,6 +64,12 @@ public class Lawyer {
     @Column(name = "languages")
     private String languages;
 
+    @Column(name = "dob")
+    private java.time.LocalDate dob;
+
+    @Column(name = "gender")
+    private String gender;
+
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 

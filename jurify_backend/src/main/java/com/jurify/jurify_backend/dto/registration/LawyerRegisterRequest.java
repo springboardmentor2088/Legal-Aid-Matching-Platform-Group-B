@@ -13,9 +13,9 @@ public class LawyerRegisterRequest {
     @Email(message = "Email must be valid")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
     private String password;
+
+    private String preRegistrationToken;
 
     @NotBlank(message = "First name is required")
     private String firstName;
@@ -53,4 +53,6 @@ public class LawyerRegisterRequest {
 
     private java.math.BigDecimal latitude;
     private java.math.BigDecimal longitude;
+
+    private java.util.List<String> caseTypes;
 }

@@ -15,12 +15,13 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 ### 🏛️ Role-Based Portals
 - **Citizens**: Search for lawyers, submit legal cases, track status, and manage documents.
 - **Lawyers**: Accept/reject cases, manage client portfolios, and update verification details.
-- **NGOs**: Collaborate on pro-bono cases, manage outreach programs, and support legal aid.
+- **NGOs**: Collaborate on pro-bono cases, manage outreach programs, and support legal aid. Features include **Offline Mode** for availability management and a secure **Schedule Calendar**.
 - **Admins**: Full platform oversight including user verification, content moderation, and system analytics.
 
 ### 💼 Case Management System
 - **Submission**: Intuitive forms for citizens to submit legal grievances.
 - **Tracking**: Real-time status updates (Pending, In Progress, Resolved).
+- **Professional Finder**: Integrated "Find Lawyer/NGO" call-to-action for unassigned cases to quickly connect citizens with help.
 - **History**: archival of past cases and legal interactions.
 
 ### 🔍 Smart Legal Directory
@@ -33,9 +34,11 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 - **Verification Workflow**: Strict admin-led vetting process for lawyers and NGOs to prevent fraud.
 - **Document Vault**: AWS S3 backed encrypted storage for sensitive legal files.
 - **Privacy**: Role-based access control (RBAC) ensuring data is only visible to authorized parties.
+- **Data Isolation**: Strict logic to prevent cross-account data leakage, ensuring NGOs only see appointments for their assigned cases.
 
 ### 💬 Communication & Collaboration
 - **Direct Messaging**: Secure communication channels between clients and lawyers.
+- **Video Conferencing**: Dual-strategy system using **Google Meet** (via Calendar integration) as the primary platform, with **Jitsi Meet** as a reliable fallback for unlinked accounts.
 - **Notifications**: Automated email alerts for case updates and verification status.
 - **Contact Support**: Integrated inquiry forms for platform assistance.
 
@@ -47,9 +50,7 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 - **Chatbot**: NLP-powered assistant to answer basic legal FAQs and guide users to relevant laws.
 - **Document Summarization**: AI tools to summarize complex legal documents for citizens.
 
-### 📹 Remote Consultations
-- **Video Integration**: Built-in video conferencing for remote client-lawyer meetings.
-- **Scheduling**: Calendar integration for booking appointments.
+
 
 ### 💳 Secure Payments
 - **Payment Gateway**: Integration with Stripe/Razorpay for consultation fees and pro-bono donations.

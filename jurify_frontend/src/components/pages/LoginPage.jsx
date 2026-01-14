@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../common/Logo';
-import loginBg from '../../assets/login_bg.jpg'; // ✅ Import your background image
+import loginBg from '../../assets/login_bg.jpg';
+import { useTheme } from '../../context/ThemeContext';
 
 function LoginPage() {
+  const { isDarkMode } = useTheme();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const togglePasswordVisibility = () => setPasswordVisible(!passwordVisible);
 
@@ -18,8 +20,8 @@ function LoginPage() {
   const primaryBg = "bg-[#11676a] hover:bg-[#0f5a5d] transition duration-200";
   const primaryText = "text-[#11676a] hover:text-[#0f5a5d]";
   const focusRing = "focus:outline-none focus:ring-2 focus:ring-[#11676a]/50 focus:border-[#11676a]";
-  const inputStyles = `w-full h-12 px-4 pl-12 border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 rounded-lg ${focusRing} text-sm transition-all duration-200 ease-in-out`;
-  const labelTextStyles = "text-sm font-semibold text-slate-700 mb-1 block";
+  const inputStyles = `w-full h-12 px-4 pl-12 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 rounded-lg ${focusRing} text-sm transition-all duration-200 ease-in-out`;
+  const labelTextStyles = "text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 block";
 
   const MaterialIcon = ({ name, className = "" }) => (
     <span className={`material-symbols-outlined text-xl ${className}`}>{name}</span>
@@ -66,7 +68,7 @@ function LoginPage() {
       <div className="absolute inset-0 bg-black/30 z-0" />
 
       {/* Login box floated to the right */}
-      <div className="relative z-10 w-full max-w-md bg-white p-8 rounded-2xl shadow-xl space-y-8 border border-slate-100 mr-12">
+      <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl space-y-8 border border-slate-100 dark:border-gray-800 mr-12 transition-colors duration-300">
 
         {/* Home Link */}
         <Link to="/" className="absolute top-6 right-6 text-gray-400 hover:text-[#11676a] transition">
@@ -76,11 +78,11 @@ function LoginPage() {
         {/* Header */}
         <div className="text-center flex flex-col items-center">
           <Logo className="mb-2" />
-          <p className="text-gray-600 text-base">Sign in to your account</p>
+          <p className="text-gray-600 dark:text-gray-400 text-base">Sign in to your account</p>
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm text-center border border-red-100">
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm text-center border border-red-100 dark:border-red-900/30">
             {error}
           </div>
         )}
@@ -132,9 +134,9 @@ function LoginPage() {
 
           {/* Forgot password */}
           <div className="flex justify-end">
-            <a href="#" className={`text-sm font-medium ${primaryText} underline-offset-2 hover:underline`}>
+            <Link to="/forgot-password" className={`text-sm font-medium ${primaryText} underline-offset-2 hover:underline`}>
               Forgot Password?
-            </a>
+            </Link>
           </div>
 
           {/* Main Login Button */}
@@ -147,16 +149,16 @@ function LoginPage() {
 
           {/* Divider */}
           <div className="relative flex items-center my-2">
-            <div className="flex-grow border-t border-gray-200" />
+            <div className="flex-grow border-t border-gray-200 dark:border-gray-700" />
             <span className="mx-4 text-sm text-gray-400 uppercase tracking-wider">OR</span>
-            <div className="flex-grow border-t border-gray-200" />
+            <div className="flex-grow border-t border-gray-200 dark:border-gray-700" />
           </div>
 
           {/* Google Sign-in */}
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-full h-12 flex items-center justify-center border border-gray-200 rounded-lg bg-white text-slate-600 font-medium hover:bg-gray-50 hover:border-gray-300 transition duration-200 shadow-sm"
+            className="w-full h-12 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-slate-600 dark:text-slate-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition duration-200 shadow-sm"
           >
             <img
               src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/2048px-Google_%22G%22_logo.svg.png"
@@ -168,18 +170,18 @@ function LoginPage() {
         </form>
 
         {/* Registration Links */}
-        <div className="space-y-4 pt-6 border-t border-gray-200">
-          <p className="text-sm font-semibold text-center text-gray-500 uppercase tracking-wide">
+        <div className="space-y-4 pt-6 border-t border-gray-200 dark:border-gray-800">
+          <p className="text-sm font-semibold text-center text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             Don't have an account?
           </p>
 
           <div className="grid grid-cols-1 gap-4">
             <Link
               to="/register-citizen"
-              className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-[#11676a]/30 bg-[#11676a]/5 hover:bg-[#11676a]/10 transition"
+              className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-[#11676a]/30 dark:border-[#11676a]/50 bg-[#11676a]/5 dark:bg-[#11676a]/10 hover:bg-[#11676a]/10 dark:hover:bg-[#11676a]/20 transition"
             >
-              <span className="material-symbols-outlined text-[#11676a]">person</span>
-              <span className="text-sm font-semibold text-[#11676a] group-hover:underline">
+              <span className="material-symbols-outlined text-[#11676a] dark:text-[#198f93]">person</span>
+              <span className="text-sm font-semibold text-[#11676a] dark:text-[#198f93] group-hover:underline">
                 Register as Citizen
               </span>
             </Link>
@@ -187,20 +189,20 @@ function LoginPage() {
             <div className="grid grid-cols-2 gap-4">
               <Link
                 to="/register-lawyer"
-                className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-300 hover:border-[#11676a] hover:bg-[#11676a]/10 transition"
+                className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-[#11676a] hover:bg-[#11676a]/10 dark:hover:bg-[#11676a]/20 transition"
               >
-                <span className="material-symbols-outlined text-[#11676a]">gavel</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-[#11676a]">
+                <span className="material-symbols-outlined text-[#11676a] dark:text-[#198f93]">gavel</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#11676a] dark:group-hover:text-[#198f93]">
                   Lawyer
                 </span>
               </Link>
 
               <Link
                 to="/register-ngo"
-                className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-300 hover:border-[#11676a] hover:bg-[#11676a]/10 transition"
+                className="group flex items-center justify-center gap-2 h-12 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-[#11676a] hover:bg-[#11676a]/10 dark:hover:bg-[#11676a]/20 transition"
               >
-                <span className="material-symbols-outlined text-[#11676a]">volunteer_activism</span>
-                <span className="text-sm font-medium text-gray-700 group-hover:text-[#11676a]">
+                <span className="material-symbols-outlined text-[#11676a] dark:text-[#198f93]">volunteer_activism</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-[#11676a] dark:group-hover:text-[#198f93]">
                   NGO
                 </span>
               </Link>

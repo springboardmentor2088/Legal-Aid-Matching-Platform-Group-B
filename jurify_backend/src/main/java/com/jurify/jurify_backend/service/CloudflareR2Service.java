@@ -100,4 +100,20 @@ public class CloudflareR2Service {
             return null;
         }
     }
+
+    public byte[] downloadFile(String key) {
+        if (key == null || key.isEmpty())
+            return null;
+        try {
+            software.amazon.awssdk.core.ResponseBytes<software.amazon.awssdk.services.s3.model.GetObjectResponse> objectBytes = s3Client
+                    .getObjectAsBytes(software.amazon.awssdk.services.s3.model.GetObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .build());
+            return objectBytes.asByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 }

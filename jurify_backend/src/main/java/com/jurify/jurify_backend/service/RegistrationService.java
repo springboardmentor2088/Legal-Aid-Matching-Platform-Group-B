@@ -1,8 +1,10 @@
 package com.jurify.jurify_backend.service;
 
 import com.jurify.jurify_backend.dto.registration.*;
+import java.util.List;
 import com.jurify.jurify_backend.model.*;
 import com.jurify.jurify_backend.model.enums.UserRole;
+import com.jurify.jurify_backend.model.enums.Provider;
 import com.jurify.jurify_backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +38,10 @@ public class RegistrationService {
 
         private final DirectoryEntryService directoryEntryService;
 
+        private final LegalCategoryRepository legalCategoryRepository;
+        private final com.jurify.jurify_backend.util.JwtUtil jwtUtil;
+        private final OAuthAccountRepository oAuthAccountRepository;
+
         @Transactional
         public RegisterResponse registerCitizen(CitizenRegisterRequest request,
                         org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
@@ -45,16 +51,58 @@ public class RegistrationService {
                 }
 
                 // Create User
-                User user = User.builder()
-                                .email(request.getEmail())
-                                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                                .role(UserRole.CITIZEN)
-                                .isEmailVerified(false)
-                                .isActive(true)
-                                .verificationPollingToken(UUID.randomUUID().toString())
-                                .build();
+                User user;
+                if (request.getPreRegistrationToken() != null && !request.getPreRegistrationToken().isEmpty()) {
+                        // Google Auth Registration
+                        if (!jwtUtil.validateToken(request.getPreRegistrationToken())) {
+                                throw new RuntimeException("Invalid or expired pre-registration token");
+                        }
+                        String tokenEmail = jwtUtil.extractUsername(request.getPreRegistrationToken()); // Extracts
+                                                                                                        // email
+                        if (!tokenEmail.equals(request.getEmail())) {
+                                throw new RuntimeException("Token email does not match request email");
+                        }
 
-                user = userRepository.save(user);
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
+                                                                                                            // password
+                                        .role(UserRole.CITIZEN)
+                                        .isEmailVerified(true) // Email verified by Google
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+
+                        user = userRepository.save(user);
+
+                        // Link OAuth Account
+                        String providerId = jwtUtil.extractClaim(request.getPreRegistrationToken(),
+                                        claims -> claims.get("providerId", String.class));
+                        if (providerId != null) {
+                                OAuthAccount oAuthAccount = OAuthAccount.builder()
+                                                .user(user)
+                                                .provider(Provider.GOOGLE)
+                                                .providerAccountId(providerId)
+                                                .build();
+                                oAuthAccountRepository.save(oAuthAccount);
+                        }
+                } else
+
+                {
+                        // Regular Registration
+                        if (request.getPassword() == null || request.getPassword().length() < 8) {
+                                throw new RuntimeException("Password must be at least 8 characters");
+                        }
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(request.getPassword()))
+                                        .role(UserRole.CITIZEN)
+                                        .isEmailVerified(false)
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+                        user = userRepository.save(user);
+                }
 
                 // Create Location
                 Location location = Location.builder()
@@ -77,6 +125,7 @@ public class RegistrationService {
                                 .addressLine1(request.getAddressLine1())
                                 .addressLine2(request.getAddressLine2())
                                 .location(location)
+                                .languages(request.getLanguages())
                                 .build();
 
                 // Handle file upload
@@ -97,6 +146,7 @@ public class RegistrationService {
                 }
 
                 citizenRepository.save(citizen);
+
                 sendVerificationEmail(user);
 
                 log.info("Citizen registered successfully: {}", request.getEmail());
@@ -124,19 +174,63 @@ public class RegistrationService {
                 }
 
                 // Create User
-                User user = User.builder()
-                                .email(request.getEmail())
-                                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                                .role(UserRole.LAWYER)
-                                .isEmailVerified(false)
-                                .isActive(true)
-                                .verificationPollingToken(UUID.randomUUID().toString())
-                                .build();
+                User user;
+                if (request.getPreRegistrationToken() != null && !request.getPreRegistrationToken().isEmpty()) {
+                        // Google Auth Registration
+                        if (!jwtUtil.validateToken(request.getPreRegistrationToken())) {
+                                throw new RuntimeException("Invalid or expired pre-registration token");
+                        }
+                        String tokenEmail = jwtUtil.extractUsername(request.getPreRegistrationToken()); // Extracts
+                                                                                                        // email
+                        if (!tokenEmail.equals(request.getEmail())) {
+                                throw new RuntimeException("Token email does not match request email");
+                        }
 
-                try {
-                        user = userRepository.save(user);
-                } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                        throw new RuntimeException("Email already registered");
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
+                                                                                                            // password
+                                        .role(UserRole.LAWYER)
+                                        .isEmailVerified(true) // Email verified by Google
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+
+                        try {
+                                user = userRepository.save(user);
+                        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                                throw new RuntimeException("Email already registered");
+                        }
+
+                        // Link OAuth Account
+                        String providerId = jwtUtil.extractClaim(request.getPreRegistrationToken(),
+                                        claims -> claims.get("providerId", String.class));
+                        if (providerId != null) {
+                                OAuthAccount oAuthAccount = OAuthAccount.builder()
+                                                .user(user)
+                                                .provider(Provider.GOOGLE)
+                                                .providerAccountId(providerId)
+                                                .build();
+                                oAuthAccountRepository.save(oAuthAccount);
+                        }
+                } else {
+                        // Regular Registration
+                        if (request.getPassword() == null || request.getPassword().length() < 8) {
+                                throw new RuntimeException("Password must be at least 8 characters");
+                        }
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(request.getPassword()))
+                                        .role(UserRole.LAWYER)
+                                        .isEmailVerified(false)
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+                        try {
+                                user = userRepository.save(user);
+                        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                                throw new RuntimeException("Email already registered");
+                        }
                 }
 
                 // Auto-Verify Check
@@ -176,6 +270,30 @@ public class RegistrationService {
                                                 : com.jurify.jurify_backend.model.enums.VerificationStatus.PENDING)
                                 .isAvailable(true)
                                 .build();
+
+                // Handle Case Types (Specializations)
+                if (request.getCaseTypes() != null && !request.getCaseTypes().isEmpty()) {
+                        List<LawyerSpecialization> specializations = new ArrayList<>();
+                        for (String caseType : request.getCaseTypes()) {
+                                LegalCategory category = legalCategoryRepository.findByName(caseType)
+                                                .orElseGet(() -> legalCategoryRepository.save(LegalCategory.builder()
+                                                                .name(caseType)
+                                                                // .description("Automatically created during
+                                                                // registration")
+                                                                .build()));
+
+                                LawyerSpecialization spec = LawyerSpecialization.builder()
+                                                .lawyer(lawyer)
+                                                .legalCategory(category)
+                                                .yearsOfExperience(request.getYearsOfExperience()) // Assuming total exp
+                                                                                                   // applies to all for
+                                                                                                   // now
+                                                .isPrimary(false)
+                                                .build();
+                                specializations.add(spec);
+                        }
+                        lawyer.setSpecializations(specializations);
+                }
 
                 // Handle file upload
                 if (file != null && !file.isEmpty()) {
@@ -253,16 +371,56 @@ public class RegistrationService {
                 }
 
                 // Create User
-                User user = User.builder()
-                                .email(request.getEmail())
-                                .passwordHash(passwordEncoder.encode(request.getPassword()))
-                                .role(UserRole.NGO)
-                                .isEmailVerified(false)
-                                .isActive(true)
-                                .verificationPollingToken(UUID.randomUUID().toString())
-                                .build();
+                User user;
+                if (request.getPreRegistrationToken() != null && !request.getPreRegistrationToken().isEmpty()) {
+                        // Google Auth Registration
+                        if (!jwtUtil.validateToken(request.getPreRegistrationToken())) {
+                                throw new RuntimeException("Invalid or expired pre-registration token");
+                        }
+                        String tokenEmail = jwtUtil.extractUsername(request.getPreRegistrationToken()); // Extracts
+                                                                                                        // email
+                        if (!tokenEmail.equals(request.getEmail())) {
+                                throw new RuntimeException("Token email does not match request email");
+                        }
 
-                user = userRepository.save(user);
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
+                                                                                                            // password
+                                        .role(UserRole.NGO)
+                                        .isEmailVerified(true) // Email verified by Google
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+
+                        user = userRepository.save(user);
+
+                        // Link OAuth Account
+                        String providerId = jwtUtil.extractClaim(request.getPreRegistrationToken(),
+                                        claims -> claims.get("providerId", String.class));
+                        if (providerId != null) {
+                                OAuthAccount oAuthAccount = OAuthAccount.builder()
+                                                .user(user)
+                                                .provider(Provider.GOOGLE)
+                                                .providerAccountId(providerId)
+                                                .build();
+                                oAuthAccountRepository.save(oAuthAccount);
+                        }
+                } else {
+                        // Regular Registration
+                        if (request.getPassword() == null || request.getPassword().length() < 8) {
+                                throw new RuntimeException("Password must be at least 8 characters");
+                        }
+                        user = User.builder()
+                                        .email(request.getEmail())
+                                        .passwordHash(passwordEncoder.encode(request.getPassword()))
+                                        .role(UserRole.NGO)
+                                        .isEmailVerified(false)
+                                        .isActive(true)
+                                        .verificationPollingToken(UUID.randomUUID().toString())
+                                        .build();
+                        user = userRepository.save(user);
+                }
 
                 // Auto-Verify Check
                 boolean isAutoVerified = false;
@@ -303,13 +461,32 @@ public class RegistrationService {
                                 .country(request.getCountry())
                                 .latitude(request.getLatitude())
                                 .longitude(request.getLongitude())
-                                .serviceAreas(request.getAreasOfWork())
+                                .languages(request.getLanguages())
                                 .isVerified(isAutoVerified) // Set based on registry check
                                 .verificationStatus(isAutoVerified
                                                 ? com.jurify.jurify_backend.model.enums.VerificationStatus.VERIFIED
                                                 : com.jurify.jurify_backend.model.enums.VerificationStatus.PENDING)
                                 .isActive(true)
                                 .build();
+
+                // Handle Areas of Work (Specializations)
+                if (request.getAreasOfWork() != null && !request.getAreasOfWork().isEmpty()) {
+                        List<NGOSpecialization> specializations = new ArrayList<>();
+                        for (String area : request.getAreasOfWork()) {
+                                LegalCategory category = legalCategoryRepository.findByName(area)
+                                                .orElseGet(() -> legalCategoryRepository.save(LegalCategory.builder()
+                                                                .name(area)
+                                                                .build()));
+
+                                NGOSpecialization spec = NGOSpecialization.builder()
+                                                .ngo(ngo)
+                                                .legalCategory(category)
+                                                // .description("Automatically created during registration")
+                                                .build();
+                                specializations.add(spec);
+                        }
+                        ngo.setSpecializations(specializations);
+                }
 
                 // Handle file uploads
                 processNgoFile(file1, "REGISTRATION_CERTIFICATE", "NGO Registration Certificate", user, ngo,

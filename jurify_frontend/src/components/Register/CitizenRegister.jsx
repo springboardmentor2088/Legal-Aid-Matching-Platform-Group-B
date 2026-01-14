@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import Select from "react-select";
 
 
@@ -68,18 +69,51 @@ const indianStates = [
   { value: "Lakshadweep", label: "Lakshadweep" },
 ];
 
+const languageOptions = [
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Tamil", label: "Tamil" },
+  { value: "Telugu", label: "Telugu" },
+  { value: "Kannada", label: "Kannada" },
+  { value: "Malayalam", label: "Malayalam" },
+  { value: "Marathi", label: "Marathi" },
+  { value: "Gujarati", label: "Gujarati" },
+  { value: "Bengali", label: "Bengali" },
+  { value: "Punjabi", label: "Punjabi" },
+  { value: "Urdu", label: "Urdu" },
+  { value: "French", label: "French" },
+  { value: "German", label: "German" },
+  { value: "Spanish", label: "Spanish" },
+];
 
 
 
-export default function CitizenRegister() {
+
+const CitizenRegister = () => {
+  // Retrieve state from RoleSelection (Google Auth)
+  const location = useLocation();
+  const { preRegToken, preFilledEmail, preFilledName } = location.state || {};
+  const { isDarkMode } = useTheme();
+
+  const parseName = (fullName) => {
+    if (!fullName) return { firstName: "", lastName: "" };
+    const parts = fullName.split(" ");
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(" ");
+    return { firstName, lastName };
+  };
+
+  const initialName = parseName(preFilledName);
+
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    firstName: initialName.firstName || "",
+    lastName: initialName.lastName || "",
+    email: preFilledEmail || "",
     password: "",
     confirmPassword: "",
     phoneNumber: "",
     countryCode: "+91",
+    languages: [],
     gender: "",
     addressLine1: "",
     city: "",
@@ -239,7 +273,7 @@ export default function CitizenRegister() {
 
   const fileInputRef = useRef(null);
 
-  const labelClass = "text-xs font-medium text-gray-700 mb-1 block";
+  const labelClass = "text-xs font-medium text-gray-700 dark:text-gray-200 mb-1 block";
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -641,14 +675,17 @@ export default function CitizenRegister() {
 
     if (!formData.gender) errors.gender = "Please select your gender";
 
-    if (!formData.password) errors.password = "Password is required";
-    else if (passwordStrength.score < 6)
-      errors.password = "Password does not meet all requirements";
+    // Skip password validation if using Google Auth (preRegToken exists)
+    if (!preRegToken) {
+      if (!formData.password) errors.password = "Password is required";
+      else if (passwordStrength.score < 6)
+        errors.password = "Password does not meet all requirements";
 
-    if (!formData.confirmPassword)
-      errors.confirmPassword = "Please confirm your password";
-    else if (formData.password !== formData.confirmPassword)
-      errors.confirmPassword = "Passwords do not match";
+      if (!formData.confirmPassword)
+        errors.confirmPassword = "Please confirm your password";
+      else if (formData.password !== formData.confirmPassword)
+        errors.confirmPassword = "Passwords do not match";
+    }
 
     if (!formData.addressLine1.trim())
       errors.addressLine1 = "Street address is required";
@@ -709,7 +746,12 @@ export default function CitizenRegister() {
     formDataToSend.append("role", "citizen");
 
     // Append JSON data as a Blob part named 'data'
-    const jsonPayload = { ...formData, role: "citizen" };
+    const jsonPayload = {
+      ...formData,
+      role: "citizen",
+      languages: formData.languages.map(l => l.value).join(", "),
+      preRegistrationToken: preRegToken || null // Send token to backend
+    };
     formDataToSend.append(
       "data",
       new Blob([JSON.stringify(jsonPayload)], { type: "application/json" })
@@ -758,6 +800,10 @@ export default function CitizenRegister() {
           );
 
           if (response.ok) {
+            if (response.status === 202) {
+              // Still pending, ignore
+              return;
+            }
             const data = await response.json();
 
             localStorage.setItem("accessToken", data.accessToken);
@@ -771,6 +817,16 @@ export default function CitizenRegister() {
               firstName: data.firstName,
               lastName: data.lastName,
               isEmailVerified: data.isEmailVerified,
+              phone: data.phone,
+              gender: data.gender,
+              dob: data.dob,
+              addressLine1: data.addressLine1,
+              addressLine2: data.addressLine2,
+              city: data.city,
+              state: data.state,
+              country: data.country,
+              pincode: data.pincode,
+              languages: data.languages
             };
             localStorage.setItem("user", JSON.stringify(userObj));
 
@@ -796,37 +852,37 @@ export default function CitizenRegister() {
   const getInputClass = (fieldName) => {
     const baseClass =
       "w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border text-sm " +
-      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400";
+      "focus:outline-none focus:ring-2 transition-all duration-200 placeholder:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400";
 
 
     if (fieldErrors[fieldName]) {
-      return `${baseClass} border-red-300 bg-red-50 focus:ring-red-500/20 focus:border-red-500 text-red-900 placeholder:text-red-300`;
+      return `${baseClass} border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-500/50 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400`;
     }
 
-    return `${baseClass} border-gray-200 bg-white shadow-sm focus:ring-[#11676a]/40 focus:border-[#11676a]`;
+    return `${baseClass} border-gray-200 bg-white shadow-sm focus:ring-[#11676a]/40 focus:border-[#11676a] dark:focus:ring-teal-500/40 dark:focus:border-teal-500`;
   };
 
 
 
   const inputClass =
-    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 bg-white shadow-sm text-sm " +
+    "w-full pl-11 pr-4 py-3 sm:py-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-sm text-sm text-gray-900 dark:text-white dark:[color-scheme:dark] " +
     "focus:outline-none focus:ring-2 focus:ring-[#11676a]/40 focus:border-[#11676a] transition-all duration-200 " +
-    "placeholder:text-gray-400";
+    "placeholder:text-gray-400 dark:placeholder-gray-400";
 
   const iconWrapperClass =
     "absolute top-1/2 -translate-y-1/2 left-3 z-20 pointer-events-none text-gray-400";
 
   const sectionCardClass =
-    "rounded-xl sm:rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
+    "rounded-xl sm:rounded-2xl border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 p-4 sm:p-5 lg:p-6 space-y-4 sm:space-y-5 shadow-sm";
 
   const sectionTitleClass =
-    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 mb-1";
+    "flex items-center gap-2 text-base sm:text-lg font-semibold text-gray-800 dark:text-white mb-1";
 
-  const sectionSubtitleClass = "text-xs text-gray-500";
+  const sectionSubtitleClass = "text-xs text-gray-500 dark:text-gray-400";
 
   const MaterialIcon = ({ name, className = "" }) => (
     <span
-      className={`material-symbols-outlined text-lg sm:text-xl text-gray-500 ${className}`}
+      className={`material-symbols-outlined text-lg sm:text-xl text-gray-500 dark:text-gray-400 ${className}`}
     >
       {name}
     </span>
@@ -836,7 +892,7 @@ export default function CitizenRegister() {
     "rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium border transition duration-200 px-3 sm:px-4 py-2";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-3 sm:px-4 py-6 sm:py-10">
       <div className="max-w-6xl w-full grid lg:grid-cols-[1fr_1.5fr] gap-6 sm:gap-8 lg:gap-10 items-stretch">
         {/* Left Panel - Hidden on mobile/tablet */}
         <div className="hidden lg:flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#0a4d68] via-[#11676a] to-[#2c3e50] text-white p-6 sm:p-8 shadow-xl relative overflow-hidden">
@@ -938,7 +994,7 @@ export default function CitizenRegister() {
         </div>
 
         {/* Right Panel - Form */}
-        <div className="relative bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-lg p-4 sm:p-6 lg:p-8">
+        <div className="relative bg-white dark:bg-gray-800 rounded-2xl sm:rounded-3xl border border-gray-200 dark:border-gray-700 shadow-lg p-4 sm:p-6 lg:p-8">
           {/* Home Link */}
           <Link
             to="/"
@@ -950,7 +1006,7 @@ export default function CitizenRegister() {
           </Link>
 
           {/* Header */}
-          <header className="mb-5 sm:mb-6 border-b border-gray-100 pb-3 sm:pb-4">
+          <header className="mb-5 sm:mb-6 border-b border-gray-100 dark:border-gray-700 pb-3 sm:pb-4">
             <div className="flex items-start gap-2.5 sm:gap-3 pr-8 sm:pr-10">
               <div className="inline-flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl bg-[#11676a] text-white shadow-md shrink-0">
                 <span className="material-symbols-outlined text-xl sm:text-2xl">
@@ -958,10 +1014,10 @@ export default function CitizenRegister() {
                 </span>
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 leading-tight">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                   Register as a Citizen
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1 leading-snug">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 leading-snug">
                   Create your Jurify account to request pro bono legal
                   assistance.
                 </p>
@@ -999,7 +1055,7 @@ export default function CitizenRegister() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1030,7 +1086,7 @@ export default function CitizenRegister() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Last Name <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1063,7 +1119,7 @@ export default function CitizenRegister() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email Address <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1094,11 +1150,11 @@ export default function CitizenRegister() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
-                    <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 bg-gray-50 text-sm font-medium text-gray-700 min-w-[85px]">
+                    <div className="flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-3.5 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-white min-w-[85px]">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 36 27"
@@ -1166,7 +1222,7 @@ export default function CitizenRegister() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1194,7 +1250,7 @@ export default function CitizenRegister() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Gender <span className="text-red-500">*</span>
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -1208,7 +1264,7 @@ export default function CitizenRegister() {
                         className={
                           formData.gender === g
                             ? `${genderButtonBase} bg-primary text-white shadow-md border-primary`
-                            : `${genderButtonBase} bg-white text-gray-700 hover:bg-gray-50 border-gray-200`
+                            : `${genderButtonBase} bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 border-gray-200 dark:border-gray-600`
                         }
                       >
                         {g.charAt(0) + g.slice(1).toLowerCase()}
@@ -1222,6 +1278,69 @@ export default function CitizenRegister() {
                       <span>{fieldErrors.gender}</span>
                     </div>
                   )}
+                </div>
+
+                {/* Languages Multi-Select */}
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Languages Spoken
+                  </label>
+                  <Select
+                    isMulti
+                    options={languageOptions}
+                    value={formData.languages}
+                    onChange={(selected) =>
+                      setFormData((prev) => ({ ...prev, languages: selected || [] }))
+                    }
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select languages..."
+                    styles={{
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999,
+                        backgroundColor: isDarkMode ? "#1f2937" : "white",
+                      }),
+                      option: (base, state) => ({
+                        ...base,
+                        backgroundColor: state.isFocused
+                            ? isDarkMode
+                                ? "#374151"
+                                : "#ecfdf5"
+                            : isDarkMode
+                                ? "#1f2937"
+                                : "white",
+                        color: isDarkMode ? "white" : "black",
+                      }),
+                      singleValue: (base) => ({
+                          ...base,
+                          color: isDarkMode ? "white" : "black",
+                      }),
+                      control: (base, state) => ({
+                        ...base,
+                        minHeight: "48px",
+                        borderRadius: "0.75rem",
+                        borderColor: state.isFocused ? "#11676a" : isDarkMode ? "#4b5563" : "#e5e7eb",
+                        backgroundColor: isDarkMode ? "#374151" : "white",
+                        boxShadow: state.isFocused ? "0 0 0 2px rgba(17,103,106,0.4)" : "0 1px 2px rgba(0,0,0,0.05)",
+                        "&:hover": { borderColor: "#11676a" },
+                      }),
+                      multiValue: (base) => ({
+                        ...base,
+                        backgroundColor: isDarkMode ? "#0f5557" : "#ecfdf5",
+                        borderRadius: "0.375rem",
+                      }),
+                      multiValueLabel: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                      }),
+                      multiValueRemove: (base) => ({
+                        ...base,
+                        color: isDarkMode ? "#ccfbf1" : "#065f46",
+                        "&:hover": { backgroundColor: isDarkMode ? "#11676a" : "#d1fae5", color: isDarkMode ? "white" : "#047857" },
+                      }),
+                    }}
+                  />
                 </div>
               </div>
             </section>
@@ -1239,212 +1358,180 @@ export default function CitizenRegister() {
                 </p>
               </div>
 
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className={iconWrapperClass}>
-                    <MaterialIcon name="lock" className={fieldErrors.password ? "text-red-500" : ""} />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    placeholder="Create strong password"
-                    className={getInputClass("password")}
-                    onChange={handleChange}
-                    required
-                    minLength="8"
-                    maxLength="20"
-                  />
-                  <span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
-                  >
-                    {showPassword ? "visibility" : "visibility_off"}
-                  </span>
-                </div>
-
-                {/* Password Strength Indicator */}
-                {formData.password && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600 font-medium">
-                        Password Strength:
-                      </span>
-                      <span
-                        className={`font-semibold ${passwordStrength.score <= 2
-                          ? "text-red-600"
-                          : passwordStrength.score <= 4
-                            ? "text-yellow-600"
-                            : passwordStrength.score <= 5
-                              ? "text-blue-600"
-                              : "text-green-600"
-                          }`}
-                      >
-                        {getPasswordStrengthText()}
-                      </span>
-                    </div>
-
-                    {/* Strength Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
-                        style={{
-                          width: `${(passwordStrength.score / 6) * 100}%`,
-                        }}
+              {/* Password Fields - Hide if Social Login */}
+              {!preRegToken && (
+                <>
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="lock" className={fieldErrors.password ? "text-red-500" : ""} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        placeholder="Create strong password"
+                        className={getInputClass("password")}
+                        onChange={handleChange}
+                        required
+                        minLength="8"
+                        maxLength="20"
                       />
+                      <span
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
+                      >
+                        {showPassword ? "visibility" : "visibility_off"}
+                      </span>
                     </div>
 
-                    {/* Requirements Checklist */}
-                    {passwordStrength.feedback.length > 0 && (
-                      <div className="bg-gray-50 rounded-lg p-3 space-y-1.5">
-                        <p className="text-xs font-medium text-gray-700 mb-2">
-                          Password must include:
-                        </p>
-                        {passwordStrength.feedback.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 text-xs text-gray-600"
+                    {/* Password Strength Indicator */}
+                    {formData.password && (
+                      <div className="mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-600 font-medium">
+                            Password Strength:
+                          </span>
+                          <span
+                            className={`font-semibold ${passwordStrength.score <= 2
+                              ? "text-red-600"
+                              : passwordStrength.score <= 4
+                                ? "text-yellow-600"
+                                : passwordStrength.score <= 5
+                                  ? "text-blue-600"
+                                  : "text-green-600"
+                              }`}
                           >
-                            <span className="material-symbols-outlined text-sm text-red-500">
-                              close
-                            </span>
-                            <span>{item}</span>
+                            {getPasswordStrengthText()}
+                          </span>
+                        </div>
+
+                        {/* Strength Bar */}
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full transition-all duration-300 ${getPasswordStrengthColor()}`}
+                            style={{
+                              width: `${(passwordStrength.score / 6) * 100}%`,
+                            }}
+                          />
+                        </div>
+
+                        {/* Requirements Checklist */}
+                        {passwordStrength.feedback.length > 0 && (
+                          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-1.5">
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Password must include:
+                            </p>
+                            {passwordStrength.feedback.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+                              >
+                                <span className="material-symbols-outlined text-sm text-red-500">
+                                  close
+                                </span>
+                                <span>{item}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                        {passwordStrength.score > 0 &&
-                          passwordStrength.score < 6 && (
-                            <>
-                              {formData.password.length >= 8 &&
-                                formData.password.length <= 128 && (
-                                  <div className="flex items-center gap-2 text-xs text-green-600">
-                                    <span className="material-symbols-outlined text-sm">
-                                      check_circle
-                                    </span>
-                                    <span>8-128 characters</span>
-                                  </div>
-                                )}
-                              {/[A-Z]/.test(formData.password) && (
-                                <div className="flex items-center gap-2 text-xs text-green-600">
-                                  <span className="material-symbols-outlined text-sm">
-                                    check_circle
-                                  </span>
-                                  <span>Uppercase letter</span>
-                                </div>
-                              )}
-                              {/[a-z]/.test(formData.password) && (
-                                <div className="flex items-center gap-2 text-xs text-green-600">
-                                  <span className="material-symbols-outlined text-sm">
-                                    check_circle
-                                  </span>
-                                  <span>Lowercase letter</span>
-                                </div>
-                              )}
-                              {/[0-9]/.test(formData.password) && (
-                                <div className="flex items-center gap-2 text-xs text-green-600">
-                                  <span className="material-symbols-outlined text-sm">
-                                    check_circle
-                                  </span>
-                                  <span>Number</span>
-                                </div>
-                              )}
-                              {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(
-                                formData.password
-                              ) && (
-                                  <div className="flex items-center gap-2 text-xs text-green-600">
-                                    <span className="material-symbols-outlined text-sm">
-                                      check_circle
-                                    </span>
-                                    <span>Special character</span>
-                                  </div>
-                                )}
-                            </>
-                          )}
-                      </div>
-                    )}
+                        )}
 
-                    {/* Success Message */}
-                    {passwordStrength.score === 6 && (
-                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                        <span className="material-symbols-outlined text-green-600 text-lg">
-                          verified
-                        </span>
-                        <span className="text-xs text-green-700 font-medium">
-                          Excellent! Your password is strong and secure.
-                        </span>
+                        {/* Success Condition */}
+                        {passwordStrength.score === 6 && (
+                          <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg px-3 py-2">
+                            <span className="material-symbols-outlined text-green-600 dark:text-green-400 text-lg">
+                              verified
+                            </span>
+                            <span className="text-xs text-green-700 dark:text-green-300 font-medium">
+                              Excellent! Your password is strong and secure.
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <div className={iconWrapperClass}>
-                    <MaterialIcon name="lock_reset" className={fieldErrors.confirmPassword ? "text-red-500" : ""} />
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className={iconWrapperClass}>
+                        <MaterialIcon name="lock_reset" className={fieldErrors.confirmPassword ? "text-red-500" : ""} />
+                      </div>
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        name="confirmPassword"
+                        placeholder="Confirm your password"
+                        className={getInputClass("confirmPassword")}
+                        onChange={handleChange}
+                        required
+                      />
+                      <span
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
+                      >
+                        {showConfirmPassword ? "visibility" : "visibility_off"}
+                      </span>
+                    </div>
+                    {fieldErrors.confirmPassword && (
+                      <p className="mt-1 text-xs text-red-500 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">error</span>
+                        {fieldErrors.confirmPassword}
+                      </p>
+                    )}
                   </div>
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    placeholder="Repeat password"
-                    className={getInputClass("confirmPassword")}
-                    onChange={handleChange}
-                    required
-                    minLength="8"
-                    maxLength="20"
-                  />
-                  <span
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer select-none text-lg sm:text-xl"
-                  >
-                    {showConfirmPassword ? "visibility" : "visibility_off"}
-                  </span>
+
+                  {/* Password Match Indicator */}
+                  {formData.confirmPassword && (
+                    <div className="mt-2">
+                      {formData.password === formData.confirmPassword ? (
+                        <div className="flex items-center gap-2 text-xs text-green-600">
+                          <span className="material-symbols-outlined text-sm">
+                            check_circle
+                          </span>
+                          <span>Passwords match</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-xs text-red-600">
+                          <span className="material-symbols-outlined text-sm">
+                            cancel
+                          </span>
+                          <span>Passwords do not match</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Security Tips */}
+                  <div className="rounded-lg sm:rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2.5 text-[0.7rem] text-blue-800 dark:text-blue-200 space-y-1">
+                    <div className="flex gap-2 items-start">
+                      <span className="material-symbols-outlined text-base mt-px shrink-0">
+                        shield
+                      </span>
+                      <div className="space-y-1">
+                        <p className="font-medium">Password Security Tips:</p>
+                        <ul className="space-y-0.5 ml-1">
+                          <li>• Use a unique password you don't use elsewhere</li>
+                          <li>
+                            • Avoid personal information like names or birthdates
+                          </li>
+                          <li>• Consider using a password manager</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+              {preRegToken && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-green-800 text-sm font-medium">
+                    Your account is secured with Google Authentication. You don't need a password.
+                  </p>
                 </div>
-
-                {/* Password Match Indicator */}
-                {formData.confirmPassword && (
-                  <div className="mt-2">
-                    {formData.password === formData.confirmPassword ? (
-                      <div className="flex items-center gap-2 text-xs text-green-600">
-                        <span className="material-symbols-outlined text-sm">
-                          check_circle
-                        </span>
-                        <span>Passwords match</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-xs text-red-600">
-                        <span className="material-symbols-outlined text-sm">
-                          cancel
-                        </span>
-                        <span>Passwords do not match</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Security Tips */}
-              <div className="rounded-lg sm:rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-[0.7rem] text-blue-800 space-y-1">
-                <div className="flex gap-2 items-start">
-                  <span className="material-symbols-outlined text-base mt-px shrink-0">
-                    shield
-                  </span>
-                  <div className="space-y-1">
-                    <p className="font-medium">Password Security Tips:</p>
-                    <ul className="space-y-0.5 ml-1">
-                      <li>• Use a unique password you don't use elsewhere</li>
-                      <li>
-                        • Avoid personal information like names or birthdates
-                      </li>
-                      <li>• Consider using a password manager</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              )}
             </section>
 
             {/* LOCATION / ADDRESS */}
@@ -1476,17 +1563,17 @@ export default function CitizenRegister() {
                       }
                     />
                     {searchResults.length > 0 && (
-                      <ul className="absolute z-[1000] w-full bg-white border border-gray-200 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
+                      <ul className="absolute z-[1000] w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl mt-1 shadow-lg max-h-60 overflow-y-auto">
                         {searchResults.map((result, index) => (
                           <li
                             key={index}
                             onClick={() => selectSearchResult(result)}
-                            className="px-4 py-2 hover:bg-gray-50 cursor-pointer text-sm border-b border-gray-50 flex items-start gap-2"
+                            className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-700 flex items-start gap-2"
                           >
                             <span className="material-symbols-outlined text-gray-400 text-lg mt-0.5">
                               location_on
                             </span>
-                            <span>{result.display_name}</span>
+                            <span className="text-gray-900 dark:text-gray-100">{result.display_name}</span>
                           </li>
                         ))}
                       </ul>
@@ -1502,7 +1589,7 @@ export default function CitizenRegister() {
                 </div>
 
                 {/* Leaflet Map */}
-                <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
+                <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700 relative z-0">
                   <MapContainer
                     center={center}
                     zoom={13}
@@ -1538,7 +1625,7 @@ export default function CitizenRegister() {
                 {/* Latitude & Longitude (Read-only) */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Latitude
                     </label>
                     <div className="relative">
@@ -1554,7 +1641,7 @@ export default function CitizenRegister() {
                     </div>
                   </div>
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Longitude
                     </label>
                     <div className="relative">
@@ -1571,7 +1658,7 @@ export default function CitizenRegister() {
                   </div>
                 </div>
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Street Address / Locality{" "}
                     <span className="text-red-500">*</span>
                   </label>
@@ -1603,7 +1690,7 @@ export default function CitizenRegister() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       City <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -1672,11 +1759,13 @@ export default function CitizenRegister() {
                               ? "#fca5a5"
                               : state.isFocused
                                 ? "#11676a"
-                                : "#e5e7eb",
+                                : isDarkMode
+                                  ? "#4b5563"
+                                  : "#e5e7eb",
                             boxShadow: state.isFocused
                               ? "0 0 0 2px rgba(17,103,106,0.4)"
                               : "0 1px 2px rgba(0,0,0,0.05)",
-                            backgroundColor: "#ffffff",
+                            backgroundColor: isDarkMode ? "#374151" : "#ffffff",
                             "&:hover": {
                               borderColor: "#11676a",
                             },
@@ -1691,11 +1780,12 @@ export default function CitizenRegister() {
                             ...base,
                             margin: "0",
                             padding: "0",
+                            color: isDarkMode ? "#e5e7eb" : "#111827",
                           }),
 
                           singleValue: (base) => ({
                             ...base,
-                            color: "#111827",
+                            color: isDarkMode ? "#e5e7eb" : "#111827",
                             fontSize: "0.875rem",
                           }),
 
@@ -1723,6 +1813,24 @@ export default function CitizenRegister() {
                             zIndex: 50,
                             borderRadius: "0.75rem",
                             boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+                            backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+                            border: isDarkMode ? "1px solid #374151" : "none",
+                          }),
+
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isFocused
+                              ? isDarkMode
+                                ? "#374151"
+                                : "#f0fdf9"
+                              : "transparent",
+                            color: isDarkMode
+                              ? state.isFocused ? "#ffffff" : "#d1d5db"
+                              : "#374151",
+                            "&:active": {
+                              backgroundColor: "#11676a",
+                              color: "#ffffff",
+                            },
                           }),
                         }}
                       />
@@ -1739,7 +1847,7 @@ export default function CitizenRegister() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Postal / Zip Code <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -1765,7 +1873,7 @@ export default function CitizenRegister() {
                   </div>
 
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Country <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -1954,7 +2062,7 @@ export default function CitizenRegister() {
                 </Link>
               </p>
             </section>
-          </form>
+          </form >
 
           {/* Loading/Success Overlay */}
           {
@@ -2103,4 +2211,6 @@ export default function CitizenRegister() {
       `}</style>
     </div >
   );
-}
+};
+
+export default CitizenRegister;
