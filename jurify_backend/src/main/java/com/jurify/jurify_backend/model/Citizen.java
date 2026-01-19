@@ -46,6 +46,9 @@ public class Citizen {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
+    @Column(name = "languages")
+    private String languages;
+
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "location_id", referencedColumnName = "id")
     private Location location;

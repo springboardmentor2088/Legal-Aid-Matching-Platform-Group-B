@@ -13,4 +13,6 @@ public interface LawyerRepository extends JpaRepository<Lawyer, Long> {
     boolean existsByBarCouncilNumber(String barCouncilNumber);
 
     java.util.List<Lawyer> findByIsVerifiedTrue();
+
+    java.util.List<Lawyer> findByStateAndIsVerifiedTrue(String state);
 }

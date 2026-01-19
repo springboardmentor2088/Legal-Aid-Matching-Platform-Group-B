@@ -42,6 +42,11 @@ axiosInstance.interceptors.response.use(
         const originalRequest = error.config;
 
         if (error.response && error.response.status === 401 && !originalRequest._retry) {
+            // If the error is from the login endpoint, don't try to refresh or redirect
+            if (originalRequest.url.includes('/auth/login')) {
+                return Promise.reject(error);
+            }
+
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
@@ -113,6 +118,10 @@ export const api = {
         const response = await axiosInstance.delete(endpoint);
         return response.data;
     },
+    getLegalCategories: async () => {
+        const response = await axiosInstance.get('/categories');
+        return response.data;
+    }
 };
 
 export default api;

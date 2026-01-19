@@ -59,6 +59,11 @@ const AdminDirectory = () => {
         // Citizen specific
         totalCasesSubmitted: entry.totalCasesSubmitted,
         lastCaseDate: entry.lastCaseDate,
+        lastCaseDate: entry.lastCaseDate,
+
+        // Verification Documents (Fallback)
+        documentUrl: entry.documentUrl,
+        documentType: entry.documentType,
 
         // Common placeholder (DTO doesn't have description)
         description: ''
@@ -216,70 +221,70 @@ const AdminDirectory = () => {
   };
 
   return (
-    <div className="w-full bg-gray-50 p-4 sm:p-6">
+    <div className="w-full bg-gray-50 dark:bg-gray-900 p-4 sm:p-6 transition-colors duration-300 min-h-screen">
       <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Admin Directory</h1>
-          <p className="text-gray-600">Manage and monitor all platform users, verifications, and activities</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Admin Directory</h1>
+          <p className="text-gray-600 dark:text-gray-400">Manage and monitor all platform users, verifications, and activities</p>
         </div>
 
         {/* Analytics Summary */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.totalUsers}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.totalUsers}</p>
               </div>
-              <FiUsers className="text-2xl text-blue-600" />
+              <FiUsers className="text-2xl text-blue-600 dark:text-blue-400" />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Verified Lawyers</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.verifiedLawyersPercentage}%</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Verified Lawyers</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.verifiedLawyersPercentage}%</p>
               </div>
-              <FiUserCheck className="text-2xl text-green-600" />
+              <FiUserCheck className="text-2xl text-green-600 dark:text-green-400" />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pending Verifications</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.pendingVerifications}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Pending Verifications</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.pendingVerifications}</p>
               </div>
-              <FiUserCheck className="text-2xl text-yellow-600" />
+              <FiUserCheck className="text-2xl text-yellow-600 dark:text-yellow-400" />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Users</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.activeUsers}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Active Users</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.activeUsers}</p>
               </div>
-              <FiShield className="text-2xl text-green-600" />
+              <FiShield className="text-2xl text-green-600 dark:text-green-400" />
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Inactive Users</p>
-                <p className="text-2xl font-bold text-gray-900">{analytics.inactiveUsers}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Inactive Users</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{analytics.inactiveUsers}</p>
               </div>
-              <FiShield className="text-2xl text-red-600" />
+              <FiShield className="text-2xl text-red-600 dark:text-red-400" />
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="flex flex-wrap border-b border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex flex-wrap border-b border-gray-200 dark:border-gray-700">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -287,13 +292,13 @@ const AdminDirectory = () => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600 bg-blue-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                 >
                   <Icon className="text-lg" />
                   <span>{tab.label}</span>
-                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                  <span className={`px-2 py-1 rounded-full text-xs ${activeTab === tab.id ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
                     {tab.count}
                   </span>
                 </button>
@@ -303,7 +308,7 @@ const AdminDirectory = () => {
         </div>
 
         {/* Search and Actions Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
             <div className="flex-1 max-w-md">
               <div className="relative">
@@ -313,7 +318,7 @@ const AdminDirectory = () => {
                   placeholder="Search by name, email, or user ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400 dark:placeholder-gray-500"
                 />
               </div>
             </div>
@@ -321,14 +326,14 @@ const AdminDirectory = () => {
             <div className="flex gap-2">
               <button
                 onClick={() => setFilters({})}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2 transition-colors"
               >
                 <FiFilter />
                 Clear Filters
               </button>
               <button
                 onClick={handleExport}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                className="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2 transition-colors"
               >
                 <FiDownload />
                 Export CSV
@@ -387,17 +392,17 @@ const AdminDirectory = () => {
       {console.log('showBulkActionModal:', showBulkActionModal, 'bulkActionType:', bulkActionType)}
       {showBulkActionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 animate-scale-in">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 shadow-2xl p-6 animate-scale-in border border-gray-200 dark:border-gray-700">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 {bulkActionType === 'no_selection' ? (
-                  <FiAlertCircle className="text-blue-600 text-lg" />
+                  <FiAlertCircle className="text-blue-600 dark:text-blue-400 text-lg" />
                 ) : (
-                  <FiSave className="text-blue-600 text-lg" />
+                  <FiSave className="text-blue-600 dark:text-blue-400 text-lg" />
                 )}
               </div>
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 {bulkActionType === 'no_selection' ? 'No Users Selected' :
                   bulkActionType === 'approve' ? 'Approve Selected Users?' :
                     bulkActionType === 'suspend' ? 'Suspend Selected Users?' :
@@ -406,7 +411,7 @@ const AdminDirectory = () => {
             </div>
 
             {/* Content */}
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
               {bulkActionType === 'no_selection'
                 ? 'Please select at least one user to perform this action.'
                 : bulkActionType === 'approve'
@@ -426,7 +431,7 @@ const AdminDirectory = () => {
                   setShowBulkActionModal(false);
                   setBulkActionType('');
                 }}
-                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium transition-colors"
               >
                 Cancel
               </button>

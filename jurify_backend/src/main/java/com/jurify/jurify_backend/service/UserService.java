@@ -130,6 +130,8 @@ public class UserService {
                         citizen.setAddressLine1(profileDTO.getAddressLine1());
                     if (profileDTO.getAddressLine2() != null)
                         citizen.setAddressLine2(profileDTO.getAddressLine2());
+                    if (profileDTO.getLanguages() != null)
+                        citizen.setLanguages(profileDTO.getLanguages());
 
                     citizenRepository.save(citizen);
                 }
@@ -141,6 +143,8 @@ public class UserService {
                         lawyer.setFirstName(profileDTO.getFirstName());
                     if (profileDTO.getLastName() != null)
                         lawyer.setLastName(profileDTO.getLastName());
+                    if (profileDTO.getPhoneNumber() != null)
+                        lawyer.setPhoneNumber(profileDTO.getPhoneNumber());
                     // Lawyer might differentiate between office and personal address, but assuming
                     // unified for now as per previous logic
                     if (profileDTO.getCity() != null)
@@ -157,6 +161,19 @@ public class UserService {
                         lawyer.setLatitude(profileDTO.getLatitude());
                     if (profileDTO.getLongitude() != null)
                         lawyer.setLongitude(profileDTO.getLongitude());
+                    if (profileDTO.getLanguages() != null)
+                        lawyer.setLanguages(profileDTO.getLanguages());
+
+                    if (profileDTO.getBio() != null)
+                        lawyer.setBio(profileDTO.getBio());
+                    if (profileDTO.getYearsOfExperience() != null)
+                        lawyer.setYearsOfExperience(profileDTO.getYearsOfExperience());
+                    if (profileDTO.getLawFirmName() != null)
+                        lawyer.setLawFirmName(profileDTO.getLawFirmName());
+                    if (profileDTO.getDateOfBirth() != null)
+                        lawyer.setDob(profileDTO.getDateOfBirth());
+                    if (profileDTO.getGender() != null)
+                        lawyer.setGender(profileDTO.getGender().name());
 
                     lawyerRepository.save(lawyer);
                     // Sync with DirectoryEntry
@@ -185,6 +202,8 @@ public class UserService {
                         ngo.setRegisteringAuthority(profileDTO.getRegisteringAuthority());
                     if (profileDTO.getPanNumber() != null)
                         ngo.setPanNumber(profileDTO.getPanNumber());
+                    if (profileDTO.getDarpanId() != null)
+                        ngo.setDarpanId(profileDTO.getDarpanId());
 
                     if (profileDTO.getContactPersonName() != null)
                         ngo.setContactPersonName(profileDTO.getContactPersonName());
@@ -198,6 +217,10 @@ public class UserService {
                         ngo.setOrganizationEmail(profileDTO.getOrganizationEmail());
                     if (profileDTO.getContactPersonDesignation() != null)
                         ngo.setContactPersonDesignation(profileDTO.getContactPersonDesignation());
+                    if (profileDTO.getRepresentativeDob() != null)
+                        ngo.setRepresentativeDob(profileDTO.getRepresentativeDob());
+                    if (profileDTO.getRepresentativeGender() != null)
+                        ngo.setRepresentativeGender(profileDTO.getRepresentativeGender());
 
                     if (profileDTO.getWebsiteUrl() != null)
                         ngo.setWebsiteUrl(profileDTO.getWebsiteUrl());
@@ -227,6 +250,8 @@ public class UserService {
                         ngo.setLatitude(profileDTO.getLatitude());
                     if (profileDTO.getLongitude() != null)
                         ngo.setLongitude(profileDTO.getLongitude());
+                    if (profileDTO.getLanguages() != null)
+                        ngo.setLanguages(profileDTO.getLanguages());
 
                     ngoRepository.save(ngo);
                     // Sync with DirectoryEntry
@@ -276,6 +301,8 @@ public class UserService {
                         .addressLine2(citizen.getAddressLine2());
 
                 // Citizen Document
+                builder.languages(citizen.getLanguages());
+
                 if (citizen.getDocument() != null) {
                     builder.documentUrl(r2Service.generatePresignedUrl(citizen.getDocument().getS3Key()));
                 }
@@ -290,6 +317,7 @@ public class UserService {
                             .pincode(loc.getPincode());
                 }
             }
+
         } else if (user.getRole() == com.jurify.jurify_backend.model.enums.UserRole.LAWYER) {
             Lawyer lawyer = user.getLawyer();
             if (lawyer == null) {
@@ -298,7 +326,9 @@ public class UserService {
 
             if (lawyer != null) {
                 builder.firstName(lawyer.getFirstName())
-                        .lastName(lawyer.getLastName());
+                        .lastName(lawyer.getLastName())
+                        .dob(lawyer.getDob() != null ? lawyer.getDob().toString() : null)
+                        .gender(lawyer.getGender());
 
                 builder.phone(lawyer.getPhoneNumber())
                         .city(lawyer.getCity())
@@ -314,6 +344,13 @@ public class UserService {
                         .yearsOfExperience(lawyer.getYearsOfExperience())
                         .bio(lawyer.getBio())
                         .languages(lawyer.getLanguages());
+
+                // Populate Specializations
+                if (lawyer.getSpecializations() != null) {
+                    builder.caseTypes(lawyer.getSpecializations().stream()
+                            .map(s -> s.getLegalCategory().getName())
+                            .collect(java.util.stream.Collectors.toList()));
+                }
 
                 // Lawyer Verification from Entity
                 builder.isVerified(lawyer.getIsVerified());
@@ -375,16 +412,44 @@ public class UserService {
                         .proBonoCommitment(ngo.getProBonoCommitment())
                         .maxProBonoCases(ngo.getMaxProBonoCases())
                         .bio(ngo.getDescription()) // Map description to bio
-                        .serviceAreas(ngo.getServiceAreas() != null ? String.join(", ", ngo.getServiceAreas()) : null);
+                        .serviceAreas(ngo.getServiceAreas() != null ? String.join(", ", ngo.getServiceAreas()) : null)
+                        .languages(ngo.getLanguages())
+                        .ngoName(ngo.getOrganizationName())
+                        .darpanId(ngo.getDarpanId())
+                        .repName(ngo.getContactPersonName())
+                        .repRole(ngo.getContactPersonDesignation())
+                        .repEmail(ngo.getContactEmail())
+                        .repGender(ngo.getRepresentativeGender())
+                        .dob(ngo.getRepresentativeDob() != null ? ngo.getRepresentativeDob().toString() : null);
 
                 // NGO Verification from Entity
                 builder.isVerified(ngo.getIsVerified());
                 builder.verificationStatus(
                         ngo.getVerificationStatus() != null ? ngo.getVerificationStatus().name() : "PENDING");
 
-                // Fetch document from NGODocument entity
-                if (ngo.getDocuments() != null && !ngo.getDocuments().isEmpty()) {
-                    builder.documentUrl(r2Service.generatePresignedUrl(ngo.getDocuments().get(0).getS3Key()));
+                if (ngo.getDocuments() != null) {
+                    for (com.jurify.jurify_backend.model.NGODocument doc : ngo.getDocuments()) {
+                        String url = r2Service.generatePresignedUrl(doc.getS3Key());
+                        if ("REGISTRATION_CERT".equals(doc.getDocumentCategory()))
+                            builder.registrationCertificateUrl(url);
+                        else if ("DARPAN".equals(doc.getDocumentCategory()))
+                            builder.ngoDarpanCertificateUrl(url);
+                        else if ("PAN".equals(doc.getDocumentCategory()))
+                            builder.ngoPanCardUrl(url);
+                        else if ("ID_PROOF".equals(doc.getDocumentCategory()))
+                            builder.authorizedIdProofUrl(url);
+                    }
+                    // Fallback for documentUrl (generic)
+                    if (!ngo.getDocuments().isEmpty()) {
+                        builder.documentUrl(r2Service.generatePresignedUrl(ngo.getDocuments().get(0).getS3Key()));
+                    }
+                }
+
+                // Populate Specializations
+                if (ngo.getSpecializations() != null) {
+                    builder.caseTypes(ngo.getSpecializations().stream()
+                            .map(s -> s.getLegalCategory().getName())
+                            .collect(java.util.stream.Collectors.toList()));
                 }
             }
         }

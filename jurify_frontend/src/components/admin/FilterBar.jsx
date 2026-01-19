@@ -130,26 +130,26 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
   const activeFilterCount = Object.keys(filters).length;
 
   const renderFilterSection = (title, children) => (
-    <div className="border-b border-gray-200 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
-      <h4 className="text-sm font-semibold text-gray-900 mb-3">{title}</h4>
+    <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-4 last:border-b-0 last:pb-0 last:mb-0">
+      <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">{title}</h4>
       {children}
     </div>
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mb-6">
       {/* Filter Header */}
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
-          <FiFilter className="text-gray-600" />
-          <span className="font-medium text-gray-900">
+          <FiFilter className="text-gray-600 dark:text-gray-400" />
+          <span className="font-medium text-gray-900 dark:text-white">
             Advanced Filters
           </span>
           {activeFilterCount > 0 && (
-            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-semibold">
+            <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full text-xs font-semibold">
               {activeFilterCount} active
             </span>
           )}
@@ -161,13 +161,13 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 e.stopPropagation();
                 clearAllFilters();
               }}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
             >
               Clear All
             </button>
           )}
           <FiChevronDown
-            className={`text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           />
         </div>
       </div>
@@ -181,11 +181,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
             {renderFilterSection('Basic Filters', (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
                   <select
                     value={filters.role || 'ALL'}
                     onChange={(e) => handleFilterChange('role', e.target.value === 'ALL' ? null : e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="ALL">All Roles</option>
                     <option value="LAWYER">Lawyers</option>
@@ -195,7 +195,7 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">State</label>
                   <select
                     value={filters.state || ''}
                     onChange={(e) => {
@@ -209,7 +209,7 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                         });
                       }
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="">All States</option>
                     {indianStates.map(state => (
@@ -219,12 +219,12 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">City</label>
                   <select
                     value={filters.city || ''}
                     onChange={(e) => handleFilterChange('city', e.target.value || null)}
                     disabled={!filters.state}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:dark:bg-gray-800 disabled:dark:text-gray-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="">
                       {filters.state ? 'All Cities' : 'Select State First'}
@@ -241,11 +241,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
             {renderFilterSection('Status Filters', (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Verification Status</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Verification Status</label>
                   <select
                     value={filters.verificationStatus || 'ALL'}
                     onChange={(e) => handleFilterChange('verificationStatus', e.target.value === 'ALL' ? null : e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="ALL">All Status</option>
                     <option value="PENDING">Pending</option>
@@ -256,11 +256,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Account Status</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Account Status</label>
                   <select
                     value={filters.accountStatus || 'ALL'}
                     onChange={(e) => handleFilterChange('accountStatus', e.target.value === 'ALL' ? null : e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="ALL">All Status</option>
                     <option value="ACTIVE">Active</option>
@@ -270,11 +270,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Case Category</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Case Category</label>
                   <select
                     value={filters.caseCategory || ''}
                     onChange={(e) => handleFilterChange('caseCategory', e.target.value || null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="">All Categories</option>
                     {caseCategories.map(category => (
@@ -289,11 +289,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
             {(activeTab === 'all' || activeTab === 'lawyers') && renderFilterSection('Professional Filters', (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Specialization</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Specialization</label>
                   <select
                     value={filters.specialization || ''}
                     onChange={(e) => handleFilterChange('specialization', e.target.value || null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="">All Specializations</option>
                     {specializations.map(spec => (
@@ -303,27 +303,27 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Experience Range (years)</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Experience Range (years)</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
                       placeholder="Min"
                       value={filters.experienceRange?.min ?? ''}
                       onChange={(e) => handleRangeFilterChange('experienceRange', 'min', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.experienceRange?.max ?? ''}
                       onChange={(e) => handleRangeFilterChange('experienceRange', 'max', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Rating Range</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Rating Range</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
@@ -333,7 +333,7 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                       max="5"
                       value={filters.ratingRange?.min ?? ''}
                       onChange={(e) => handleRangeFilterChange('ratingRange', 'min', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     <input
                       type="number"
@@ -343,7 +343,7 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                       max="5"
                       value={filters.ratingRange?.max ?? ''}
                       onChange={(e) => handleRangeFilterChange('ratingRange', 'max', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -354,11 +354,11 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
             {(activeTab === 'all' || activeTab === 'ngos') && renderFilterSection('NGO Filters', (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Areas of Work</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Areas of Work</label>
                   <select
                     value={filters.areasOfWork || ''}
                     onChange={(e) => handleFilterChange('areasOfWork', e.target.value || null)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >
                     <option value="">All Areas</option>
                     {ngoAreas.map(area => (
@@ -368,21 +368,21 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Pro Bono Capacity</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Pro Bono Capacity</label>
                   <div className="flex gap-2">
                     <input
                       type="number"
                       placeholder="Min"
                       value={filters.proBonoRange?.min ?? ''}
                       onChange={(e) => handleRangeFilterChange('proBonoRange', 'min', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     <input
                       type="number"
                       placeholder="Max"
                       value={filters.proBonoRange?.max ?? ''}
                       onChange={(e) => handleRangeFilterChange('proBonoRange', 'max', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -393,37 +393,37 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
             {renderFilterSection('Date Range Filters', (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date Joined</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Date Joined</label>
                   <div className="flex gap-2">
                     <input
                       type="date"
                       value={filters.dateJoinedRange?.from ?? ''}
                       onChange={(e) => handleRangeFilterChange('dateJoinedRange', 'from', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     <input
                       type="date"
                       value={filters.dateJoinedRange?.to ?? ''}
                       onChange={(e) => handleRangeFilterChange('dateJoinedRange', 'to', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Last Active</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Last Active</label>
                   <div className="flex gap-2">
                     <input
                       type="date"
                       value={filters.lastActiveRange?.from ?? ''}
                       onChange={(e) => handleRangeFilterChange('lastActiveRange', 'from', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                     <input
                       type="date"
                       value={filters.lastActiveRange?.to ?? ''}
                       onChange={(e) => handleRangeFilterChange('lastActiveRange', 'to', e.target.value)}
-                      className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-1/2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
                   </div>
                 </div>
@@ -433,8 +433,8 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
 
           {/* Active Filters Display */}
           {activeFilterCount > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Active Filters</h4>
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Active Filters</h4>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(filters).map(([key, value]) => {
                   if (!value) return null;
@@ -461,7 +461,7 @@ const FilterBar = ({ filters, setFilters, activeTab }) => {
                   return (
                     <span
                       key={key}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
                     >
                       {getFilterDisplay(key, value)}
                       <button

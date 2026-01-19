@@ -79,6 +79,15 @@ public class JwtUtil {
         return createToken(claims, email, refreshExpiration);
     }
 
+    public String generatePreRegistrationToken(String email, String name, String providerId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("name", name);
+        claims.put("providerId", providerId);
+        claims.put("purpose", "PRE_REGISTRATION");
+        // Short expiration: 15 minutes (900000 ms)
+        return createToken(claims, email, 900000L);
+    }
+
     private String createToken(Map<String, Object> claims, String subject, Long expirationTime) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationTime);
@@ -105,4 +114,3 @@ public class JwtUtil {
         return refreshExpiration;
     }
 }
-

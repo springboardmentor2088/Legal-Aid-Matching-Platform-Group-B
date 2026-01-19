@@ -44,21 +44,21 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
   const getStatusBadge = (status, type = 'verification') => {
     const styles = {
       verification: {
-        PENDING: 'bg-yellow-100 text-yellow-700',
-        APPROVED: 'bg-green-100 text-green-700',
-        REJECTED: 'bg-red-100 text-red-700',
-        'RE-UPLOAD REQUESTED': 'bg-orange-100 text-orange-700',
+        PENDING: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+        APPROVED: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+        REJECTED: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+        'RE-UPLOAD REQUESTED': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
       },
       account: {
-        ACTIVE: 'bg-green-100 text-green-700',
-        SUSPENDED: 'bg-red-100 text-red-700',
-        PENDING: 'bg-yellow-100 text-yellow-700',
-        OFFLINE: 'bg-gray-100 text-gray-700',
+        ACTIVE: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+        SUSPENDED: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
+        PENDING: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400',
+        OFFLINE: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
       }
     };
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[type][status] || 'bg-gray-100 text-gray-700'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${styles[type][status] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
         {status}
       </span>
     );
@@ -79,23 +79,23 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
         <>
           <td className="px-4 py-3">
             <div className="text-sm">
-              <div className="font-medium text-gray-900">{user.barCouncilNumber}</div>
-              <div className="text-gray-500">{user.specializations?.join(', ')}</div>
+              <div className="font-medium text-gray-900 dark:text-white">{user.barCouncilNumber}</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.specializations?.join(', ')}</div>
             </div>
           </td>
           <td className="px-4 py-3">
             <div className="text-sm">
-              <div className="text-gray-900">{user.yearsOfExperience} years</div>
-              <div className="text-gray-500">{user.casesHandled} cases</div>
+              <div className="text-gray-900 dark:text-white">{user.yearsOfExperience} years</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.casesHandled} cases</div>
             </div>
           </td>
           <td className="px-4 py-3">
             <div className="text-sm">
               <div className="flex items-center gap-1">
                 <FiStar className="text-yellow-500" />
-                <span className="text-gray-900">{user.rating}</span>
+                <span className="text-gray-900 dark:text-white">{user.rating}</span>
               </div>
-              <div className="text-gray-500">{user.availability}</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.availability}</div>
             </div>
           </td>
         </>
@@ -105,14 +105,14 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
         <>
           <td className="px-4 py-3">
             <div className="text-sm">
-              <div className="font-medium text-gray-900">{user.ngoDarpanId}</div>
-              <div className="text-gray-500">{user.areasOfWork?.join(', ')}</div>
+              <div className="font-medium text-gray-900 dark:text-white">{user.ngoDarpanId}</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.areasOfWork?.join(', ')}</div>
             </div>
           </td>
           <td className="px-4 py-3">
             <div className="text-sm">
-              <div className="text-gray-900">{user.proBonoCapacity} cases/month</div>
-              <div className="text-gray-500">{user.activeCases} active</div>
+              <div className="text-gray-900 dark:text-white">{user.proBonoCapacity} cases/month</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.activeCases} active</div>
             </div>
           </td>
           <td className="px-4 py-3">
@@ -128,12 +128,12 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
           </td>
           <td className="px-4 py-3">
             <div className="text-sm">
-              <div className="text-gray-900">{user.totalCasesSubmitted} total</div>
-              <div className="text-gray-500">{user.activeCases} active</div>
+              <div className="text-gray-900 dark:text-white">{user.totalCasesSubmitted} total</div>
+              <div className="text-gray-500 dark:text-gray-400">{user.activeCases} active</div>
             </div>
           </td>
           <td className="px-4 py-3">
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {user.lastCaseDate ? new Date(user.lastCaseDate).toLocaleDateString() : 'No cases'}
             </div>
           </td>
@@ -226,12 +226,12 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
         <div className="p-8">
           <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-full"></div>
-            <div className="h-4 bg-gray-200 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
           </div>
         </div>
       </div>
@@ -239,67 +239,67 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       {/* Desktop Table View */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
             <tr>
               <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
                   checked={selectedUsers.size === currentUsers.length && currentUsers.length > 0}
                   onChange={(e) => handleSelectAll(e.target.checked)}
-                  className="rounded border-gray-300"
+                  className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
               {activeTab === 'all' || activeTab === 'lawyers' ? (
                 <>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {activeTab === 'lawyers' ? 'Bar Council & Specialization' : 'Professional Info'}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Experience</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rating</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Experience</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rating</th>
                 </>
               ) : null}
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             {currentUsers.map((user) => (
               <React.Fragment key={user.id}>
-                <tr className="hover:bg-gray-50">
+                <tr className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
                       checked={selectedUsers.has(user.id)}
                       onChange={(e) => handleSelectUser(user.id, e.target.checked)}
-                      className="rounded border-gray-300"
+                      className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                         {getRoleIcon(user.role)}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-xs text-gray-500">{user.id}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{user.id}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm">
-                      <div className="flex items-center gap-1 text-gray-900">
+                      <div className="flex items-center gap-1 text-gray-900 dark:text-white">
                         <FiMail className="text-xs" />
                         {user.email}
                       </div>
-                      <div className="flex items-center gap-1 text-gray-500">
+                      <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                         <FiPhone className="text-xs" />
                         {user.phone}
                       </div>
@@ -307,8 +307,8 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm">
-                      <div className="text-gray-900">{user.city}</div>
-                      <div className="text-gray-500">{user.state}</div>
+                      <div className="text-gray-900 dark:text-white">{user.city}</div>
+                      <div className="text-gray-500 dark:text-gray-400">{user.state}</div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -319,7 +319,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                   </td>
                   {renderRoleSpecificColumns(user)}
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <FiCalendar className="text-xs" />
                         {new Date(user.createdAt).toLocaleDateString()}
@@ -335,25 +335,25 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                 {/* Expanded Row Details */}
                 {expandedRows.has(user.id) && (
                   <tr>
-                    <td colSpan="12" className="px-4 py-6 bg-gray-50">
+                    <td colSpan="12" className="px-4 py-6 bg-gray-50 dark:bg-gray-700/30">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Account Information</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Account Information</h4>
                           <div className="space-y-1 text-sm">
-                            <div><span className="text-gray-500">User ID:</span> {user.id}</div>
-                            <div><span className="text-gray-500">Role:</span> {user.role}</div>
-                            <div><span className="text-gray-500">Email:</span> {user.email}</div>
-                            <div><span className="text-gray-500">Phone:</span> {user.phone}</div>
-                            <div><span className="text-gray-500">Created:</span> {new Date(user.createdAt).toLocaleString()}</div>
-                            <div><span className="text-gray-500">Last Active:</span> {new Date(user.lastActive).toLocaleString()}</div>
+                            <div><span className="text-gray-500 dark:text-gray-400">User ID:</span> <span className="text-gray-900 dark:text-gray-200">{user.id}</span></div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Role:</span> <span className="text-gray-900 dark:text-gray-200">{user.role}</span></div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Email:</span> <span className="text-gray-900 dark:text-gray-200">{user.email}</span></div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Phone:</span> <span className="text-gray-900 dark:text-gray-200">{user.phone}</span></div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Created:</span> <span className="text-gray-900 dark:text-gray-200">{new Date(user.createdAt).toLocaleString()}</span></div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Last Active:</span> <span className="text-gray-900 dark:text-gray-200">{new Date(user.lastActive).toLocaleString()}</span></div>
                           </div>
                         </div>
 
                         <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Status & Verification</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Status & Verification</h4>
                           <div className="space-y-1 text-sm">
-                            <div><span className="text-gray-500">Account Status:</span> {getStatusBadge(user.accountStatus, 'account')}</div>
-                            <div><span className="text-gray-500">Verification Status:</span> {getStatusBadge(user.verificationStatus, 'verification')}</div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Account Status:</span> {getStatusBadge(user.accountStatus, 'account')}</div>
+                            <div><span className="text-gray-500 dark:text-gray-400">Verification Status:</span> {getStatusBadge(user.verificationStatus, 'verification')}</div>
                             {user.role === 'LAWYER' && (
                               <>
                                 <div><span className="text-gray-500">Languages:</span> {user.languages?.join(', ')}</div>
@@ -370,15 +370,15 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                         </div>
 
                         <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Quick Actions</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Quick Actions</h4>
                           <div className="space-y-2">
                             <button className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
                               View Full Profile
                             </button>
-                            <button className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">
+                            <button className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
                               Send Notification
                             </button>
-                            <button className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">
+                            <button className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
                               Reset Password
                             </button>
                           </div>
@@ -397,21 +397,21 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
       <div className="lg:hidden">
         <div className="p-4 space-y-4">
           {currentUsers.map((user) => (
-            <div key={user.id} className="bg-white border border-gray-200 rounded-lg p-4">
+            <div key={user.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={selectedUsers.has(user.id)}
                     onChange={(e) => handleSelectUser(user.id, e.target.checked)}
-                    className="rounded border-gray-300"
+                    className="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-blue-600 focus:ring-blue-500"
                   />
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                     {getRoleIcon(user.role)}
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    <div className="text-xs text-gray-500">{user.id}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{user.id}</div>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -421,19 +421,19 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
               </div>
 
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-1 text-gray-900">
+                <div className="flex items-center gap-1 text-gray-900 dark:text-gray-200">
                   <FiMail className="text-xs" />
                   {user.email}
                 </div>
-                <div className="flex items-center gap-1 text-gray-500">
+                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                   <FiPhone className="text-xs" />
                   {user.phone}
                 </div>
-                <div className="text-gray-900">{user.city}, {user.state}</div>
-                <div className="text-gray-500">Joined: {new Date(user.createdAt).toLocaleDateString()}</div>
+                <div className="text-gray-900 dark:text-gray-200">{user.city}, {user.state}</div>
+                <div className="text-gray-500 dark:text-gray-400">Joined: {new Date(user.createdAt).toLocaleDateString()}</div>
 
                 {user.role === 'LAWYER' && (
-                  <div className="text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-200">
                     <div>Bar Council: {user.barCouncilNumber}</div>
                     <div>Specialization: {user.specializations?.join(', ')}</div>
                     <div>Experience: {user.yearsOfExperience} years</div>
@@ -445,7 +445,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                 )}
 
                 {user.role === 'NGO' && (
-                  <div className="text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-200">
                     <div>NGO Darpan: {user.ngoDarpanId}</div>
                     <div>Areas: {user.areasOfWork?.join(', ')}</div>
                     <div>Active Cases: {user.activeCases}</div>
@@ -453,14 +453,14 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                 )}
 
                 {user.role === 'CITIZEN' && (
-                  <div className="text-gray-900">
+                  <div className="text-gray-900 dark:text-gray-200">
                     <div>Total Cases: {user.totalCasesSubmitted}</div>
                     <div>Active Cases: {user.activeCases}</div>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={() => toggleRowExpansion(user.id)}
                   className="p-1 text-blue-600 hover:bg-blue-50 rounded"
@@ -503,25 +503,25 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
+        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="text-sm text-gray-700 dark:text-gray-300">
             Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, users.length)} of {users.length} results
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-700 dark:text-gray-300">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
             >
               Next
             </button>

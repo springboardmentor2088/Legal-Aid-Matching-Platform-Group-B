@@ -17,20 +17,24 @@ import { verificationService } from "../../services/verificationService";
 import { useAuth } from "../../context/AuthContext";
 import AdminDirectory from "../admin/AdminDirectory";
 import Logo from "../common/Logo";
+import { useNotifications } from "../notifications/useNotifications";
+import NotificationPage from "../notifications/NotificationPage";
+import NotificationPanel from "../notifications/NotificationPanel";
+import DarkModeToggle from "../common/DarkModeToggle";
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
-const NotificationDropdown = ({ show, onClose, notifications }) => {
+const NotificationDropdown = ({ show, onClose, notifications, onNotificationClick, onViewAll }) => {
     if (!show) return null;
 
     return (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-            <div className="p-4 border-b border-gray-100">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>
+                    <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Notifications</h3>
                     <button
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition"
+                        className="text-gray-400 hover:text-primary transition"
                     >
                         <FaTimes className="w-4 h-4" />
                     </button>
@@ -43,14 +47,16 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
                         {notifications.map((notification, index) => (
                             <div
                                 key={index}
-                                className="p-3 hover:bg-gray-50 transition cursor-pointer"
+                                className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer ${!notification.read ? 'bg-primary-light/30 dark:bg-teal-900/10 border-l-4 border-l-primary' : ''
+                                    }`}
+                                onClick={() => onNotificationClick && onNotificationClick(notification)}
                             >
                                 <div className="flex items-start gap-2">
                                     <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                                        <FaBell className="text-blue-600 text-xs" />
+                                        <FaBell className="text-primary text-xs" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-gray-800 truncate">
+                                        <p className="text-xs font-medium text-gray-800 dark:text-white truncate">
                                             {notification.title || "New Notification"}
                                         </p>
                                         <p className="text-xs text-gray-600 mt-1 line-clamp-2">
@@ -66,18 +72,24 @@ const NotificationDropdown = ({ show, onClose, notifications }) => {
                     </div>
                 ) : (
                     <div className="p-6 text-center">
-                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                            <FaBell className="text-gray-400 text-sm" />
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <FaBell className="text-gray-400 dark:text-gray-500 text-sm" />
                         </div>
-                        <p className="text-sm text-gray-500 font-medium">No notifications</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No notifications</p>
                         <p className="text-xs text-gray-400 mt-1">You're all caught up!</p>
                     </div>
                 )}
             </div>
 
             {notifications && notifications.length > 0 && (
-                <div className="p-3 border-t border-gray-100">
-                    <button className="w-full text-center text-xs text-primary font-medium hover:text-primary-dark transition">
+                <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                        onClick={() => {
+                            onClose();
+                            onViewAll && onViewAll();
+                        }}
+                        className="w-full text-center text-xs text-primary font-medium hover:text-primary-dark transition"
+                    >
                         View all notifications
                     </button>
                 </div>
@@ -151,12 +163,32 @@ export default function AdminDashboard() {
     const { logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
-    const [notifications, setNotifications] = useState([]);
+    const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+
+    // Use notifications hook for single source of truth
+    const {
+        notifications,
+        unreadCount,
+        markAsRead
+    } = useNotifications();
 
     // Logout handler
     const handleLogout = () => {
         logout();
         window.location.href = "/login";
+    };
+
+    const handleNotificationClick = (notification) => {
+        // Mark as read if unread
+        if (!notification.read) {
+            markAsRead([notification.id]);
+        }
+
+        // Close dropdown
+        setShowNotificationDropdown(false);
+
+        // Admin doesn't have a messages tab, so just close the dropdown
+        // Could navigate to a relevant admin section based on notification type
     };
 
     const statsPoll = usePolling(verificationService.fetchStats, 12000);
@@ -366,11 +398,11 @@ export default function AdminDashboard() {
     }, [casesPoll.data]);
 
     return (
-        <div className="min-h-screen bg-gray-50 flex font-sans">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex font-sans transition-colors duration-300">
             {/* --- SIDEBAR --- */}
             <aside
-                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    } lg:translate-x-0 shadow-xl`}
+                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary dark:bg-gray-800 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    } lg:translate-x-0 shadow-xl border-r border-transparent dark:border-gray-700`}
             >
                 <div className="flex flex-col h-full">
                     {/* Logo Area */}
@@ -390,14 +422,14 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* User Info */}
-                    <div className="p-6 border-b border-primary-dark">
+                    <div className="p-6 border-b border-primary-dark dark:border-gray-700">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold">
                                 A
                             </div>
                             <div className="overflow-hidden">
-                                <p className="font-semibold truncate">Admin User</p>
-                                <p className="text-xs text-blue-100">Administrator</p>
+                                <p className="font-semibold truncate text-white dark:text-gray-200">Admin User</p>
+                                <p className="text-xs text-blue-100 dark:text-gray-400">Administrator</p>
                             </div>
                         </div>
                     </div>
@@ -407,8 +439,8 @@ export default function AdminDashboard() {
                         <button
                             onClick={() => setCurrentView("dashboard")}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium shadow-sm transition ${currentView === "dashboard"
-                                ? "bg-white/10 text-white"
-                                : "text-blue-100 hover:bg-white/5 hover:text-white"
+                                ? "bg-white/10 dark:bg-gray-700 text-white border-l-4 border-white dark:border-primary"
+                                : "text-blue-100 dark:text-gray-400 hover:bg-white/5 dark:hover:bg-gray-700 hover:text-white"
                                 }`}
                         >
                             <FaHome /> Dashboard
@@ -416,15 +448,15 @@ export default function AdminDashboard() {
                         <button
                             onClick={() => setCurrentView("directory")}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition ${currentView === "directory"
-                                ? "bg-white/10 text-white"
-                                : "text-blue-100 hover:bg-white/5 hover:text-white"
+                                ? "bg-white/10 dark:bg-gray-700 text-white border-l-4 border-white dark:border-primary"
+                                : "text-blue-100 dark:text-gray-400 hover:bg-white/5 dark:hover:bg-gray-700 hover:text-white"
                                 }`}
                         >
                             <FiDatabase /> Directory
                         </button>
                         <button
                             onClick={() => setShowComingSoon(true)}
-                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-blue-100 hover:bg-white/5 hover:text-white transition duration-200"
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-blue-100 dark:text-gray-400 hover:bg-white/5 dark:hover:bg-gray-700 hover:text-white transition duration-200"
                         >
                             <FiSettings /> Settings
                         </button>
@@ -432,10 +464,10 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Bottom Logout Button */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark dark:border-gray-700">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark hover:bg-red-600 transition"
+                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark dark:bg-gray-700 hover:bg-red-600 dark:hover:bg-red-900/50 transition"
                     >
                         <FaSignOutAlt className="text-xl shrink-0" />
                         <span>Logout</span>
@@ -454,28 +486,29 @@ export default function AdminDashboard() {
             {/* --- MAIN CONTENT --- */}
             <main className="flex-1 flex flex-col min-h-screen overflow-hidden lg:ml-64">
                 {/* Top Header */}
-                <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
+                <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
                             className="lg:hidden text-gray-600 hover:text-primary"
                         >
-                            <FiMenu className="w-6 h-6" />
+                            <FiMenu className="w-6 h-6 dark:text-gray-200" />
                         </button>
-                        <h1 className="text-lg md:text-xl font-bold text-[#11676a]">
+                        <h1 className="text-lg md:text-xl font-bold text-[#11676a] dark:text-white">
                             {currentView === "directory"
                                 ? "Directory Management"
                                 : "Admin Dashboard"}
                         </h1>
                     </div>
                     <div className="flex items-center gap-2 md:gap-4 relative">
+                        <DarkModeToggle />
                         <button
                             onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                             className="p-2 text-gray-400 hover:text-primary transition relative"
                         >
-                            <FiBell />
-                            {notifications && notifications.length > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <FiBell className="text-xl" />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
                             )}
                         </button>
 
@@ -483,6 +516,8 @@ export default function AdminDashboard() {
                             show={showNotificationDropdown}
                             onClose={() => setShowNotificationDropdown(false)}
                             notifications={notifications}
+                            onNotificationClick={handleNotificationClick}
+                            onViewAll={() => setShowNotificationPanel(true)}
                         />
                     </div>
                 </header>
@@ -512,88 +547,88 @@ export default function AdminDashboard() {
 
                             {/* Stats Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
-                                <div className="bg-white border-gray-100 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4">
+                                <div className="bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4 transition-colors duration-300">
                                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                                         <FiUsers />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                             {statsPoll.loading ? (
                                                 <Spinner />
                                             ) : (
                                                 statsPoll.data?.totalUsers ?? "—"
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide truncate">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide truncate">
                                             Total Users
                                         </p>
                                         <p className="text-xs text-green-600">+4.2% this month</p>
                                     </div>
                                 </div>
-                                <div className="bg-white border-gray-100 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                                <div className="bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4 transition-colors duration-300">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                                         <MdOutlineGavel />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                             {statsPoll.loading ? (
                                                 <Spinner />
                                             ) : (
                                                 statsPoll.data?.totalLawyers ?? "—"
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide truncate">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide truncate">
                                             Lawyers
                                         </p>
                                     </div>
                                 </div>
-                                <div className="bg-white border-gray-100 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                                <div className="bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4 transition-colors duration-300">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
                                         <FiUsers />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                             {statsPoll.loading ? (
                                                 <Spinner />
                                             ) : (
                                                 statsPoll.data?.totalNGOs ?? "—"
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide truncate">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide truncate">
                                             NGOs
                                         </p>
                                     </div>
                                 </div>
-                                <div className="bg-white border-gray-100 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-yellow-50 text-yellow-600 flex items-center justify-center shrink-0">
+                                <div className="bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4 transition-colors duration-300">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 flex items-center justify-center shrink-0">
                                         <FiCheckCircle />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                             {statsPoll.loading ? (
                                                 <Spinner />
                                             ) : (
                                                 statsPoll.data?.pendingVerifications ?? "—"
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide truncate">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide truncate">
                                             Pending Verifications
                                         </p>
                                     </div>
                                 </div>
-                                <div className="bg-white border-gray-100 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4">
-                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">
+                                <div className="bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 p-4 rounded-xl shadow-sm border flex items-center gap-3 md:gap-4 transition-colors duration-300">
+                                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center shrink-0">
                                         <FiFileText />
                                     </div>
                                     <div className="min-w-0">
-                                        <div className="text-xl md:text-2xl font-bold text-gray-900 truncate">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white truncate">
                                             {statsPoll.loading ? (
                                                 <Spinner />
                                             ) : (
                                                 statsPoll.data?.resolvedCases ?? "—"
                                             )}
                                         </div>
-                                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide truncate">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide truncate">
                                             Resolved Cases
                                         </p>
                                     </div>
@@ -604,9 +639,9 @@ export default function AdminDashboard() {
                                 {/* Left column: Activity + Verifications */}
                                 <div className="lg:col-span-2 space-y-6">
                                     {/* Activity Feed */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 text-lg">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg">
                                                 Recent Activity
                                             </h3>
                                             <div className="text-sm text-green-600 font-medium">
@@ -620,13 +655,13 @@ export default function AdminDashboard() {
                                             ).map((a, i) => (
                                                 <div
                                                     key={a?.id ?? i}
-                                                    className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition"
+                                                    className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
                                                 >
-                                                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                                    <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
                                                         {i % 2 === 0 ? <FiBell /> : <FiUsers />}
                                                     </div>
                                                     <div className="flex-1">
-                                                        <div className="text-sm font-medium text-gray-900">
+                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                                                             {a ? (
                                                                 a.text
                                                             ) : (
@@ -635,7 +670,7 @@ export default function AdminDashboard() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-xs text-gray-500 mt-1">
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                             {a ? new Date(a.time).toLocaleString() : ""}
                                                         </div>
                                                     </div>
@@ -645,9 +680,9 @@ export default function AdminDashboard() {
                                     </div>
 
                                     {/* Verification Management */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 text-lg">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg">
                                                 Verification Requests
                                             </h3>
                                             <div className="flex items-center gap-2">
@@ -662,7 +697,7 @@ export default function AdminDashboard() {
 
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left">
-                                                <thead className="text-gray-500 text-xs border-b border-gray-200">
+                                                <thead className="text-gray-500 dark:text-gray-400 text-xs border-b border-gray-200 dark:border-gray-700">
                                                     <tr>
                                                         <th className="pb-3 pr-4">
                                                             <input
@@ -694,7 +729,7 @@ export default function AdminDashboard() {
                                                     ).map((v, i) => (
                                                         <tr
                                                             key={v?.id ?? i}
-                                                            className="border-b border-gray-100"
+                                                            className="border-b border-gray-100 dark:border-gray-700"
                                                         >
                                                             <td className="py-3 pr-4">
                                                                 <input
@@ -709,7 +744,7 @@ export default function AdminDashboard() {
                                                                 />
                                                             </td>
                                                             <td className="py-3">
-                                                                <div className="font-medium text-gray-900">
+                                                                <div className="font-medium text-gray-900 dark:text-white">
                                                                     {v?.name ?? (
                                                                         <span className="text-gray-400">
                                                                             Loading...
@@ -718,7 +753,7 @@ export default function AdminDashboard() {
                                                                 </div>
                                                             </td>
                                                             <td className="py-3">
-                                                                <span className="text-sm text-gray-600">
+                                                                <span className="text-sm text-gray-600 dark:text-gray-400">
                                                                     {v?.type}
                                                                 </span>
                                                             </td>
@@ -735,7 +770,7 @@ export default function AdminDashboard() {
                                                                 </span>
                                                             </td>
                                                             <td className="py-3">
-                                                                <div className="text-sm text-gray-500">
+                                                                <div className="text-sm text-gray-500 dark:text-gray-400">
                                                                     {v
                                                                         ? new Date(
                                                                             v.submittedAt
@@ -747,7 +782,7 @@ export default function AdminDashboard() {
                                                                 <div className="flex items-center gap-2">
                                                                     <button
                                                                         onClick={() => setSelectedVerification(v)}
-                                                                        className="px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 transition"
+                                                                        className="px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                                                                     >
                                                                         View
                                                                     </button>
@@ -777,10 +812,10 @@ export default function AdminDashboard() {
                                     </div>
 
                                     {/* Cases Panel */}
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 text-lg">Cases</h3>
-                                            <div className="text-sm text-gray-500">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg">Cases</h3>
+                                            <div className="text-sm text-gray-500 dark:text-gray-400">
                                                 Total {casesPoll.data?.length ?? "—"}
                                             </div>
                                         </div>
@@ -793,14 +828,14 @@ export default function AdminDashboard() {
                                                 .map((c, i) => (
                                                     <div
                                                         key={c?.id ?? i}
-                                                        className="p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition"
+                                                        className="p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div>
-                                                                <div className="text-sm font-medium text-gray-900">
+                                                                <div className="text-sm font-medium text-gray-900 dark:text-white">
                                                                     {c?.title ?? "Loading..."}
                                                                 </div>
-                                                                <div className="text-xs text-gray-500">
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
                                                                     {c
                                                                         ? new Date(c.createdAt).toLocaleDateString()
                                                                         : ""}
@@ -829,10 +864,10 @@ export default function AdminDashboard() {
 
                                 {/* Right column: Users + Analytics + Quick Actions */}
                                 <aside className="space-y-6">
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 text-lg">Users</h3>
-                                            <div className="text-xs text-gray-500">
+                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg">Users</h3>
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                                 {usersData.total} total
                                             </div>
                                         </div>
@@ -842,7 +877,7 @@ export default function AdminDashboard() {
                                                 value={usersSearch}
                                                 onChange={(e) => setUsersSearch(e.target.value)}
                                                 placeholder="Search users"
-                                                className="flex-1 p-2 rounded-lg border border-gray-200 focus:border-primary focus:outline-none text-gray-900 placeholder-gray-500"
+                                                className="flex-1 p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:border-primary focus:outline-none"
                                             />
                                             <button
                                                 onClick={() => setUsersPage(1)}
@@ -859,55 +894,61 @@ export default function AdminDashboard() {
                                             ).map((u, i) => (
                                                 <div
                                                     key={u?.id ?? i}
-                                                    className="flex items-center justify-between gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition"
+                                                    className="p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                                                 >
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {u?.name ?? "Loading..."}
-                                                        </div>
-                                                        <div className="text-xs text-gray-500">
-                                                            {u?.email}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div
-                                                            className={`text-xs px-2 py-1 rounded-full font-semibold ${u?.role === "LAWYER"
-                                                                ? "bg-purple-100 text-purple-700"
-                                                                : u?.role === "NGO"
-                                                                    ? "bg-orange-100 text-orange-700"
-                                                                    : "bg-blue-100 text-blue-700"
-                                                                }`}
-                                                        >
-                                                            {u?.role}
-                                                        </div>
-                                                        {u?.isVerified && (
-                                                            <div className="text-xs px-2 py-1 rounded-full font-semibold bg-green-100 text-green-700 flex items-center gap-1">
-                                                                <FiCheckCircle className="text-[10px]" />{" "}
-                                                                Verified
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                    {u?.name ?? "Loading..."}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    {u?.email}
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                        <button
-                                                            onClick={() => setSelectedUser(u)}
-                                                            className="px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-sm hover:bg-gray-200 transition"
-                                                        >
-                                                            Details
-                                                        </button>
-                                                        <button
-                                                            onClick={() => toggleUserStatus(u.id)}
-                                                            className={`px-2 py-1 rounded-md text-white text-sm transition ${u?.status === "ACTIVE"
-                                                                ? "bg-red-600 hover:bg-red-700"
-                                                                : "bg-green-600 hover:bg-green-700"
-                                                                }`}
-                                                        >
-                                                            {u?.status === "ACTIVE" ? "Suspend" : "Activate"}
-                                                        </button>
+                                                            <div className="flex items-center gap-2">
+                                                                <div
+                                                                    className={`text-xs px-2 py-1 rounded-full font-semibold ${u?.role === "LAWYER"
+                                                                        ? "bg-purple-100 text-purple-700"
+                                                                        : u?.role === "NGO"
+                                                                            ? "bg-orange-100 text-orange-700"
+                                                                            : "bg-blue-100 text-blue-700"
+                                                                        }`}
+                                                                >
+                                                                    {u?.role}
+                                                                </div>
+                                                                {u?.isVerified && (
+                                                                    <div className="text-xs px-2 py-1 rounded-full font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                                                                        <FiCheckCircle className="text-[10px]" />{" "}
+                                                                        Verified
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => setSelectedUser(u)}
+                                                                className="flex-1 px-3 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                                                            >
+                                                                Details
+                                                            </button>
+                                                            <button
+                                                                onClick={() => toggleUserStatus(u.id)}
+                                                                className={`flex-1 px-3 py-1 rounded-md text-white text-sm transition ${u?.status === "ACTIVE"
+                                                                    ? "bg-red-600 hover:bg-red-700"
+                                                                    : "bg-green-600 hover:bg-green-700"
+                                                                    }`}
+                                                            >
+                                                                {u?.status === "ACTIVE" ? "Suspend" : "Activate"}
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
 
-                                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                                            <div className="text-xs text-gray-500">
+                                        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                                 Page {usersPage}
                                             </div>
                                             <div className="flex gap-2">
@@ -915,13 +956,13 @@ export default function AdminDashboard() {
                                                     onClick={() =>
                                                         setUsersPage((p) => Math.max(1, p - 1))
                                                     }
-                                                    className="px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                                                    className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                                                 >
                                                     Prev
                                                 </button>
                                                 <button
                                                     onClick={() => setUsersPage((p) => p + 1)}
-                                                    className="px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                                                    className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                                                 >
                                                     Next
                                                 </button>
@@ -929,8 +970,8 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="font-bold text-gray-800 text-lg mb-4">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
+                                        <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-4">
                                             Case Analytics
                                         </h3>
                                         <div className="space-y-3">
@@ -947,14 +988,14 @@ export default function AdminDashboard() {
                                                             }`}
                                                     />
                                                     <div className="flex-1">
-                                                        <div className="text-sm font-medium text-gray-900">
+                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                                                             {k.replaceAll("_", " ")}
                                                         </div>
-                                                        <div className="text-xs text-gray-500">
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">
                                                             {v} cases
                                                         </div>
                                                     </div>
-                                                    <div className="text-sm font-bold text-gray-900">
+                                                    <div className="text-sm font-bold text-gray-900 dark:text-white">
                                                         {v}
                                                     </div>
                                                 </div>
@@ -962,18 +1003,18 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
 
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                        <h3 className="font-bold text-gray-800 text-lg mb-4">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
+                                        <h3 className="font-bold text-gray-800 dark:text-white text-lg mb-4">
                                             Quick Actions
                                         </h3>
                                         <div className="flex flex-col gap-2">
                                             <button className="px-3 py-2 rounded-md bg-primary text-white hover:bg-primary-dark transition">
                                                 Create Announcement
                                             </button>
-                                            <button className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                                            <button className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                                                 Export Report
                                             </button>
-                                            <button className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                                            <button className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
                                                 View Audit Logs
                                             </button>
                                         </div>
@@ -1009,13 +1050,13 @@ export default function AdminDashboard() {
                         className="absolute inset-0 bg-black/40"
                         onClick={() => setSelectedUser(null)}
                     />
-                    <div className="relative z-10 w-full max-w-2xl bg-white rounded-xl shadow-lg p-6">
+                    <div className="relative z-10 w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors duration-300">
                         <div className="flex items-start justify-between">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                                     {selectedUser.name}
                                 </h2>
-                                <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedUser.email}</p>
                             </div>
                             <button
                                 onClick={() => setSelectedUser(null)}
@@ -1027,22 +1068,22 @@ export default function AdminDashboard() {
 
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-900">Profile</h3>
-                                <div className="text-sm text-gray-500 mt-2">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Profile</h3>
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                     Role: {selectedUser.role}
                                 </div>
-                                <div className="text-sm text-gray-500 mt-1">
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                     Status: {selectedUser.status}
                                 </div>
-                                <div className="text-sm text-gray-500 mt-1">
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                                     Joined: {new Date(selectedUser.joinedAt).toLocaleDateString()}
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-gray-900">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                                     Activity
                                 </h3>
-                                <div className="text-sm text-gray-500 mt-2">
+                                <div className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                     Recent actions: {selectedUser.activity} points
                                 </div>
                             </div>
@@ -1051,7 +1092,7 @@ export default function AdminDashboard() {
                         <div className="mt-6 flex gap-2">
                             <button
                                 onClick={() => toggleUserStatus(selectedUser.id)}
-                                className="px-3 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                                className="px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                             >
                                 Toggle Status
                             </button>
@@ -1070,13 +1111,13 @@ export default function AdminDashboard() {
                         className="absolute inset-0 bg-black/40"
                         onClick={() => setSelectedVerification(null)}
                     />
-                    <div className="relative z-10 w-full max-w-3xl bg-white rounded-xl shadow-lg p-6">
+                    <div className="relative z-10 w-full max-w-3xl bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-colors duration-300">
                         <div className="flex items-start justify-between">
                             <div>
-                                <h2 className="text-lg font-bold text-gray-900">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                                     Verification: {selectedVerification.name}
                                 </h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                     Type: {selectedVerification.type}
                                 </p>
                             </div>
@@ -1089,7 +1130,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="mt-4">
-                            <h3 className="text-sm font-semibold text-gray-900">Documents</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Documents</h3>
                             <div className="mt-2 space-y-2">
                                 {selectedVerification.documents.map((d, i) => (
                                     <div
@@ -1107,7 +1148,7 @@ export default function AdminDashboard() {
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => previewDocument(d)}
-                                                className="px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                                                className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
                                             >
                                                 Preview
                                             </button>
@@ -1156,17 +1197,17 @@ export default function AdminDashboard() {
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowComingSoon(false)}
                     />
-                    <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 text-center transform transition-all duration-300 scale-100 hover:scale-[1.02]">
+                    <div className="relative z-10 w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 p-8 text-center transform transition-all duration-300 scale-100 hover:scale-[1.02]">
                         <div className="relative mb-6">
-                            <div className="bg-linear-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mx-auto mb-4 w-20 h-20 shadow-lg border-4 border-white">
+                            <div className="bg-linear-to-br from-primary to-primary-dark rounded-full flex items-center justify-center mx-auto mb-4 w-20 h-20 shadow-lg border-4 border-white dark:border-gray-700">
                                 <FiSettings className="w-10 h-10 text-white animate-pulse" />
                             </div>
                         </div>
 
-                        <h2 className="text-3xl font-bold text-gray-900 mb-3 bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3 bg-linear-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
                             Settings
                         </h2>
-                        <p className="text-gray-600 mb-8 leading-relaxed text-lg">
+                        <p className="text-gray-600 dark:text-gray-300 mb-8 leading-relaxed text-lg">
                             This feature is coming soon! We're working hard to bring you
                             comprehensive admin settings.
                         </p>
@@ -1179,6 +1220,13 @@ export default function AdminDashboard() {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* Notification Panel Overlay */}
+            {showNotificationPanel && (
+                <NotificationPanel onClose={() => setShowNotificationPanel(false)}>
+                    <NotificationPage onClose={() => setShowNotificationPanel(false)} />
+                </NotificationPanel>
             )}
         </div>
     );

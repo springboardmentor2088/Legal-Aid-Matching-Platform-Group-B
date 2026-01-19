@@ -43,6 +43,9 @@ public class NGO {
     @Column(name = "registration_number", unique = true)
     private String registrationNumber;
 
+    @Column(name = "darpan_id")
+    private String darpanId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "registration_type")
     private RegistrationType registrationType;
@@ -83,6 +86,12 @@ public class NGO {
     @Column(name = "contact_person_designation")
     private String contactPersonDesignation;
 
+    @Column(name = "representative_dob")
+    private java.time.LocalDate representativeDob;
+
+    @Column(name = "representative_gender")
+    private String representativeGender;
+
     @Column(name = "pro_bono_commitment")
     private Boolean proBonoCommitment;
 
@@ -112,6 +121,9 @@ public class NGO {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "service_areas", columnDefinition = "jsonb")
     private List<String> serviceAreas;
+
+    @Column(name = "languages")
+    private String languages;
 
     @Column(name = "logo_url")
     private String logoUrl;

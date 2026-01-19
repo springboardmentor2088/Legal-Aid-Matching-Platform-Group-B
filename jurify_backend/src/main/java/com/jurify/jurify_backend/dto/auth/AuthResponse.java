@@ -35,6 +35,14 @@ public class AuthResponse {
     private String languages;
 
     // NGO specific details
+    private String ngoName; // Alias for organizationName
+    private String darpanId;
+    private String repName; // Alias for contactPersonName
+    private String repRole; // Alias for contactPersonDesignation
+    private String repEmail; // Alias for contactEmail or dedicated
+    private String repGender;
+
+    // Existing fields
     private String registrationNumber;
     private String registrationType;
     private Integer registrationYear;
@@ -58,9 +66,15 @@ public class AuthResponse {
 
     // New fields for Profile & Verification
     private String documentUrl;
+    private String registrationCertificateUrl;
+    private String ngoDarpanCertificateUrl;
+    private String ngoPanCardUrl;
+    private String authorizedIdProofUrl;
     private String verificationStatus; // e.g. PENDING, APPROVED, REJECTED
     @Builder.Default
     private Boolean isVerified = false;
     @Builder.Default
     private Boolean isActive = true;
+
+    private java.util.List<String> caseTypes;
 }

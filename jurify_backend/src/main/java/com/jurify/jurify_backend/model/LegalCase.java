@@ -37,9 +37,8 @@ public class LegalCase {
     @Builder.Default
     private CaseStatus status = CaseStatus.PENDING;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "category")
-    private com.jurify.jurify_backend.model.enums.CaseCategory category;
+    private String category;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "urgency")
@@ -66,6 +65,10 @@ public class LegalCase {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lawyer_id")
     private Lawyer lawyer;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ngo_id")
+    private NGO ngo;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

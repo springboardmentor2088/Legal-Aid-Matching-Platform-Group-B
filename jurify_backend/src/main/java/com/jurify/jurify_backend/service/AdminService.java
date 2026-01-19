@@ -11,6 +11,7 @@ import java.time.LocalDateTime; // Added
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.jurify.jurify_backend.service.CloudflareR2Service;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class AdminService {
     private final LegalCaseRepository legalCaseRepository;
     private final VerificationRequestRepository verificationRequestRepository;
     private final com.jurify.jurify_backend.repository.DirectoryEntryRepository directoryEntryRepository;
+    private final CloudflareR2Service r2Service;
 
     @Transactional(readOnly = true)
     public AdminStatsDTO getStats() {
@@ -148,6 +150,18 @@ public class AdminService {
                     .isVerified(isVerifiedBool)
                     .joinedAt(user.getCreatedAt())
                     .lastActive(user.getLastLoginAt())
+                    // Document Fallback
+                    .documentUrl(getPresignedUrl(user.getLawyer() != null && user.getLawyer().getDocument() != null
+                            ? user.getLawyer().getDocument().getFileUrl()
+                            : user.getNgo() != null && user.getNgo().getDocuments() != null
+                                    && !user.getNgo().getDocuments().isEmpty()
+                                            ? user.getNgo().getDocuments().get(0).getFileUrl()
+                                            : null))
+                    .documentType(user.getLawyer() != null && user.getLawyer().getDocument() != null ? "Lawyer ID Card"
+                            : user.getNgo() != null && user.getNgo().getDocuments() != null
+                                    && !user.getNgo().getDocuments().isEmpty()
+                                            ? user.getNgo().getDocuments().get(0).getDocumentCategory()
+                                            : null)
                     // Lawyer
                     .barCouncilNumber(barCouncilNumber)
                     .yearsOfExperience(yearsOfExperience)
@@ -190,5 +204,23 @@ public class AdminService {
             directoryEntry.setIsVerified(true);
             directoryEntryRepository.save(directoryEntry);
         }
+    }
+
+    private String getPresignedUrl(String documentUrl) {
+        if (documentUrl != null && documentUrl.contains(".r2.cloudflarestorage.com/")) {
+            try {
+                // Extract key
+                int index = documentUrl.indexOf(".r2.cloudflarestorage.com/");
+                String key = documentUrl.substring(index + 26);
+                if (key.startsWith("/"))
+                    key = key.substring(1);
+
+                return r2Service.generatePresignedUrl(key);
+            } catch (Exception e) {
+                // Return raw if signing fails
+                return documentUrl;
+            }
+        }
+        return documentUrl;
     }
 }

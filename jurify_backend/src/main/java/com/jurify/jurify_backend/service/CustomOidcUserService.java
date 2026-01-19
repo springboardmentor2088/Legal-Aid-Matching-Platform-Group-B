@@ -1,7 +1,6 @@
 package com.jurify.jurify_backend.service;
 
 import com.jurify.jurify_backend.model.Citizen;
-import com.jurify.jurify_backend.model.Location;
 import com.jurify.jurify_backend.model.OAuthAccount;
 import com.jurify.jurify_backend.model.User;
 import com.jurify.jurify_backend.model.enums.UserRole;
@@ -82,34 +81,8 @@ public class CustomOidcUserService extends OidcUserService {
                 System.out.println("User found by email.");
                 user = existingUser.get();
             } else {
-                System.out.println("Creating NEW user.");
-                user = User.builder()
-                        .email(email)
-                        .passwordHash("")
-                        .role(UserRole.CITIZEN)
-                        .isEmailVerified(true)
-                        .isActive(true)
-                        .build();
-                user = userRepository.save(user);
-                System.out.println("User saved with ID: " + user.getId());
-
-                Location location = Location.builder().country("IN").build();
-                Citizen citizen = Citizen.builder()
-                        .user(user)
-                        .firstName(firstName)
-                        .lastName(lastName)
-                        .location(location)
-                        .build();
-                citizenRepository.save(citizen);
+                System.out.println("User NOT found. Proceeding to role selection flow via success handler.");
             }
-
-            OAuthAccount newOAuthAccount = OAuthAccount.builder()
-                    .user(user)
-                    .provider(provider)
-                    .providerAccountId(providerId)
-                    .build();
-            oauthAccountRepository.save(newOAuthAccount);
-            System.out.println("OAuth Account linked.");
         }
 
         return oidcUser;

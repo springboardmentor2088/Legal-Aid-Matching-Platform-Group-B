@@ -36,13 +36,13 @@ const ContactUs = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans transition-colors duration-300">
             {/* Header */}
-            <header className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+            <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100 dark:border-gray-800">
                 <div className="container mx-auto px-6 h-20 flex items-center justify-between">
                     <Logo />
                     <nav className="hidden md:flex items-center gap-8">
-                        <Link to="/" className="text-gray-600 hover:text-[#11676a] font-medium transition">Home</Link>
+                        <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-[#11676a] dark:hover:text-[#198f93] font-medium transition">Home</Link>
                         <Link to="/login" className="px-6 py-2.5 bg-[#11676a] text-white rounded-xl font-semibold hover:bg-[#0e5658] transition shadow-lg shadow-[#11676a]/20">
                             Log In
                         </Link>
@@ -51,7 +51,7 @@ const ContactUs = () => {
             </header>
 
             <main className="flex-grow container mx-auto px-6 py-12 flex items-center justify-center">
-                <div className="w-full max-w-4xl grid md:grid-cols-2 gap-12 bg-white rounded-3xl shadow-xl overflow-hidden">
+                <div className="w-full max-w-4xl grid md:grid-cols-2 gap-12 bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700">
 
                     {/* Left Side: Info */}
                     <div className="bg-[#11676a] p-12 text-white flex flex-col justify-between">
@@ -98,53 +98,53 @@ const ContactUs = () => {
                             )}
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Name</label>
                                 <input
                                     type="text"
                                     name="name"
                                     required
                                     value={formData.name}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#11676a] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-[#11676a] dark:focus:border-[#198f93] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
                                     placeholder="John Doe"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                                 <input
                                     type="email"
                                     name="email"
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#11676a] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-[#11676a] dark:focus:border-[#198f93] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
                                     placeholder="john@example.com"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
                                 <input
                                     type="text"
                                     name="subject"
                                     required
                                     value={formData.subject}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#11676a] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-[#11676a] dark:focus:border-[#198f93] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition"
                                     placeholder="How can we help?"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
                                 <textarea
                                     name="message"
                                     required
                                     rows="4"
                                     value={formData.message}
                                     onChange={handleChange}
-                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#11676a] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition resize-none"
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-[#11676a] dark:focus:border-[#198f93] focus:ring-2 focus:ring-[#11676a]/20 outline-none transition resize-none"
                                     placeholder="Tell us more..."
                                 />
                             </div>

@@ -1,45 +1,89 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import {
-  FiSearch,
-  FiFilter,
-  FiX,
-  FiChevronDown,
-} from "react-icons/fi";
+import { FiSearch, FiFilter, FiX, FiChevronDown, FiGrid, FiList } from "react-icons/fi";
 import Select from "react-select";
 import ProfileViewModel from "./ProfileViewModel";
 import ProfileCard from "./ProfileCard";
 import directoryService from "../../services/directoryService";
+import { useTheme } from "../../context/ThemeContext";
 
 const CardSkeleton = () => (
-  <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6 animate-pulse">
-    <div className="flex gap-3">
-      <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gray-200"></div>
-      <div className="flex-1">
-        <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-1/3 mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-      </div>
+  <div className="bg-slate-50 dark:bg-gray-800/50 rounded-xl p-5 border border-slate-200 dark:border-gray-700 animate-pulse hover:shadow-md">
+    <div className="absolute top-3 right-3 w-16 h-5 bg-slate-200 dark:bg-gray-700 rounded-full"></div>
+    <div className="mb-4">
+      <div className="h-6 bg-slate-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+      <div className="h-4 bg-slate-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
     </div>
-
-    <div className="flex gap-2 mt-4">
-      <div className="h-5 w-20 bg-gray-200 rounded-full"></div>
-      <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+    <div className="flex gap-2 mb-4">
+      <div className="h-5 w-16 bg-slate-200 dark:bg-gray-700 rounded-md"></div>
+      <div className="h-5 w-20 bg-slate-200 dark:bg-gray-700 rounded-md"></div>
     </div>
-
-    <div className="flex justify-between mt-4">
-      <div className="h-3 w-24 bg-gray-200 rounded"></div>
-      <div className="h-3 w-16 bg-gray-200 rounded"></div>
+    <div className="flex gap-2">
+      <div className="px-3 py-2 bg-slate-200 dark:bg-gray-700 rounded-lg w-24 h-9"></div>
+      <div className="flex-1 py-2 bg-slate-300 dark:bg-gray-600 rounded-lg h-9"></div>
     </div>
-
-    <div className="h-9 bg-gray-200 rounded-xl mt-4"></div>
   </div>
 );
 
 const DirectorySearch = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
+  const customSelectStyles = {
+    control: (base, state) => ({
+      ...base,
+      backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+      borderColor: isDarkMode ? "#374151" : "#e5e7eb",
+      color: isDarkMode ? "#ffffff" : "#111827",
+      minHeight: "42px",
+      borderRadius: "0.75rem",
+      boxShadow: state.isFocused ? "0 0 0 2px rgba(17,103,106,0.4)" : "none",
+      "&:hover": {
+        borderColor: "#11676a",
+      },
+    }),
+    menu: (base) => ({
+      ...base,
+      backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
+      borderRadius: "0.75rem",
+      border: `1px solid ${isDarkMode ? "#374151" : "#e5e7eb"}`,
+      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+      zIndex: 50,
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected
+        ? "#11676a"
+        : state.isFocused
+        ? (isDarkMode ? "#374151" : "#f3f4f6")
+        : "transparent",
+      color: state.isSelected
+        ? "#ffffff"
+        : (isDarkMode ? "#e5e7eb" : "#111827"),
+      cursor: "pointer",
+      ":active": {
+        backgroundColor: "#11676a",
+      },
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: isDarkMode ? "#ffffff" : "#111827",
+    }),
+    input: (base) => ({
+      ...base,
+      color: isDarkMode ? "#ffffff" : "#111827",
+    }),
+    placeholder: (base) => ({
+      ...base,
+      color: isDarkMode ? "#9ca3af" : "#6b7280",
+    }),
+  };
+
+  // Toggle this flag to test with static data.
+  const useStatic = false;
+
+  // UI state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedType, setSelectedType] = useState("all");
@@ -49,20 +93,111 @@ const DirectorySearch = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [sortBy, setSortBy] = useState("relevance");
   const [userCity, setUserCity] = useState("");
-  const [userState, setUserState] = useState("");
   const [isFromCaseSubmission, setIsFromCaseSubmission] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [selectedExperience, setSelectedExperience] = useState("");
-  // Availability is not fully supported by backend filter yet, but we'll include state
   const [selectedAvailability, setSelectedAvailability] = useState("");
+
+  // view mode: 'square' (grid) or 'detailed' (list/rectangle)
+  const [viewMode, setViewMode] = useState("square");
 
   const [pagination, setPagination] = useState({
     page: 0,
     size: 10,
     totalPages: 0,
-    totalElements: 0
+    totalElements: 0,
   });
+
+  // ---------- Internal providers mock (NEW — not using your existing file) ----------
+  const providersMock = [
+    {
+      id: 101,
+      name: "Provider Mock A",
+      timezone: "Asia/Kolkata",
+      rules: [
+        // Mon-Fri 09:00-17:00
+        { days: [1, 2, 3, 4, 5], start: "09:00", end: "17:00", slotMinutes: 60, capacity: 1 },
+      ],
+      exceptions: ["2026-01-26"],
+    },
+    {
+      id: 102,
+      name: "Provider Mock B",
+      timezone: "Asia/Kolkata",
+      rules: [
+        { days: [2, 4], start: "10:00", end: "14:00", slotMinutes: 30, capacity: 3 },
+        { days: [6], start: "09:00", end: "12:00", slotMinutes: 30, capacity: 2 },
+      ],
+      exceptions: [],
+    },
+  ];
+
+  function getProviderByIdLocal(id) {
+    return providersMock.find((p) => p.id === id) || null;
+  }
+
+  // ---------- Static mock dataset (example profiles) ----------
+  const staticData = [
+    {
+      id: 1,
+      providerId: 101,
+      name: "Asha Verma",
+      displayName: "Asha Verma",
+      role: "LAWYER",
+      type: "lawyer",
+      isVerified: true,
+      specialization: "Family Law, Property Law",
+      languages: "ENGLISH,HINDI",
+      yearsOfExperience: 8,
+      rating: 4.7,
+      isActive: true,
+      casesHandled: 120,
+      city: "Mumbai",
+      state: "Maharashtra",
+      email: "asha.verma@example.com",
+      phoneNumber: "+91-9876543210",
+    },
+    {
+      id: 2,
+      providerId: 101,
+      name: "Rajesh Kumar",
+      displayName: "Rajesh Kumar",
+      role: "LAWYER",
+      type: "lawyer",
+      isVerified: false,
+      specialization: "Criminal Law",
+      languages: "HINDI,ENGLISH",
+      yearsOfExperience: 3,
+      rating: 4.1,
+      isActive: false,
+      casesHandled: 45,
+      city: "Lucknow",
+      state: "Uttar Pradesh",
+      email: "rajesh.k@example.com",
+      phoneNumber: "+91-9123456780",
+    },
+    {
+      id: 3,
+      providerId: 102,
+      name: "Nirmala Trust",
+      displayName: "Nirmala Trust",
+      role: "NGO",
+      type: "ngo",
+      isVerified: true,
+      specialization: "Human Rights, Consumer Protection",
+      languages: "ENGLISH,BENGALI",
+      yearsOfExperience: 12,
+      rating: 4.9,
+      isActive: true,
+      casesHandled: 520,
+      city: "Kolkata",
+      state: "West Bengal",
+      email: "info@nirmalatrust.org",
+      phoneNumber: "+91-9333333333",
+    },
+    // more profiles...
+  ];
 
   const caseCategories = [
     "Civil Law",
@@ -76,7 +211,7 @@ const DirectorySearch = () => {
     "Tax Law",
     "Corporate Law",
     "Human Rights",
-    "Other"
+    "Other",
   ];
 
   const languages = [
@@ -94,7 +229,6 @@ const DirectorySearch = () => {
     "OTHER",
   ];
 
-  // Indian states for dropdown
   const indianStates = [
     { value: "Arunachal Pradesh", label: "Arunachal Pradesh" },
     { value: "Assam", label: "Assam" },
@@ -139,69 +273,207 @@ const DirectorySearch = () => {
     { value: "cases", label: "Most Cases Handled" },
   ];
 
-  // Fetch results from API
+  // --- Availability helper (same approach, local)
+  function isProviderAvailableNow(provider) {
+    if (!provider || !provider.rules || provider.rules.length === 0) return false;
+
+    try {
+      const now = new Date();
+      const tz = provider.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).formatToParts(now);
+
+      const partObj = {};
+      parts.forEach((p) => (partObj[p.type] = p.value));
+      const localY = parseInt(partObj.year, 10);
+      const localM = parseInt(partObj.month, 10) - 1;
+      const localD = parseInt(partObj.day, 10);
+      const localH = parseInt(partObj.hour, 10);
+      const localMin = parseInt(partObj.minute, 10);
+
+      const localDate = new Date(Date.UTC(localY, localM, localD, localH, localMin));
+      const jsDay = localDate.getUTCDay();
+      const weekday = jsDay === 0 ? 7 : jsDay;
+
+      const y = localDate.getUTCFullYear();
+      const m = String(localDate.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(localDate.getUTCDate()).padStart(2, "0");
+      const yyyyMmDd = `${y}-${m}-${d}`;
+
+      if (provider.exceptions && provider.exceptions.includes(yyyyMmDd)) return false;
+
+      const currentMinutes = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+
+      for (const rule of provider.rules) {
+        if (!rule.days || !rule.start || !rule.end) continue;
+        if (!rule.days.includes(weekday)) continue;
+
+        const [startH, startM] = rule.start.split(":").map(Number);
+        const [endH, endM] = rule.end.split(":").map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+
+        let inWindow = false;
+        if (endMinutes > startMinutes) {
+          inWindow = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        } else {
+          inWindow = currentMinutes >= startMinutes || currentMinutes < endMinutes;
+        }
+
+        if (inWindow) return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.warn("Availability check failed", err);
+      return false;
+    }
+  }
+
+  // ---------- Search logic (static path uses internal providers mock) ----------
   const handleSearch = async () => {
     setIsLoading(true);
-    try {
-      let minExp = undefined;
-      let maxExp = undefined;
 
-      if (selectedExperience === "0-5") {
-        minExp = 0;
-        maxExp = 5;
-      } else if (selectedExperience === "5-10") {
-        minExp = 5;
-        maxExp = 10;
-      } else if (selectedExperience === "10+") {
-        minExp = 10;
-      }
+    if (useStatic) {
+      setTimeout(() => {
+        const q = (searchQuery || "").trim().toLowerCase();
 
-      const response = await directoryService.searchDirectory(
-        searchQuery,
-        selectedState,
-        userCity,
-        selectedType !== "all" ? selectedType : undefined,
-        selectedCaseType || undefined, // Pass specialization
-        minExp,
-        maxExp,
-        undefined, // minRating
-        undefined, // maxRating
-        selectedLanguage || undefined,
-        pagination.page,
-        pagination.size
-      );
+        const filtered = staticData
+          .map((p) => {
+            const providerInfo = p.providerId ? getProviderByIdLocal(p.providerId) : null;
+            const availableNow = providerInfo ? isProviderAvailableNow(providerInfo) : p.isActive || false;
+            return { ...p, availableNow };
+          })
+          .filter((p) => {
+            const name = (p.displayName || p.name || "").toLowerCase();
+            const spec = (p.specialization || "").toLowerCase();
+            const city = (p.city || "").toLowerCase();
 
-      // Handle Spring Boot Page response
-      if (response && response.content) {
-        setSearchResults(response.content);
-        setPagination(prev => ({
+            const matchesQuery =
+              !q || name.includes(q) || spec.includes(q) || city.includes(q);
+
+            const matchesState = !selectedState || p.state === selectedState;
+            const matchesType =
+              selectedType === "all" ||
+              (selectedType && (p.role === selectedType || (p.type && p.type.toUpperCase() === selectedType)));
+            const matchesCaseType = !selectedCaseType || spec.includes(selectedCaseType.toLowerCase());
+            const matchesLanguage =
+              !selectedLanguage ||
+              (p.languages || "")
+                .toLowerCase()
+                .split(",")
+                .map((s) => s.trim())
+                .includes(selectedLanguage.toLowerCase());
+            const matchesExperience = (() => {
+              if (!selectedExperience) return true;
+              const exp = p.yearsOfExperience || 0;
+              if (selectedExperience === "0-5") return exp >= 0 && exp <= 5;
+              if (selectedExperience === "5-10") return exp >= 5 && exp <= 10;
+              if (selectedExperience === "10+") return exp >= 10;
+              return true;
+            })();
+
+            const matchesAvailability =
+              !selectedAvailability ||
+              (selectedAvailability === "available" ? p.availableNow : !p.availableNow);
+
+            return matchesQuery && matchesState && matchesType && matchesCaseType && matchesLanguage && matchesExperience && matchesAvailability;
+          });
+
+        // sorting
+        let sorted = filtered.slice();
+        if (sortBy === "rating") sorted.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        else if (sortBy === "experience") sorted.sort((a, b) => (b.yearsOfExperience || 0) - (a.yearsOfExperience || 0));
+        else if (sortBy === "cases") sorted.sort((a, b) => (b.casesHandled || 0) - (a.casesHandled || 0));
+
+        // pagination
+        const start = pagination.page * pagination.size;
+        const end = start + pagination.size;
+        const pageContent = sorted.slice(start, end);
+
+        setSearchResults(pageContent);
+        setPagination((prev) => ({
           ...prev,
-          totalElements: response.totalElements,
-          totalPages: response.totalPages
+          totalElements: sorted.length,
+          totalPages: Math.max(1, Math.ceil(sorted.length / prev.size)),
         }));
-      } else {
-        // Fallback if not paginated
-        setSearchResults(Array.isArray(response) ? response : []);
+
+        setIsLoading(false);
+      }, 600);
+    } else {
+      // Real API Mode
+      try {
+        let minExp = undefined;
+        let maxExp = undefined;
+
+        if (selectedExperience === "0-5") {
+          minExp = 0;
+          maxExp = 5;
+        } else if (selectedExperience === "5-10") {
+          minExp = 5;
+          maxExp = 10;
+        } else if (selectedExperience === "10+") {
+          minExp = 10;
+        }
+
+        const response = await directoryService.searchDirectory(
+          searchQuery,
+          selectedState,
+          userCity,
+          selectedType !== "all" ? selectedType : undefined,
+          selectedCaseType || undefined,
+          minExp,
+          maxExp,
+          undefined, // minRating
+          undefined, // maxRating
+          selectedLanguage || undefined,
+          pagination.page,
+          pagination.size
+        );
+
+        if (response && response.content) {
+          setSearchResults(response.content);
+          setPagination((prev) => ({
+            ...prev,
+            totalElements: response.totalElements,
+            totalPages: response.totalPages,
+          }));
+        } else {
+          setSearchResults(Array.isArray(response) ? response : []);
+        }
+      } catch (error) {
+        console.error("Search failed", error);
+        setSearchResults([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Search failed", error);
-      setSearchResults([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Trigger search when filters change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch();
-    }, 500);
+    const id = setTimeout(() => handleSearch(), 300);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    searchQuery,
+    selectedState,
+    selectedType,
+    selectedCaseType,
+    sortBy,
+    pagination.page,
+    selectedLanguage,
+    selectedExperience,
+    selectedAvailability,
+  ]);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, selectedState, selectedType, selectedCaseType, sortBy, pagination.page, selectedLanguage, selectedExperience, selectedAvailability]);
-
-
-  // Read query parameters and auto-select filters
   useEffect(() => {
     const fromCase = searchParams.get("fromCase");
     const state = searchParams.get("state");
@@ -210,23 +482,11 @@ const DirectorySearch = () => {
 
     if (fromCase === "true") {
       setIsFromCaseSubmission(true);
-
-      if (state) {
-        setSelectedState(state);
-      }
-
-      if (caseType) {
-        setSelectedCaseType(caseType);
-      }
-
-      if (city) {
-        // Use city as search query if provided, or handle it as a filter if backend supports 'city'
-        // Current directoryService supports 'city' param, but here we can just update searchQuery
-        // OR update a userCity state if we want strict city filtering.
-        // For now, let's treat it as userCity to filter by current user's location if needed
-        setUserCity(city);
-      }
+      if (state) setSelectedState(state);
+      if (caseType) setSelectedCaseType(caseType);
+      if (city) setUserCity(city);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const clearFilters = () => {
@@ -239,298 +499,278 @@ const DirectorySearch = () => {
     setSelectedExperience("");
     setSelectedAvailability("");
     setIsFromCaseSubmission(false);
-    setPagination(prev => ({ ...prev, page: 0 }));
+    setPagination((prev) => ({ ...prev, page: 0 }));
   };
 
   return (
-    <>
-      <div className="w-full bg-gray-50">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
-          <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 py-6">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-xl flex items-center justify-center">
-                <FiSearch className="text-lg sm:text-xl text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-                  Legal Directory
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  Find verified lawyers and NGOs by name and location
-                </p>
-              </div>
+    <div className="w-full bg-gray-50 dark:bg-black">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-5">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-xl flex items-center justify-center">
+              <FiSearch className="text-lg sm:text-xl text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Legal Directory</h1>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Find verified lawyers and NGOs by name and location</p>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
-          {/* Search Section */}
-          <div className="bg-white rounded-2xl border border-gray-200
-  p-5 sm:p-6 mb-8
-  shadow-sm hover:shadow-md transition">
-            <div className="grid grid-cols-1 gap-4 mb-6">
-              {/* Search Input */}
-              <div className="w-full">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Search by Name, Specialization, or City
-                </label>
-                <div className="relative">
-                  <FiSearch className="
-    absolute left-3 top-1/2 -translate-y-1/2
-    text-gray-400
-  " />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search lawyer, NGO, city, or specialization"
-                    className="
-      w-full pl-10 pr-4 py-3
-      border border-gray-300 rounded-xl
-      focus:ring-2 focus:ring-primary/40
-      focus:border-primary
-      transition
-    "
-                  />
-                </div>
-
-              </div>
-
-              {/* State, Type, and Case Type Selectors - Stack on mobile */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* State Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    State
-                  </label>
-                  <Select
-                    value={
-                      selectedState
-                        ? { value: selectedState, label: selectedState }
-                        : null
-                    }
-                    onChange={(option) =>
-                      setSelectedState(option ? option.value : "")
-                    }
-                    options={indianStates}
-                    placeholder="Select State"
-                    isClearable
-                    className="react-select-container w-full"
-                    classNamePrefix="react-select"
-                  />
-                </div>
-
-                {/* Type Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Professional Type
-                  </label>
-                  <Select
-                    value={typeOptions.find(
-                      (option) => option.value === selectedType
-                    )}
-                    onChange={(option) => setSelectedType(option.value)}
-                    options={typeOptions}
-                    className="react-select-container w-full"
-                    classNamePrefix="react-select"
-                  />
-                </div>
-
-                {/* Case Type Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Case Type {isFromCaseSubmission && <span className="text-xs text-primary font-medium">(Auto-selected)</span>}
-                  </label>
-                  <Select
-                    value={selectedCaseType ? { value: selectedCaseType, label: selectedCaseType } : null}
-                    onChange={(option) => setSelectedCaseType(option ? option.value : "")}
-                    options={caseCategories.map(cat => ({ value: cat, label: cat }))}
-                    placeholder="Select Case Type"
-                    isClearable
-                    className="react-select-container w-full"
-                    classNamePrefix="react-select"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Advanced Filters */}
-            <div className="flex flex-col sm:flex-row
-  items-stretch sm:items-center
-  justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
-                >
-                  <FiFilter />
-                  <span className="hidden sm:inline">Advanced Filters</span>
-                  <span className="sm:hidden">Filters</span>
-                  <FiChevronDown
-                    className={`transform transition-transform ${showFilters ? "rotate-180" : ""
-                      }`}
-                  />
-                </button>
-
-                {(searchQuery || selectedState || selectedType !== "all" || selectedLanguage || selectedExperience) && (
-                  <button
-                    onClick={clearFilters}
-                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
-                  >
-                    <FiX />
-                    <span className="hidden sm:inline">Clear Filters</span>
-                    <span className="sm:hidden">Clear</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 hidden sm:inline">
-                  Sort by:
-                </label>
-                <Select
-                  value={sortOptions.find((option) => option.value === sortBy)}
-                  onChange={(option) => setSortBy(option.value)}
-                  options={sortOptions}
-                  className="react-select-container w-full sm:w-48"
-                  classNamePrefix="react-select"
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-6">
+        {/* Search Section */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 sm:p-6 mb-6 shadow-sm hover:shadow-md transition">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search by Name, Specialization, or City</label>
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPagination((p) => ({ ...p, page: 0 }));
+                  }}
+                  placeholder="Search lawyer, NGO, city, or specialization"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-primary/40 focus:border-primary transition"
                 />
               </div>
             </div>
 
-            {/* Expanded Filters */}
-            {showFilters && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Languages
-                    </label>
-                    <select
-                      value={selectedLanguage}
-                      onChange={(e) => setSelectedLanguage(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-                      <option value="">Any Language</option>
-                      {languages.map((lang, index) => (
-                        <option key={index} value={lang.toLowerCase()}>
-                          {lang}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Availability
-                    </label>
-                    <select
-                      value={selectedAvailability}
-                      onChange={(e) => setSelectedAvailability(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-                      <option value="">Any Availability</option>
-                      <option value="available">Available Now</option>
-                      <option value="busy">Busy</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Experience Level
-                    </label>
-                    <select
-                      value={selectedExperience}
-                      onChange={(e) => setSelectedExperience(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
-                      <option value="">Any Experience</option>
-                      <option value="0-5">0-5 years</option>
-                      <option value="5-10">5-10 years</option>
-                      <option value="10+">10+ years</option>
-                    </select>
-                  </div>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">State</label>
+                <Select
+                  value={selectedState ? { value: selectedState, label: selectedState } : null}
+                  onChange={(option) => {
+                    setSelectedState(option ? option.value : "");
+                    setPagination((p) => ({ ...p, page: 0 }));
+                  }}
+                  options={indianStates}
+                  placeholder="Select State"
+                  isClearable
+                  className="react-select-container w-full"
+                  classNamePrefix="react-select"
+                  styles={customSelectStyles}
+                />
               </div>
-            )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Professional Type</label>
+                <Select
+                  value={typeOptions.find((option) => option.value === selectedType)}
+                  onChange={(option) => {
+                    setSelectedType(option.value);
+                    setPagination((p) => ({ ...p, page: 0 }));
+                  }}
+                  options={typeOptions}
+                  className="react-select-container w-full"
+                  classNamePrefix="react-select"
+                  styles={customSelectStyles}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Case Type {isFromCaseSubmission && <span className="text-xs text-primary font-medium">(Auto-selected)</span>}
+                </label>
+                <Select
+                  value={selectedCaseType ? { value: selectedCaseType, label: selectedCaseType } : null}
+                  onChange={(option) => {
+                    setSelectedCaseType(option ? option.value : "");
+                    setPagination((p) => ({ ...p, page: 0 }));
+                  }}
+                  options={caseCategories.map((cat) => ({ value: cat, label: cat }))}
+                  placeholder="Select Case Type"
+                  isClearable
+                  className="react-select-container w-full"
+                  classNamePrefix="react-select"
+                  styles={customSelectStyles}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Results Section */}
-          <div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
-                Search Results
-                {!isLoading && (
-                  <span className="text-sm text-gray-600 ml-2">
-                    ({pagination.totalElements} found)
-                  </span>
-                )}
-              </h2>
+          {/* Advanced Filters + toggle */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-5">
+            <div className="flex items-center gap-4">
+              <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors">
+                <FiFilter />
+                <span className="hidden sm:inline">Advanced Filters</span>
+                <span className="sm:hidden">Filters</span>
+                <FiChevronDown className={`transform transition-transform ${showFilters ? "rotate-180" : ""}`} />
+              </button>
 
-              {isLoading && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="hidden sm:inline">Searching...</span>
-                  <span className="sm:hidden">Loading...</span>
-                </div>
+              {(searchQuery || selectedState || selectedType !== "all" || selectedLanguage || selectedExperience) && (
+                <button onClick={clearFilters} className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600 transition-colors">
+                  <FiX />
+                  <span className="hidden sm:inline">Clear Filters</span>
+                  <span className="sm:hidden">Clear</span>
+                </button>
               )}
             </div>
 
-            {/* Results Grid */}
-            {searchResults.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                {isLoading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                    <CardSkeleton key={i} />
-                  ))
-                  : searchResults.map((result) => (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 hidden sm:inline">Sort by:</label>
+              <Select
+                value={sortOptions.find((option) => option.value === sortBy)}
+                onChange={(option) => {
+                  setSortBy(option.value);
+                  setPagination((p) => ({ ...p, page: 0 }));
+                }}
+                options={sortOptions}
+                className="react-select-container w-full sm:w-48"
+                classNamePrefix="react-select"
+                styles={customSelectStyles}
+              />
+
+              {/* Note: view toggle is shown on Results header below */}
+            </div>
+          </div>
+
+          {showFilters && (
+            <div className="mt-5 pt-5 border-t border-gray-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Languages</label>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => {
+                      setSelectedLanguage(e.target.value);
+                      setPagination((p) => ({ ...p, page: 0 }));
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">Any Language</option>
+                    {languages.map((lang, index) => (
+                      <option key={index} value={lang.toLowerCase()}>{lang}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Availability</label>
+                  <select value={selectedAvailability} onChange={(e) => setSelectedAvailability(e.target.value)} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                    <option value="">Any Availability</option>
+                    <option value="available">Available Now</option>
+                    <option value="busy">Busy</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Experience Level</label>
+                  <select value={selectedExperience} onChange={(e) => {
+                    setSelectedExperience(e.target.value);
+                    setPagination((p) => ({ ...p, page: 0 }));
+                  }} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary focus:border-primary">
+                    <option value="">Any Experience</option>
+                    <option value="0-5">0-5 years</option>
+                    <option value="5-10">5-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Results Section */}
+        <div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate">
+              Search Results
+              {!isLoading && <span className="text-sm text-gray-600 ml-2">({pagination.totalElements || 0} found)</span>}
+            </h2>
+
+            {/* Toggle moved here: straight in the Search Results header (right side) */}
+            <div className="flex items-center gap-3">
+              {isLoading && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                </div>
+              )}
+
+              <button
+                onClick={() => setViewMode((v) => (v === "square" ? "detailed" : "square"))}
+                title={viewMode === "square" ? "Switch to list view" : "Switch to grid view"}
+                aria-label="Toggle view"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-shadow focus:outline-none
+                  ${viewMode === "square" ? "bg-primary text-white border border-primary shadow-sm" : "bg-white text-slate-600 border border-slate-200"}`}
+              >
+                {viewMode === "square" ? <FiGrid className="text-sm" /> : <FiList className="text-sm" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Results Grid or List depending on viewMode */}
+          {searchResults.length > 0 ? (
+            viewMode === "square" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {isLoading ? Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />) :
+                  searchResults.map((result) => (
                     <ProfileCard
                       key={result.id}
+                      viewMode="square"
                       profile={{
                         ...result,
                         name: result.displayName || result.name,
                         type: result.role ? result.role.toLowerCase() : result.type,
                         verified: result.isVerified || result.verified,
-                        specialization: result.specialization ? result.specialization.split(',').map(s => s.trim()) : [],
-                        languages: result.languages ? result.languages.split(',').map(s => s.trim()) : [],
+                        specialization: result.specialization ? result.specialization.split(",").map((s) => s.trim()) : [],
+                        languages: result.languages ? result.languages.split(",").map((s) => s.trim()) : [],
                         experience: result.yearsOfExperience,
                         rating: result.rating || 0,
-                        available: result.isActive || false
+                        available: result.availableNow || false,
+                        casesHandled: result.casesHandled || 0,
                       }}
-                      onContact={(res) => {
-                        setSelectedProfile(res);
-                      }}
+                      onContact={(res) => setSelectedProfile(res)}
                     />
                   ))}
               </div>
-            ) : !isLoading ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FiSearch className="text-2xl text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No results found
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Try adjusting your search terms or filters to find what you're
-                  looking for.
-                </p>
-                <button
-                  onClick={clearFilters}
-                  className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-[#0e5658] transition-colors"
-                >
-                  Clear All Filters
-                </button>
+            ) : (
+              <div className="flex flex-col gap-6">
+                {isLoading ? Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} />) :
+                  searchResults.map((result) => (
+                    <ProfileCard
+                      key={result.id}
+                      viewMode="detailed"
+                      profile={{
+                        ...result,
+                        name: result.displayName || result.name,
+                        type: result.role ? result.role.toLowerCase() : result.type,
+                        verified: result.isVerified || result.verified,
+                        specialization: result.specialization ? result.specialization.split(",").map((s) => s.trim()) : [],
+                        languages: result.languages ? result.languages.split(",").map((s) => s.trim()) : [],
+                        experience: result.yearsOfExperience,
+                        rating: result.rating || 0,
+                        available: result.availableNow || false,
+                        casesHandled: result.casesHandled || 0,
+                      }}
+                      onContact={(res) => setSelectedProfile(res)}
+                    />
+                  ))}
               </div>
-            ) : null}
-          </div>
-          {selectedProfile && (
-            <ProfileViewModel
-              profile={selectedProfile}
-              onClose={() => setSelectedProfile(null)}
-            />
-          )}
+            )
+          ) : !isLoading ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiSearch className="text-2xl text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">Try adjusting your search terms or filters to find what you're looking for.</p>
+              <button onClick={clearFilters} className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-[#0e5658] transition-colors">
+                Clear All Filters
+              </button>
+            </div>
+          ) : null}
         </div>
+
+        {selectedProfile && <ProfileViewModel profile={selectedProfile} onClose={() => setSelectedProfile(null)} />}
       </div>
-    </>
+    </div>
   );
 };
 

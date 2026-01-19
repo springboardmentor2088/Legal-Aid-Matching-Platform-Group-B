@@ -12,9 +12,18 @@ public class ProfileUpdateDTO {
     private String phoneNumber;
     private Gender gender;
     private LocalDate dateOfBirth;
+    private String languages;
+
+    // Common
+    private String bio;
+
+    // Lawyer Details
+    private Integer yearsOfExperience;
+    private String lawFirmName;
 
     // NGO Details
     private String organizationName;
+    private String darpanId;
     private String registrationNumber;
     private com.jurify.jurify_backend.model.enums.RegistrationType registrationType;
     private Integer registrationYear;
@@ -27,6 +36,8 @@ public class ProfileUpdateDTO {
     private String organizationPhone;
     private String organizationEmail;
     private String contactPersonDesignation;
+    private String representativeGender;
+    private LocalDate representativeDob;
     private String websiteUrl;
     private String description;
     private java.util.List<String> serviceAreas;

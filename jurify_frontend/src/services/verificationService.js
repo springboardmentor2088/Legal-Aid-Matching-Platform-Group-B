@@ -91,7 +91,12 @@ export const verificationService = {
                         status: 'PENDING',
                         submittedAt: u.createdAt || new Date().toISOString(),
                         isVerified: false,
-                        documents: [], // We might not have docs here if we just list users
+                        documents: u.documentUrl ? [{
+                            name: u.documentType || "Document",
+                            size: 0,
+                            url: u.documentUrl,
+                            originalRequestId: null
+                        }] : [],
                         rejectionReason: null,
                         isUserEntity: true // Flag to know this is a direct User object, not a VerificationRequest
                     };

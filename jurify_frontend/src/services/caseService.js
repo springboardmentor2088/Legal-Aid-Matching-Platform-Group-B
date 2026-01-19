@@ -40,5 +40,13 @@ export const caseService = {
     // or just keep submitCase. The plan mentioned createCase, let's expose both or just use submitCase.
     createCase: async (caseData) => {
         return caseService.submitCase(caseData);
+    },
+
+    getMatches: async (caseId) => {
+        return api.get(`/matches/case/${caseId}`);
+    },
+
+    getCaseById: async (id) => {
+        return api.get(`/cases/${id}`);
     }
 };

@@ -14,7 +14,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "legal_categories", indexes = {
-    @Index(name = "idx_parent_category", columnList = "parent_category_id")
+        @Index(name = "idx_parent_category", columnList = "parent_category_id")
 })
 @Data
 @NoArgsConstructor
@@ -38,6 +38,8 @@ public class LegalCategory {
 
     @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private List<LegalCategory> subCategories = new ArrayList<>();
 
     private String icon;
@@ -59,10 +61,13 @@ public class LegalCategory {
 
     @OneToMany(mappedBy = "legalCategory", cascade = CascadeType.ALL)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private List<LawyerSpecialization> lawyerSpecializations = new ArrayList<>();
 
     @OneToMany(mappedBy = "legalCategory", cascade = CascadeType.ALL)
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @lombok.ToString.Exclude
     private List<NGOSpecialization> ngoSpecializations = new ArrayList<>();
 }
-

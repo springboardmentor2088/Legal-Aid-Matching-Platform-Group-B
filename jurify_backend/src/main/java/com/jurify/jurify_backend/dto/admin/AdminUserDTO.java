@@ -24,6 +24,8 @@ public class AdminUserDTO {
     private Boolean isVerified; // Added for easier filtering
     private LocalDateTime joinedAt;
     private LocalDateTime lastActive; // Added
+    private String documentUrl; // Added for verification fallback
+    private String documentType; // Added for verification fallback
 
     // Lawyer specific
     private String barCouncilNumber;

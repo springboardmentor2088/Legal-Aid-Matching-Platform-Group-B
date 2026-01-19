@@ -13,4 +13,6 @@ public interface NGORepository extends JpaRepository<NGO, Long> {
     boolean existsByRegistrationNumber(String registrationNumber);
 
     java.util.List<NGO> findByIsVerifiedTrue();
+
+    java.util.List<NGO> findByStateAndIsVerifiedTrue(String state);
 }
