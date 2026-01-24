@@ -149,6 +149,17 @@
 			<artifactId>google-api-services-calendar</artifactId>
 			<version>v3-rev20220715-2.0.0</version>
 		</dependency>
+        <!-- Jackson Databind -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- Rate Limiting -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.3.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>

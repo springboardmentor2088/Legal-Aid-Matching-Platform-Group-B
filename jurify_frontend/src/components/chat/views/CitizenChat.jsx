@@ -35,10 +35,12 @@ const CitizenChat = () => {
   } = useChat(ROLES.CITIZEN);
 
   // Normalize online status for consistency
-  const normalizedCases = filteredCases.map(c => ({
-    ...c,
-    onlineStatus: c.onlineStatus || getOnlineStatus(c),
-  }));
+  const normalizedCases = filteredCases
+    .filter(c => c.lawyer || c.ngo)
+    .map(c => ({
+      ...c,
+      onlineStatus: c.onlineStatus || getOnlineStatus(c),
+    }));
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "";
@@ -230,9 +232,16 @@ const CitizenChat = () => {
                             </div>
 
                             <div className="flex items-center justify-between">
-                              <p className={`text-[10px] font-sans font-black tracking-widest uppercase ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
-                                {caseItem.caseNumber}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-[10px] font-sans font-black tracking-widest uppercase ${isSelected ? 'text-white/70' : 'text-slate-400'}`}>
+                                  {caseItem.caseNumber}
+                                </p>
+                                {(caseItem.status === 'RESOLVED' || caseItem.status === 'CLOSED') && (
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500 border border-gray-200'} `}>
+                                    Resolved
+                                  </span>
+                                )}
+                              </div>
                               {caseItem.unreadCount > 0 && (
                                 <span className="shrink-0 min-w-[1.25rem] h-5 px-1.5 bg-green-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm">
                                   {caseItem.unreadCount}
@@ -306,7 +315,9 @@ const CitizenChat = () => {
 
                   {/* STATIC INPUT — MUST NOT SCROLL */}
                   {receiverRole &&
-                    canSendMessage(ROLES.CITIZEN, receiverRole) && (
+                    canSendMessage(ROLES.CITIZEN, receiverRole) &&
+                    selectedCase.status !== 'RESOLVED' &&
+                    selectedCase.status !== 'CLOSED' && (
                       <MessageInput
                         newMessage={newMessage}
                         setNewMessage={setNewMessage}
@@ -317,22 +328,37 @@ const CitizenChat = () => {
                       />
                     )}
 
-                  {/* BLOCKED STATE - NO RECEIVER OR PERMISSION DENIED */}
-                  {selectedCase && (!receiverRole || !canSendMessage(ROLES.CITIZEN, receiverRole)) && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center">
-                      <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
-                        <FiLock className="w-4 h-4" />
-                        <span>
-                          {!receiverRole
-                            ? "No legal counsel assigned to this case yet"
-                            : "Messaging not available for this recipient"}
-                        </span>
+                  {/* BLOCKED STATE - NO RECEIVER OR PERMISSION DENIED OR RESOLVED */}
+                  {selectedCase && (
+                    (!receiverRole || !canSendMessage(ROLES.CITIZEN, receiverRole)) ||
+                    selectedCase.status === 'RESOLVED' ||
+                    selectedCase.status === 'CLOSED'
+                  ) && (
+                      <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center">
+                        <div className="flex items-center justify-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                          {selectedCase.status === 'RESOLVED' || selectedCase.status === 'CLOSED' ? (
+                            <>
+                              <FiCheckCircle className="w-4 h-4 text-emerald-500" />
+                              <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                This case has been resolved. Messaging is closed.
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <FiLock className="w-4 h-4" />
+                              <span>
+                                {!receiverRole
+                                  ? "No legal counsel assigned to this case yet"
+                                  : "Messaging not available for this recipient"}
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </>
               ) : (
-                  <div className="flex-1 flex items-center justify-center bg-linear-to-br from-gray-50 to-[#e5f4f5] dark:from-gray-900 dark:to-gray-800 p-8">
+                <div className="flex-1 flex items-center justify-center bg-linear-to-br from-gray-50 to-[#e5f4f5] dark:from-gray-900 dark:to-gray-800 p-8">
                   <div className="text-center max-w-md">
                     <div className="w-20 h-20 bg-[#e5f4f5] dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
                       <FiMessageCircle className="w-10 h-10 text-[#11676a] dark:text-teal-400" />
@@ -372,8 +398,9 @@ const CitizenChat = () => {
             </div>
           )}
         </div>
-      )}
-    </ChatLayout>
+      )
+      }
+    </ChatLayout >
   );
 };
 

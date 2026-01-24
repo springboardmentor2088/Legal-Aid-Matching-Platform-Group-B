@@ -21,6 +21,7 @@ public class VerificationService {
     private final LawyerRepository lawyerRepository;
     private final NGORepository ngoRepository;
     private final DirectoryEntryService directoryEntryService;
+    private final AuditLogService auditLogService;
 
     private final CloudflareR2Service r2Service;
 
@@ -139,6 +140,15 @@ public class VerificationService {
             }
         }
 
+        // Log audit action
+        auditLogService.logAction(
+                "APPROVE_VERIFICATION",
+                adminId,
+                "VERIFICATION_REQUEST",
+                requestId,
+                String.format("Approved verification request for user %s (%s)", user.getEmail(), user.getRole()),
+                "System");
+
         return verificationRequestRepository.save(request);
     }
 
@@ -173,6 +183,16 @@ public class VerificationService {
                 ngoRepository.save(ngo);
             }
         }
+
+        // Log audit action
+        auditLogService.logAction(
+                "REJECT_VERIFICATION",
+                adminId,
+                "VERIFICATION_REQUEST",
+                requestId,
+                String.format("Rejected verification request for user %s (%s). Reason: %s", user.getEmail(),
+                        user.getRole(), reason),
+                "System");
 
         return verificationRequestRepository.save(request);
     }

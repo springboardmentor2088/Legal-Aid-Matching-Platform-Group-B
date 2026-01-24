@@ -2,12 +2,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../common/ToastContext';
 import Logo from '../common/Logo';
 import loginBg from '../../assets/login_bg.jpg';
 import { useTheme } from '../../context/ThemeContext';
+import AuthDarkModeToggle from '../common/AuthDarkModeToggle';
+import { useGlobalLoader } from '../../context/GlobalLoaderContext';
 
 function LoginPage() {
   const { isDarkMode } = useTheme();
+  const { startLoading, stopLoading } = useGlobalLoader();
   const [passwordVisible, setPasswordVisible] = useState(false);
   const togglePasswordVisibility = () => setPasswordVisible(!passwordVisible);
 
@@ -15,6 +19,7 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const primaryBg = "bg-[#11676a] hover:bg-[#0f5a5d] transition duration-200";
@@ -30,8 +35,15 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    startLoading("Signing in...");
+
     const result = await login(email, password);
     if (result.success) {
+      stopLoading(true, "Login successful!");
+      // showToast is redundant with stopLoading success message but keeping it for safety if stopLoading auto-hides quickly
+      // showToast({ message: "Login successful!", type: "success" }); 
+
       const role = result.role?.toUpperCase() || '';
       switch (role) {
         case 'CITIZEN': navigate('/citizen/dashboard'); break;
@@ -41,12 +53,16 @@ function LoginPage() {
         default: navigate('/');
       }
     } else {
+      stopLoading(false, result.error || 'Login failed');
       setError(result.error || 'Login failed');
     }
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+    // Remove '/api' from the end if it exists, as the oauth endpoint is usually at root
+    const rootUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
+    window.location.href = `${rootUrl}/oauth2/authorization/google`;
   };
 
   return (
@@ -56,6 +72,7 @@ function LoginPage() {
         backgroundImage: `linear-gradient(to right, rgba(17, 103, 106, 0.4), rgba(44, 62, 80, 0.5)), url(${loginBg})`,
       }}
     >
+      <AuthDarkModeToggle />
       {/* Left Side Text */}
       <div className="hidden md:block absolute top-24 left-12 max-w-xl z-10 space-y-4">
         <h1 className="text-4xl font-bold text-white leading-snug">

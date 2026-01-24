@@ -15,12 +15,13 @@ function getSpecializationColor(spec) {
   }
 }
 
-function ProfileCard({ profile, onContact, viewMode = "square" }) {
+function ProfileCard({ profile, onContact, viewMode = "square", submissionMode = false }) {
   // Square/compact card (original)
   if (viewMode === "square") {
     return (
       <div
         className="
+          flex flex-col h-full
           bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800
           p-4 sm:p-5
           hover:shadow-xl hover:-translate-y-1
@@ -129,7 +130,7 @@ function ProfileCard({ profile, onContact, viewMode = "square" }) {
         </div>
 
         {/* Actions Section */}
-        <div className="mt-3.5 pt-3 border-t border-gray-100">
+        <div className="mt-auto pt-3 border-t border-gray-100 dark:border-gray-800">
           <div className="flex flex-col gap-2.5">
             {/* Contact Info Row */}
             <div className="flex items-center justify-between">
@@ -184,30 +185,46 @@ function ProfileCard({ profile, onContact, viewMode = "square" }) {
               </div>
             </div>
 
-            {/* Contact Button */}
-            <button
-              className="group relative overflow-hidden bg-linear-to-r from-primary to-primary/90 text-white px-4 py-2 text-xs rounded-lg hover:from-primary/90 hover:to-primary transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98] font-semibold flex items-center justify-center gap-1.5 w-full sm:w-auto"
-              onClick={(e) => {
-                e.stopPropagation();
-                onContact(profile);
-              }}
-              aria-label={`Contact ${profile.name}`}
-            >
-              <span className="relative z-10 flex items-center gap-1.5">
-                <FiMail className="text-xs" />
-                <span>Contact</span>
-              </span>
-              <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </button>
+            {/* Actions Row: Verified Badge + Contact Button */}
+            <div className="flex items-center justify-between gap-2 mt-2">
+              {profile.isRequested ? (
+                <div className="text-[10px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1.5 shrink-0">
+                  <span className="bg-amber-100 dark:bg-amber-900/30 p-0.5 rounded-full">📨</span>
+                  <span>Request Sent</span>
+                </div>
+              ) : profile.verified ? (
+                <div className="text-[10px] font-medium text-green-600 dark:text-green-400 flex items-center gap-1.5 shrink-0">
+                  <span className="bg-green-100 dark:bg-green-900/30 p-0.5 rounded-full">✅</span>
+                  <span>Verified {profile.type === "lawyer" ? "Bar Council" : "NGO Darpan"}</span>
+                </div>
+              ) : (
+                <div></div> // Spacer
+              )}
+
+              <button
+                className={`group relative overflow-hidden px-4 py-2 text-xs rounded-lg transition-all duration-300 shadow-md font-semibold flex items-center justify-center gap-1.5
+                  ${profile.isRequested
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-linear-to-r from-primary to-primary/90 text-white hover:from-primary/90 hover:to-primary hover:shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+                  }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!profile.isRequested) onContact(profile);
+                }}
+                disabled={profile.isRequested}
+                aria-label={profile.isRequested ? "Already Requested" : `Contact ${profile.name}`}
+              >
+                <span className="relative z-10 flex items-center gap-1.5">
+                  <FiMail className="text-xs" />
+                  <span>{profile.isRequested ? "Requested" : "Contact"}</span>
+                </span>
+                {!profile.isRequested && (
+                  <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                )}
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Verification Badge */}
-        {profile.verified && (
-          <div className="mt-2.5 text-[10px] text-green-600">
-            ✅ Verified {profile.type === "lawyer" ? "Bar Council" : "NGO Darpan"}
-          </div>
-        )}
       </div>
     );
   }
@@ -290,22 +307,36 @@ function ProfileCard({ profile, onContact, viewMode = "square" }) {
 
       {/* Right: Actions */}
       <div className="flex flex-col gap-3 items-stretch">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onContact(profile);
-          }}
-          className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:brightness-105 transition"
-        >
-          Message
-        </button>
-        <a
-          href={`mailto:${profile.email}`}
-          onClick={(e) => e.stopPropagation()}
-          className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-700 text-sm text-slate-700 dark:text-white text-center hover:bg-slate-50 dark:hover:bg-gray-800 transition"
-        >
-          Email
-        </a>
+        {submissionMode ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onContact(profile);
+            }}
+            className="bg-primary text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-[#0e5658] transition shadow-md whitespace-nowrap"
+          >
+            Request Assistance
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onContact(profile);
+              }}
+              className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:brightness-105 transition"
+            >
+              Message
+            </button>
+            <a
+              href={`mailto:${profile.email}`}
+              onClick={(e) => e.stopPropagation()}
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-gray-700 text-sm text-slate-700 dark:text-white text-center hover:bg-slate-50 dark:hover:bg-gray-800 transition"
+            >
+              Email
+            </a>
+          </>
+        )}
       </div>
 
       {/* Verification */}

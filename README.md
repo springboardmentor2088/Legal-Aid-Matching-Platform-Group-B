@@ -42,15 +42,14 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 - **Notifications**: Automated email alerts for case updates and verification status.
 - **Contact Support**: Integrated inquiry forms for platform assistance.
 
+### 🤖 AI Legal Assistant (implemented)
+- **RAG Powered**: Retrieval-Augmented Generation system using `sentence-transformers` and Cosine Similarity to provide accurate legal answers.
+- **Vector Search**: Efficiently searches a knowledge base of Indian legal data to assist citizens.
+- **Role-Aware**: Tailors responses based on whether the user is a Citizen, Lawyer, or NGO.
+
 ---
 
-## 🔮 Implementation Roadmap (Future Ideas)
-
-### 🤖 AI Legal Assistant
-- **Chatbot**: NLP-powered assistant to answer basic legal FAQs and guide users to relevant laws.
-- **Document Summarization**: AI tools to summarize complex legal documents for citizens.
-
-
+## 🔜 Implementation Roadmap (Future Ideas)
 
 ### 💳 Secure Payments
 - **Payment Gateway**: Integration with Stripe/Razorpay for consultation fees and pro-bono donations.
@@ -81,7 +80,7 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 - **Language**: Java 21 LTS
 - **Database**: PostgreSQL (Relational Data Persistence)
 - **Security**: Spring Security, OAuth2 Client, JWT (jjwt 0.12.3)
-- **Storage**: AWS SDK for Java (S3 Integration)
+- **Storage**: Cloudflare R2 (S3 Compatible Object Storage)
 - **Real-time**: Spring WebSocket
 - **Build Tool**: Maven
 
@@ -95,6 +94,19 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 - **Icons**: React Icons, Heroicons
 - **Animations**: Framer Motion
 
+### AI Services (RAG)
+- **Language**: Python 3.10
+- **Framework**: Flask
+- **ML Models**: Sentence Transformers (`all-MiniLM-L6-v2`)
+- **Server**: Gunicorn
+- **Deployment**: Railway
+
+### Infrastructure
+- **Frontend Hosting**: Vercel
+- **Backend & Database**: Railway
+- **Object Storage**: Cloudflare R2
+- **Email**: Gmail SMTP (Production Tuned)
+
 ---
 
 ## 🚀 Getting Started
@@ -102,6 +114,7 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 ### Prerequisites
 - **Java 21 JDK**
 - **Node.js 18+**
+- **Python 3.10+** (For AI Service)
 - **PostgreSQL 12+**
 - **Maven 3.8+**
 
@@ -132,15 +145,23 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
     spring.mail.password=YOUR_APP_PASSWORD
     spring.mail.properties.mail.smtp.auth=true
     spring.mail.properties.mail.smtp.starttls.enable=true
+    # Production Tuned Trust
+    spring.mail.properties.mail.smtp.ssl.trust=*
 
-    # AWS S3 Configuration (For Document Storage)
-    aws.s3.bucket=YOUR_BUCKET_NAME
-    aws.accessKeyId=YOUR_ACCESS_KEY
-    aws.secretKey=YOUR_SECRET_KEY
-    aws.region=YOUR_REGION
+    # Cloudflare R2 Configuration (S3 Compatible)
+    cloudflare.r2.bucket=YOUR_BUCKET_NAME
+    cloudflare.r2.access-key=YOUR_ACCESS_KEY
+    cloudflare.r2.secret-key=YOUR_SECRET_KEY
+    cloudflare.r2.endpoint=YOUR_R2_ENDPOINT
 
     # JWT Configuration
     jwt.secret=YOUR_VERY_LONG_SECRET_KEY
+    
+    # RAG Service Integration
+    rag.service.url=http://localhost:8001
+    
+    # CORS
+    cors.allowed.origins=*
     ```
 
 3.  **Build and Run**
@@ -167,6 +188,7 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
 
     ```env
     VITE_API_BASE_URL=http://localhost:8080
+    VITE_API_URL=http://localhost:8080/api
     ```
 
 4.  **Run Development Server**
@@ -175,25 +197,47 @@ Jurify provides dedicated portals for **Citizens**, **Lawyers**, **NGOs**, and *
     ```
     *The app will be accessible at `http://localhost:5173`.*
 
+### 3️⃣ AI RAG Service Setup
+
+1.  **Navigate to rag_service**
+    ```bash
+    cd ../rag_service
+    ```
+
+2.  **Install Python Dependencies**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Run the Service**
+    ```bash
+    python app.py
+    ```
+    *The RAG service will start on `http://localhost:8001`.*
+
 ---
 
 ## 📁 Project Structure
 
 ```
 Jurify/
-├── jurify_backend/       # Spring Boot Application
-│   ├── src/main/java     # Core Logic (Controllers, Services, Models)
-│   ├── src/main/resources# Config & Templates
+├── jurify_backend/       # Spring Boot Application (Core Logic)
+│   ├── src/main/java     # Controllers, Services, Models
+│   ├── src/main/resources# Config, Templates, Application Properties
 │   └── pom.xml           # Maven Dependencies
 │
-├── jurify_frontend/      # React Application
+├── jurify_frontend/      # React Application (UI)
 │   ├── src/
-│   │   ├── components/   # Reusable UI Components
-│   │   ├── pages/        # Route Pages (Dashboards, Landing)
-│   │   ├── services/     # API Integration (Axios)
-│   │   └── context/      # Global State (Auth, Theme)
-│   ├── public/           # Static Assets
-│   └── package.json      # NPM Dependencies
+│   │   ├── components/   # Chat, Maps, Dashboard, Settings
+│   │   ├── pages/        # Landing, Login, Register
+│   │   ├── services/     # API Integration & WebSocket
+│   │   └── context/      # Auth & Notification State
+│   └── vite.config.js    # Build Configuration
+│
+├── rag_service/          # Python AI Microservice (New)
+│   ├── app.py            # Flask Endpoint
+│   ├── knowledge.json    # Legal Knowledge Base
+│   └── Dockerfile        # AI Container Config
 │
 └── README.md             # Project Documentation
 ```

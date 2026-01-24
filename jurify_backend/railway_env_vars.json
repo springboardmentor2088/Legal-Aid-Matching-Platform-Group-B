@@ -1,0 +1,22 @@
+{
+    "SPRING_PROFILES_ACTIVE": "prod",
+    "PGHOST": "${{Postgres.PGHOST}}",
+    "PGPORT": "${{Postgres.PGPORT}}",
+    "PGDATABASE": "${{Postgres.PGDATABASE}}",
+    "PGUSER": "${{Postgres.PGUSER}}",
+    "PGPASSWORD": "${{Postgres.PGPASSWORD}}",
+    "GOOGLE_CLIENT_ID": "1061951302268-4v3l6e9k7v68ig1ns1da7a067s8fq9gl.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "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",
+    "MAIL_USERNAME": "jurify.springboard@gmail.com",
+    "MAIL_PASSWORD": "oijk fijp mkmn lkjs",
+    "JWT_SECRET": "your-256-bit-secret-key-change-this-in-production-to-a-very-long-random-string",
+    "R2_ACCESS_KEY": "bcf89c0f3c47cf660c7b82935c1a3e63",
+    "R2_SECRET_KEY": "7d70e9fc6e2c2f154381f2efe2607f57d4dd4b8be9bd26004e14e27172878a7e",
+    "R2_ENDPOINT": "https://318a1e3b8170016e8898a857e83852a8.r2.cloudflarestorage.com",
+    "R2_BUCKET": "jurify-storage",
+    "R2_PUBLIC_URL": "https://jurify-storage.318a1e3b8170016e8898a857e83852a8.r2.cloudflarestorage.com",
+    "RAG_SERVICE_URL": "http://friendly-inspiration.railway.internal:8001",
+    "OPENAI_API_KEY": "sk-proj-placeholder",
+    "OPENAI_MODEL": "gpt-4o-mini",
+    "PORT": "8080"
+}

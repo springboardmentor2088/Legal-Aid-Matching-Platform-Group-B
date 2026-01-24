@@ -48,5 +48,62 @@ export const caseService = {
 
     getCaseById: async (id) => {
         return api.get(`/cases/${id}`);
+    },
+
+    // Resolution methods
+    submitResolution: async (caseId, document, notes) => {
+        const formData = new FormData();
+        formData.append('document', document);
+        if (notes) {
+            formData.append('notes', notes);
+        }
+        return api.post(`/cases/${caseId}/submit-resolution`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+
+    acknowledgeResolution: async (caseId, feedbackData) => {
+        return api.post(`/cases/${caseId}/acknowledge-resolution`, feedbackData);
+    },
+
+    getResolution: async (caseId) => {
+        return api.get(`/cases/${caseId}/resolution`);
+    },
+
+    // Reporting methods
+    reportCase: async (caseId, reason) => {
+        return api.post('/reports', { caseId, reason });
+    },
+
+    getPendingReports: async () => {
+        return api.get('/reports/pending');
+    },
+
+    dismissReport: async (reportId) => {
+        return api.post(`/reports/${reportId}/dismiss`);
+    },
+
+    resolveReportAndRemoveCase: async (reportId, removalReason) => {
+        return api.post(`/reports/${reportId}/resolve`, { removalReason });
+    },
+
+    getReportHistory: async () => {
+        return api.get('/reports/history');
+    },
+
+    requestConsultation: async (caseId, providerId, providerType) => {
+        return api.post(`/consultation/request/${caseId}/${providerId}`, null, {
+            params: { providerType: providerType.toUpperCase() }
+        });
+    },
+
+    getRequestedProviders: async (caseId) => {
+        return api.get(`/cases/${caseId}/requested-providers`);
+    },
+
+    getMyConsultations: async () => {
+        return api.get('/consultation/my-consultations');
     }
 };

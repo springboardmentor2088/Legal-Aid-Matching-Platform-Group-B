@@ -123,4 +123,16 @@ public class Lawyer {
 
     @OneToOne(mappedBy = "lawyer", cascade = CascadeType.ALL, orphanRemoval = true)
     private LawyerDocument document;
+
+    @Column(name = "average_rating")
+    @Builder.Default
+    private Double averageRating = 0.0;
+
+    @Column(name = "review_count")
+    @Builder.Default
+    private Integer reviewCount = 0;
+
+    @Column(name = "cases_handled")
+    @Builder.Default
+    private Integer casesHandled = 0;
 }

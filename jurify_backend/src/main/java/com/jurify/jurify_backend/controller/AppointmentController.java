@@ -1,6 +1,7 @@
 package com.jurify.jurify_backend.controller;
 
 import com.jurify.jurify_backend.model.Appointment;
+import com.jurify.jurify_backend.dto.AppointmentDTO;
 import com.jurify.jurify_backend.model.User;
 import com.jurify.jurify_backend.service.AppointmentService;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,8 @@ public class AppointmentController {
             // Get user to determine correct dashboard
             User user = appointmentService.getUserByEmail(state);
             String role = user.getRole().name().toLowerCase();
-            String dashboardUrl = String.format("http://localhost:5173/%s/dashboard?oauth_success=true", role);
+            String dashboardUrl = String.format("http://localhost:5173/%s/dashboard?tab=schedule&oauth_success=true",
+                    role);
 
             log.info("[GCAL] Redirecting to: {}", dashboardUrl);
             return new RedirectView(dashboardUrl);
@@ -123,14 +125,14 @@ public class AppointmentController {
      * Get upcoming confirmed appointments for current user
      */
     @GetMapping("/appointments/upcoming")
-    public ResponseEntity<List<Appointment>> getUpcomingAppointments(
+    public ResponseEntity<List<AppointmentDTO>> getUpcomingAppointments(
             @RequestHeader("Authorization") String token) {
 
         String jwt = token.replace("Bearer ", "");
         Long userId = jwtUtil.extractUserId(jwt);
         String userRole = jwtUtil.extractRole(jwt);
 
-        List<Appointment> appointments = appointmentService.getUpcomingAppointments(userId, userRole);
+        List<AppointmentDTO> appointments = appointmentService.getUpcomingAppointments(userId, userRole);
         return ResponseEntity.ok(appointments);
     }
 

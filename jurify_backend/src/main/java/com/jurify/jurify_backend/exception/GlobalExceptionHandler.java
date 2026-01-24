@@ -25,16 +25,31 @@ public class GlobalExceptionHandler {
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        
+
         ErrorResponse errorResponse = new ErrorResponse("Validation failed", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            org.springframework.security.access.AccessDeniedException ex) {
+        log.error("Access denied: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse("Access denied", null);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.error("Invalid argument: {}", ex.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime exception: {}", ex.getMessage(), ex);
-        ErrorResponse errorResponse = new ErrorResponse(ex.getMessage(), null);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+        ErrorResponse errorResponse = new ErrorResponse("Internal Server Error: " + ex.getMessage(), null);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)
@@ -51,4 +66,3 @@ public class GlobalExceptionHandler {
         private Map<String, String> errors;
     }
 }
-

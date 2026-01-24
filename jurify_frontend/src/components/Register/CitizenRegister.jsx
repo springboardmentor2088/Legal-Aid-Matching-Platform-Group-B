@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import Select from "react-select";
+import AuthDarkModeToggle from "../common/AuthDarkModeToggle";
+import { useGlobalLoader } from "../../context/GlobalLoaderContext";
 
 
 // Leaflet Imports
@@ -94,6 +96,7 @@ const CitizenRegister = () => {
   const location = useLocation();
   const { preRegToken, preFilledEmail, preFilledName } = location.state || {};
   const { isDarkMode } = useTheme();
+  const { startLoading, stopLoading } = useGlobalLoader();
 
   const parseName = (fullName) => {
     if (!fullName) return { firstName: "", lastName: "" };
@@ -129,6 +132,38 @@ const CitizenRegister = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearchInternal = async (query) => {
+    if (!query.trim()) return;
+    try {
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query + ", India"
+        )}&limit=1`,
+        { headers: { "User-Agent": "jurify-app/1.0" } }
+      );
+      const data = await resp.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const newPos = { lat: parseFloat(lat), lng: parseFloat(lon) };
+        setPosition(newPos);
+        setFormData(prev => ({ ...prev, latitude: newPos.lat, longitude: newPos.lng }));
+      }
+    } catch (err) {
+      console.error("Internal search failed", err);
+    }
+  };
+
+  const handleStateChange = (selectedOption) => {
+    const newState = selectedOption ? selectedOption.value : "";
+    setFormData((prev) => ({ ...prev, state: newState }));
+    setFieldErrors((prev) => ({ ...prev, state: "" }));
+
+    if (newState) {
+      setSearchQuery(newState);
+      handleSearchInternal(newState);
+    }
+  };
 
 
 
@@ -231,8 +266,29 @@ const CitizenRegister = () => {
     setPosition({ lat, lng });
     setSearchResults([]);
     setSearchQuery(result.display_name);
-    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
-    setFieldErrors((prev) => ({ ...prev, location: "" }));
+
+    const addr = result.address || {};
+    const city = addr.city || addr.town || addr.village || addr.municipality || "";
+    const state = addr.state || "";
+    const pincode = addr.postcode || "";
+    const country = addr.country || "India";
+
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      city,
+      state,
+      pincode,
+      country
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      city: "",
+      state: "",
+      pincode: "",
+      location: ""
+    }));
   };
 
   const [error, setError] = useState("");
@@ -311,10 +367,10 @@ const CitizenRegister = () => {
           ...prev,
           lastName: "Last name is required",
         }));
-      } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+      } else if (!/^[a-zA-Z\s.'-]+$/.test(value)) {
         setFieldErrors((prev) => ({
           ...prev,
-          lastName: "Last name should only contain letters",
+          lastName: "Last name should only contain letters, spaces, dots, hyphens or apostrophes",
         }));
       } else {
         setFieldErrors((prev) => ({ ...prev, lastName: "" }));
@@ -401,10 +457,10 @@ const CitizenRegister = () => {
     if (name === "state") {
       if (value.trim().length === 0) {
         setFieldErrors((prev) => ({ ...prev, state: "State is required" }));
-      } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+      } else if (!/^[a-zA-Z\s.'-]+$/.test(value)) {
         setFieldErrors((prev) => ({
           ...prev,
-          state: "State should only contain letters",
+          state: "State should only contain letters, spaces, dots, hyphens or apostrophes",
         }));
       } else {
         // Add this line to clear the error as soon as a valid state is typed/selected
@@ -587,6 +643,38 @@ const CitizenRegister = () => {
         setPosition({ lat: latitude, lng: longitude });
         setFormData((prev) => ({ ...prev, latitude, longitude }));
         setFieldErrors((prev) => ({ ...prev, location: "" }));
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            { headers: { "User-Agent": "jurify-app/1.0" } }
+          );
+          const data = await response.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const city = addr.city || addr.town || addr.village || addr.municipality || "";
+            const state = addr.state || "";
+            const pincode = addr.postcode || "";
+            const country = addr.country || "India";
+
+            setFormData(prev => ({
+              ...prev,
+              city,
+              state,
+              pincode,
+              country
+            }));
+            if (data.display_name) setSearchQuery(data.display_name);
+            setFieldErrors(prev => ({
+              ...prev,
+              city: "",
+              state: "",
+              pincode: ""
+            }));
+          }
+        } catch (error) {
+          console.error("Reverse geocoding failed", error);
+        }
       },
       (error) => {
         let errorMessage = "Unable to get your current location.";
@@ -762,12 +850,14 @@ const CitizenRegister = () => {
       formDataToSend.append("file", files.idProof);
     }
 
-    setIsSubmitting(true); // Start loading
+    setIsSubmitting(true); // Disable inputs
+    startLoading("Creating your account...");
 
     try {
       const result = await register(formDataToSend);
 
       if (result.success) {
+        stopLoading(true, "Account created! Please verify your email.");
         setIsSuccess(true);
         if (result.pollingToken) {
           setPollingToken(result.pollingToken);
@@ -775,10 +865,12 @@ const CitizenRegister = () => {
       } else {
         setError(result.error || "Registration failed");
         setIsSubmitting(false);
+        stopLoading(false, result.error || "Registration failed");
       }
     } catch (err) {
       setError("An unexpected error occurred.");
       setIsSubmitting(false);
+      stopLoading(false, "An unexpected error occurred.");
     }
   };
 
@@ -856,7 +948,7 @@ const CitizenRegister = () => {
 
 
     if (fieldErrors[fieldName]) {
-      return `${baseClass} border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-500/50 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400`;
+      return `${baseClass} border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-500 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400`;
     }
 
     return `${baseClass} border-gray-200 bg-white shadow-sm focus:ring-[#11676a]/40 focus:border-[#11676a] dark:focus:ring-teal-500/40 dark:focus:border-teal-500`;
@@ -1304,17 +1396,17 @@ const CitizenRegister = () => {
                       option: (base, state) => ({
                         ...base,
                         backgroundColor: state.isFocused
-                            ? isDarkMode
-                                ? "#374151"
-                                : "#ecfdf5"
-                            : isDarkMode
-                                ? "#1f2937"
-                                : "white",
+                          ? isDarkMode
+                            ? "#374151"
+                            : "#ecfdf5"
+                          : isDarkMode
+                            ? "#1f2937"
+                            : "white",
                         color: isDarkMode ? "white" : "black",
                       }),
                       singleValue: (base) => ({
-                          ...base,
-                          color: isDarkMode ? "white" : "black",
+                        ...base,
+                        color: isDarkMode ? "white" : "black",
                       }),
                       control: (base, state) => ({
                         ...base,
@@ -1737,16 +1829,7 @@ const CitizenRegister = () => {
                             (state) => state.value === formData.state
                           ) || null
                         }
-                        onChange={(selected) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            state: selected?.value || "",
-                          }));
-                          setFieldErrors((prev) => ({
-                            ...prev,
-                            state: "",
-                          }));
-                        }}
+                        onChange={handleStateChange}
                         styles={{
                           control: (base, state) => ({
                             ...base,
@@ -2020,10 +2103,10 @@ const CitizenRegister = () => {
                     how_to_reg
                   </span>
                   <span className="hidden xs:inline">
-                    {isSubmitting ? "Registering..." : "Create Citizen Account"}
+                    Create Citizen Account
                   </span>
                   <span className="xs:hidden">
-                    {isSubmitting ? "Registering..." : "Register as Citizen"}
+                    Register as Citizen
                   </span>
                 </span>
               </button>
@@ -2064,109 +2147,103 @@ const CitizenRegister = () => {
             </section>
           </form >
 
-          {/* Loading/Success Overlay */}
-          {
-            (isSubmitting || isSuccess) && (
-              <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 rounded-2xl sm:rounded-3xl flex items-center justify-center p-6">
-                <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
-                  {isSuccess ? (
-                    <>
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
-                          mail
-                        </span>
-                      </div>
-                      <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                        Verify Your Email
-                      </h3>
-                      <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
-                        We've sent a verification link to your email. Please check
-                        your inbox to activate your account.
-                      </p>
-                      <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
-                        Waiting for you to verify...
-                      </div>
-                      {/* fallback button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          fetch(
-                            "http://localhost:8080/api/auth/poll-verification",
-                            {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ pollingToken }),
-                            }
-                          ).then(async (res) => {
-                            if (res.ok) {
-                              const data = await res.json();
-                              localStorage.setItem(
-                                "accessToken",
-                                data.accessToken
-                              );
-                              localStorage.setItem(
-                                "refreshToken",
-                                data.refreshToken
-                              );
-
-                              const userObj = {
-                                id: data.userId,
-                                email: data.email,
-                                role: data.role,
-                                firstName: data.firstName,
-                                lastName: data.lastName,
-                                isEmailVerified: data.isEmailVerified,
-                              };
-                              localStorage.setItem(
-                                "user",
-                                JSON.stringify(userObj)
-                              );
-
-                              localStorage.setItem("userRole", data.role);
-                              localStorage.setItem("userEmail", data.email);
-                              localStorage.setItem("userId", data.userId);
-                              window.dispatchEvent(new Event("storage"));
-
-                              syncUser(); // Quick sync, PublicRoute will handle redirect
-
-
-                            } else {
-                              alert(
-                                "Verification not detected yet. Please click the link in your email."
-                              );
-                            }
-                          });
-                        }}
-                        className="text-primary hover:text-primary-dark underline text-sm mb-2"
-                      >
-                        I have verified my email
-                      </button>
-
-                      <p className="text-xs text-gray-400">
-                        Keep this tab open. We'll automatically log you in once
-                        verified.
-                      </p>
-                      <p className="text-[10px] text-gray-300 mt-2">
-                        Token: {pollingToken || "None"}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-                      <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
-                        Creating Account
-                      </h3>
-                      <p className="text-gray-500 text-sm sm:text-base">
-                        Please wait while we process your details...
-                      </p>
-                    </>
-                  )}
+          {/* Success Overlay (Email Verification) */}
+          {isSuccess && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 rounded-2xl sm:rounded-3xl flex items-center justify-center p-6">
+              <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
+                    mail
+                  </span>
                 </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  Verify Your Email
+                </h3>
+                <p className="text-gray-500 max-w-xs mx-auto text-sm sm:text-base mb-4">
+                  We've sent a verification link to your email. Please check
+                  your inbox to activate your account.
+                </p>
+                <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
+                  Waiting for you to verify...
+                </div>
+                {/* fallback button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetch(
+                      "http://localhost:8080/api/auth/poll-verification",
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ pollingToken }),
+                      }
+                    ).then(async (res) => {
+                      if (res.ok) {
+                        const data = await res.json();
+                        localStorage.setItem(
+                          "accessToken",
+                          data.accessToken
+                        );
+                        localStorage.setItem(
+                          "refreshToken",
+                          data.refreshToken
+                        );
+
+                        const userObj = {
+                          id: data.userId,
+                          email: data.email,
+                          role: data.role,
+                          firstName: data.firstName,
+                          lastName: data.lastName,
+                          isEmailVerified: data.isEmailVerified,
+                          phone: data.phone,
+                          gender: data.gender,
+                          dob: data.dob,
+                          addressLine1: data.addressLine1,
+                          addressLine2: data.addressLine2,
+                          city: data.city,
+                          state: data.state,
+                          country: data.country,
+                          pincode: data.pincode,
+                          languages: data.languages
+                        };
+                        localStorage.setItem(
+                          "user",
+                          JSON.stringify(userObj)
+                        );
+
+                        localStorage.setItem("userRole", data.role);
+                        localStorage.setItem("userEmail", data.email);
+                        localStorage.setItem("userId", data.userId);
+                        window.dispatchEvent(new Event("storage"));
+
+                        syncUser(); // Quick sync, PublicRoute will handle redirect
+
+
+                      } else {
+                        alert(
+                          "Verification not detected yet. Please click the link in your email."
+                        );
+                      }
+                    });
+                  }}
+                  className="text-primary hover:text-primary-dark underline text-sm mb-2"
+                >
+                  I have verified my email
+                </button>
+
+                <p className="text-xs text-gray-400">
+                  Keep this tab open. We'll automatically log you in once
+                  verified.
+                </p>
+                <p className="text-[10px] text-gray-300 mt-2">
+                  Token: {pollingToken || "None"}
+                </p>
               </div>
-            )
-          }
-        </div >
-      </div >
+            </div>
+          )}
+        </div>
+      </div>
 
       <style jsx="true">{`
         .custom-scroll::-webkit-scrollbar {
@@ -2209,6 +2286,7 @@ const CitizenRegister = () => {
           scroll-behavior: smooth;
         }
       `}</style>
+      <AuthDarkModeToggle />
     </div >
   );
 };

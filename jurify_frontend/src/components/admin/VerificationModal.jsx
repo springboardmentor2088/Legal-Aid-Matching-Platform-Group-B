@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FiX, FiCheck, FiAlertCircle, FiDownload, FiEye, FiFile, FiClock, FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiShield, FiBriefcase } from 'react-icons/fi';
 import { HiOutlineOfficeBuilding } from 'react-icons/hi';
+import AdminOnly from '../AdminOnly';
 import api from '../../services/api';
 import { verificationService } from '../../services/verificationService';
 
@@ -402,51 +403,53 @@ const VerificationModal = ({ user, onClose, onUpdate }) => {
                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Verification Actions</h3>
 
                 <div className="space-y-4">
-                  {/* Approve Button */}
-                  <button
-                    onClick={handleApprove}
-                    disabled={isSubmitting || user.verificationStatus === 'APPROVED'}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <FiCheck />
-                    {isSubmitting ? 'Processing...' : 'Approve Verification'}
-                  </button>
-
-                  {/* Reject Section */}
-                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <AdminOnly>
+                    {/* Approve Button */}
                     <button
-                      onClick={() => setVerificationStatus('REJECTED')}
-                      className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${verificationStatus === 'REJECTED'
-                        ? 'bg-red-600 text-white'
-                        : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
-                        }`}
+                      onClick={handleApprove}
+                      disabled={isSubmitting || user.verificationStatus === 'APPROVED'}
+                      className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      <FiX />
-                      Reject Verification
+                      <FiCheck />
+                      {isSubmitting ? 'Processing...' : 'Approve Verification'}
                     </button>
 
-                    {verificationStatus === 'REJECTED' && (
-                      <div className="mt-3">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Rejection Reason *
-                        </label>
-                        <textarea
-                          value={rejectionReason}
-                          onChange={(e) => setRejectionReason(e.target.value)}
-                          placeholder="Please specify the reason for rejection..."
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                          rows={3}
-                        />
-                        <button
-                          onClick={handleReject}
-                          disabled={isSubmitting || !rejectionReason.trim()}
-                          className="mt-2 w-full px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Processing...' : 'Confirm Rejection'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                    {/* Reject Section */}
+                    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                      <button
+                        onClick={() => setVerificationStatus('REJECTED')}
+                        className={`w-full px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${verificationStatus === 'REJECTED'
+                          ? 'bg-red-600 text-white'
+                          : 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
+                          }`}
+                      >
+                        <FiX />
+                        Reject Verification
+                      </button>
+
+                      {verificationStatus === 'REJECTED' && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Rejection Reason *
+                          </label>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            placeholder="Please specify reason for rejection..."
+                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                            rows={3}
+                          />
+                          <button
+                            onClick={handleReject}
+                            disabled={isSubmitting || !rejectionReason.trim()}
+                            className="mt-2 w-full px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isSubmitting ? 'Processing...' : 'Confirm Rejection'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </AdminOnly>
 
                   {/* Request Re-upload Section */}
                   <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">

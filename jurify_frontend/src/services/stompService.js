@@ -14,8 +14,10 @@ class StompService {
 
         // Note: Backend endpoint is /ws as per WebSocketConfig.java
         // Using SockJS factory for better compatibility
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+        const rootUrl = baseUrl.endsWith('/api') ? baseUrl.slice(0, -4) : baseUrl;
         this.client = new Client({
-            webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+            webSocketFactory: () => new SockJS(`${rootUrl}/ws`),
             connectHeaders: {
                 Authorization: `Bearer ${token}`,
             },

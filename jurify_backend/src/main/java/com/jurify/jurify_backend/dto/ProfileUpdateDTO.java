@@ -53,4 +53,5 @@ public class ProfileUpdateDTO {
     private String country;
     private BigDecimal latitude;
     private BigDecimal longitude;
+    private java.util.Map<String, Object> preferences;
 }

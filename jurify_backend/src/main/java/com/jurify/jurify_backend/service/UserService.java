@@ -10,6 +10,7 @@ import com.jurify.jurify_backend.repository.CitizenRepository;
 import com.jurify.jurify_backend.repository.LawyerRepository;
 import com.jurify.jurify_backend.repository.NGORepository;
 import com.jurify.jurify_backend.repository.UserRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +23,15 @@ public class UserService {
     private final LawyerRepository lawyerRepository;
     private final NGORepository ngoRepository;
     private final CitizenRepository citizenRepository;
+    private final com.jurify.jurify_backend.repository.LegalCategoryRepository legalCategoryRepository;
 
     private final com.jurify.jurify_backend.repository.VerificationRequestRepository verificationRequestRepository;
     private final CloudflareR2Service r2Service;
     private final com.jurify.jurify_backend.repository.DirectoryEntryRepository directoryEntryRepository;
     private final DirectoryEntryService directoryEntryService;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
+    private final AuthenticationService authenticationService;
 
     @Transactional
     public void updateProfileLocation(Long userId, LocationUpdateDTO locationDTO) {
@@ -85,6 +90,14 @@ public class UserService {
             default:
                 break;
         }
+
+        // Log audit action for profile update
+        auditLogService.logSystemAction(
+                "PROFILE_UPDATE",
+                userId,
+                "USER",
+                userId,
+                String.format("Profile updated for user %s (%s)", user.getEmail(), user.getRole()));
     }
 
     @Transactional
@@ -174,6 +187,26 @@ public class UserService {
                         lawyer.setDob(profileDTO.getDateOfBirth());
                     if (profileDTO.getGender() != null)
                         lawyer.setGender(profileDTO.getGender().name());
+
+                    // Update Specializations (Service Areas)
+                    if (profileDTO.getServiceAreas() != null) {
+                        // Clear existing
+                        lawyer.getSpecializations().clear();
+
+                        // Add new
+                        for (String categoryName : profileDTO.getServiceAreas()) {
+                            java.util.Optional<com.jurify.jurify_backend.model.LegalCategory> categoryOpt = legalCategoryRepository
+                                    .findByName(categoryName);
+                            if (categoryOpt.isPresent()) {
+                                com.jurify.jurify_backend.model.LawyerSpecialization spec = com.jurify.jurify_backend.model.LawyerSpecialization
+                                        .builder()
+                                        .lawyer(lawyer)
+                                        .legalCategory(categoryOpt.get())
+                                        .build();
+                                lawyer.getSpecializations().add(spec);
+                            }
+                        }
+                    }
 
                     lawyerRepository.save(lawyer);
                     // Sync with DirectoryEntry
@@ -266,7 +299,36 @@ public class UserService {
             case ADMIN:
                 // Admin profile update not yet implemented
                 break;
+
         }
+
+        if (profileDTO.getPreferences() != null) {
+            try {
+                String prefsJson = objectMapper.writeValueAsString(profileDTO.getPreferences());
+                user.setPreferences(prefsJson);
+                userRepository.save(user); // Ensure user is saved if only preferences changed
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to serialize preferences", e);
+            }
+        }
+    }
+
+    @Transactional
+    public void updatePreferences(Long userId, java.util.Map<String, Object> preferences) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        try {
+            String prefsJson = objectMapper.writeValueAsString(preferences);
+            user.setPreferences(prefsJson);
+            userRepository.save(user);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize preferences", e);
+        }
+    }
+
+    @Transactional
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        authenticationService.changePassword(user.getEmail(), currentPassword, newPassword);
     }
 
     @Transactional(readOnly = true)

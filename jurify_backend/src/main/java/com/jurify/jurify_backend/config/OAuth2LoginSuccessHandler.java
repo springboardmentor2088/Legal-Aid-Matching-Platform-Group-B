@@ -25,7 +25,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                         Authentication authentication) throws IOException, ServletException {
                 OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
-                String email = oAuth2User.getAttribute("email");
+                String email = ((String) oAuth2User.getAttribute("email")).toLowerCase();
                 String name = oAuth2User.getAttribute("name");
                 // Normalize provider ID extraction if possible, strict dependence on "sub"
                 // might be Google specific.

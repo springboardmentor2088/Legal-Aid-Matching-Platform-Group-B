@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { useToast } from '../common/ToastContext';
 
 const OAuth2RedirectHandler = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { showToast } = useToast();
 
     useEffect(() => {
         const accessToken = searchParams.get('accessToken');
@@ -18,7 +20,13 @@ const OAuth2RedirectHandler = () => {
             import('../../services/api').then(({ api }) => {
                 api.get('/users/me')
                     .then(user => {
+                        // Map userId to id for frontend consistency
+                        if (user.userId && !user.id) {
+                            user.id = user.userId;
+                        }
                         localStorage.setItem('user', JSON.stringify(user));
+
+                        showToast({ message: "Login successful!", type: "success" });
 
                         // Redirect based on role
                         const role = user.role ? user.role.toUpperCase() : '';
@@ -33,13 +41,15 @@ const OAuth2RedirectHandler = () => {
                     })
                     .catch(e => {
                         console.error("Failed to fetch user profile", e);
+                        showToast({ message: "Failed to fetch user profile", type: "error" });
                         navigate('/login?error=profile_fetch_failed');
                     });
             });
         } else {
+            showToast({ message: "Google login failed", type: "error" });
             navigate('/login?error=oauth_failed');
         }
-    }, [searchParams, navigate]);
+    }, [searchParams, navigate, showToast]);
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50">

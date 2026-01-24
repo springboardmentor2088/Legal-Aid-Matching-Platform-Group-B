@@ -39,4 +39,9 @@ public class DirectoryController {
     public ResponseEntity<DirectoryEntry> getDirectoryEntry(@PathVariable Long id) {
         return ResponseEntity.ok(directoryEntryService.getEntryById(id));
     }
+
+    @GetMapping("/{id}/reviews")
+    public ResponseEntity<List<com.jurify.jurify_backend.model.Review>> getReviews(@PathVariable Long id) {
+        return ResponseEntity.ok(directoryEntryService.getReviews(id));
+    }
 }

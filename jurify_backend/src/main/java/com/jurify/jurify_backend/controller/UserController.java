@@ -56,11 +56,39 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/profile/preferences")
+    public ResponseEntity<Void> updatePreferences(
+            @RequestBody java.util.Map<String, Object> preferences,
+            Principal principal) {
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        userService.updatePreferences(user.getId(), preferences);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<com.jurify.jurify_backend.dto.auth.AuthResponse> getMe(Principal principal) {
         User user = userRepository.findByEmail(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         return ResponseEntity.ok(userService.getCurrentUserResponse(user));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody java.util.Map<String, String> request,
+            Principal principal) {
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || newPassword == null) {
+            throw new IllegalArgumentException("Current and new password are required");
+        }
+
+        User user = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        userService.changePassword(user.getId(), currentPassword, newPassword);
+        return ResponseEntity.ok().build();
     }
 }

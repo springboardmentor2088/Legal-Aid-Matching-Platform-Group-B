@@ -26,6 +26,9 @@ public class LegalCase {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "case_number", unique = true)
+    private String caseNumber;
+
     @Column(nullable = false)
     private String title;
 
@@ -77,6 +80,25 @@ public class LegalCase {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // Resolution fields
+    @Column(name = "resolution_document_url")
+    private String resolutionDocumentUrl;
+
+    @Column(name = "resolution_document_s3_key")
+    private String resolutionDocumentS3Key;
+
+    @Column(name = "resolution_notes", columnDefinition = "TEXT")
+    private String resolutionNotes;
+
+    @Column(name = "resolution_submitted_at")
+    private LocalDateTime resolutionSubmittedAt;
+
+    @Column(name = "resolution_submitted_by")
+    private Long resolutionSubmittedBy;
+
+    @Column(name = "resolution_acknowledged_at")
+    private LocalDateTime resolutionAcknowledgedAt;
 
     @OneToMany(mappedBy = "legalCase", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private java.util.List<CaseDocument> documents;

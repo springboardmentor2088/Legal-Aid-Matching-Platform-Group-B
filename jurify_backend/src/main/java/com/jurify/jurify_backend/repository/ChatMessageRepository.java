@@ -17,4 +17,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     long countByCaseIdAndReceiverIdAndIsReadFalse(Long caseId, String receiverId);
 
     boolean existsByCaseId(Long caseId);
+
+    void deleteByCaseId(Long caseId);
 }

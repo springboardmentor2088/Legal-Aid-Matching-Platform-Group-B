@@ -17,19 +17,22 @@ import {
   FiAlertTriangle,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 import { caseService } from "../../services/caseService";
-import api from "../../services/api";
 import Select from "react-select";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { useMap } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../common/ToastContext";
-import { useTheme } from "../../context/ThemeContext";
+import directoryService from "../../services/directoryService";
+import { useGlobalLoader } from "../../context/GlobalLoaderContext";
+import ProfileCard from "../directory/ProfileCard";
+import ProfileViewModel from "../directory/ProfileViewModel";
 
 
 const MaterialIcon = ({ name, className = "" }) => (
-  <span className={`material-symbols-outlined align-middle ${className}`}>
+  <span className={`material-symbols-outlined align-middle text-gray-500 dark:text-gray-400 ${className}`}>
     {name}
   </span>
 );
@@ -41,10 +44,11 @@ const CaseSubmissionForm = () => {
   const [showDraftModal, setShowDraftModal] = useState(false);
   const [draftData, setDraftData] = useState(null);
   const { showToast } = useToast();
+  const { startLoading, stopLoading } = useGlobalLoader();
   const [activeTab, setActiveTab] = useState("Lawyer");
   const [selectedProfessional, setSelectedProfessional] = useState(null);
-  const [suggestions, setSuggestions] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
+  const [sortBy, setSortBy] = useState("match");
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -116,9 +120,7 @@ const CaseSubmissionForm = () => {
     { id: "review", title: "Review", icon: FiCheck },
   ];
 
-  const [legalCategories, setLegalCategories] = useState([]);
-
-  const FALLBACK_CATEGORIES = [
+  const legalCategories = [
     "Civil Law",
     "Criminal Law",
     "Family Law",
@@ -132,24 +134,6 @@ const CaseSubmissionForm = () => {
     "Human Rights",
     "Other",
   ];
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const data = await api.getLegalCategories();
-        if (data && Array.isArray(data) && data.length > 0) {
-          setLegalCategories(data.map((cat) => cat.name));
-        } else {
-          console.warn("No categories fetched, using fallback.");
-          setLegalCategories(FALLBACK_CATEGORIES);
-        }
-      } catch (err) {
-        console.error("Failed to fetch legal categories, using fallback", err);
-        setLegalCategories(FALLBACK_CATEGORIES);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   const urgencyLevels = [
     {
@@ -189,6 +173,61 @@ const CaseSubmissionForm = () => {
     "OTHER",
   ];
 
+  // State for dynamic professionals
+  const [professionals, setProfessionals] = useState([]);
+  const [fetchingPros, setFetchingPros] = useState(false);
+
+  // Fetch professionals matching criteria from the backend matching engine
+  useEffect(() => {
+    // Only fetch if a case is submitted
+    if (!submittedCase || !submittedCase.id) return;
+
+    const fetchMatches = async () => {
+      setFetchingPros(true);
+      try {
+        // Call the matching engine API to get real recommendations
+        const response = await caseService.getMatches(submittedCase.id);
+        const matchesData = response.data || response || [];
+
+        // Filter by active tab (Lawyer/NGO) and transform to UI format
+        const filtered = matchesData.filter(m =>
+          activeTab === "Lawyer" ? m.providerType === "LAWYER" : m.providerType === "NGO"
+        );
+
+        const pros = filtered.map(p => ({
+          id: p.providerId,
+          name: p.name,
+          type: p.providerType === "LAWYER" ? "Lawyer" : "NGO",
+          expertise: (p.expertise || []).join(", ") || "General Practice",
+          rating: p.rating || 4.5,
+          casesHandled: p.casesHandled || 0,
+          exp: p.experience || "N/A",
+          bio: p.bio || "No bio available.",
+          contact: p.contact,
+          email: p.email,
+          city: p.location,
+          matchScore: Math.round(p.matchScore) || 85,
+          matchReason: p.matchReason,
+          isAvailable: p.isAvailable
+        }));
+
+        setProfessionals(pros);
+      } catch (error) {
+        console.error("Failed to fetch matches:", error);
+        // Fallback: show empty
+        setProfessionals([]);
+      } finally {
+        setFetchingPros(false);
+      }
+    };
+
+    fetchMatches();
+  }, [submittedCase, activeTab]);
+
+  // Use dynamic list instead of static
+  const displayedMatches = professionals
+    .sort((a, b) => sortBy === "match" ? b.matchScore - a.matchScore : b.rating - a.rating)
+    .slice(0, 4);
   // Category-specific fields configuration
   const categoryFields = {
     "Family Law": [
@@ -345,14 +384,14 @@ const CaseSubmissionForm = () => {
     "absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none z-10";
 
   const inputClass =
-    "w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white";
+    "w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400";
 
   const getInputClass = (fieldName) => {
     const baseClass =
-      "w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white";
+      "w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400";
     const errorClass = fieldErrors[fieldName]
-      ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-      : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800";
+      ? "border-red-500 bg-red-50 dark:bg-red-900/10 dark:border-red-500/50"
+      : "border-gray-300 dark:border-gray-600";
     return `${baseClass} ${errorClass}`;
   };
 
@@ -593,6 +632,7 @@ const CaseSubmissionForm = () => {
     // }
 
     setIsSubmitting(true);
+    startLoading("Submitting your case...");
 
     try {
       // Prepare case data for API
@@ -625,23 +665,11 @@ const CaseSubmissionForm = () => {
       // Simulated response code removed
 
       setSubmittedCase(response);
-
-      // Fetch Matches
-      try {
-        const matches = await caseService.getMatches(response.id);
-        setSuggestions(matches);
-      } catch (matchError) {
-        console.error("Error fetching matches", matchError);
-      }
-
       if (user?.id) {
         localStorage.removeItem(`caseDraft_${user.id}`);
       }
 
-      showToast({
-        type: "success",
-        message: `Case ${response.id} submitted successfully!`,
-      });
+      stopLoading(true, `Case ${response.id} submitted successfully!`);
 
     } catch (error) {
       console.error("Failed to submit case:", error);
@@ -650,308 +678,378 @@ const CaseSubmissionForm = () => {
           error.response?.data?.message ||
           "Failed to submit case. Please try again.",
       });
-      showToast({
-        type: "error",
-        message: "Submission failed. Please try again.",
-      });
+      stopLoading(false, "Submission failed. Please try again.");
 
     } finally {
       setIsSubmitting(false);
     }
   };
-  if (submittedCase) {
-    return (
-      <div className="w-full bg-[#F3F4F6] dark:bg-black min-h-screen p-6 md:p-12 font-sans animate-in fade-in duration-500">
-        <div className="max-w-6xl mx-auto space-y-8">
-
-          {/* 1. ELEGANT SUCCESS HEADER */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-slate-200 dark:border-gray-800 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
-                <FiCheck className="text-2xl text-emerald-600" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-semibold text-slate-800 dark:text-white tracking-tight">Case Submission Confirmed</h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Reference Number: <span className="text-teal-700 dark:text-teal-400 font-mono font-bold tracking-wider">{submittedCase.id}</span></p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-slate-800 text-white rounded-lg font-semibold text-sm hover:bg-slate-700 transition-all shadow-sm">Dashboard</button>
-              <button onClick={() => setSubmittedCase(null)} className="px-6 py-2.5 border border-slate-300 text-slate-600 rounded-lg font-semibold text-sm hover:bg-slate-50 transition-all">New Case</button>
-            </div>
-          </div>
-
-          {/* 2. MATCHMAKER SECTION */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-md border border-slate-100 dark:border-gray-800 overflow-hidden">
-            <div className="p-8 border-b border-slate-100 dark:border-gray-800 flex flex-col md:flex-row justify-between items-end gap-6">
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Verified Recommendations</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Specialized assistance based on your <span className="text-teal-600 dark:text-teal-400 font-semibold">{formData.category}</span> requirements.</p>
-              </div>
-
-              {/* TAB SELECTOR */}
-              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
-                {["Lawyer", "NGO"].map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => setActiveTab(type)}
-                    className={`px-8 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === type ? "bg-white text-teal-700 shadow-md border border-slate-100" : "text-slate-400 hover:text-slate-600"}`}
-                  >
-                    {type}s
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="p-8 bg-slate-50/30">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
-
-                {/* PROFESSIONAL CARDS */}
-                {suggestions.filter(item => item.providerType === activeTab.toUpperCase()).map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedProfessional(item)}
-                    className="bg-white dark:bg-gray-800 rounded-xl p-5 border border-slate-200 dark:border-gray-700 hover:border-teal-500 hover:shadow-lg transition-all cursor-pointer group flex flex-col"
-                  >
-                    <div className={`w-10 h-10 rounded-lg mb-4 flex items-center justify-center ${activeTab === "Lawyer" ? "bg-teal-50 text-teal-600" : "bg-emerald-50 text-emerald-600"}`}>
-                      <MaterialIcon name={activeTab === "Lawyer" ? "account_balance" : "volunteer_activism"} className="text-xl" />
-                    </div>
-                    <h4 className="font-bold text-slate-800 dark:text-white text-sm leading-snug mb-1 group-hover:text-teal-700 dark:group-hover:text-teal-400 transition-colors">{item.name}</h4>
-                    <div className="flex flex-wrap gap-1 mb-3">
-                      {Array.isArray(item.expertise) ? item.expertise.slice(0, 3).map((spec, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 text-[10px] font-semibold rounded-md border border-slate-200 dark:border-gray-600">{spec}</span>
-                      )) : <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">{item.expertise}</span>}
-                      {Array.isArray(item.expertise) && item.expertise.length > 3 && (
-                        <span className="px-2 py-0.5 bg-slate-50 text-slate-400 text-[10px] rounded-md">+{item.expertise.length - 3}</span>
-                      )}
-                    </div>
-
-                    <div className="mt-auto flex items-center justify-between border-t border-slate-50 pt-3">
-                      <span className="text-[11px] font-bold text-amber-600 flex items-center gap-1">{item.rating} ★</span>
-                      <span className="text-[10px] text-slate-400 font-medium">View</span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* DISCOVERY ACTION CARD */}
-                <div
-                  onClick={() => navigate(activeTab === "Lawyer" ? "/discovery/lawyers" : "/discovery/ngos")}
-                  className="bg-slate-900 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-teal-800 transition-all group border border-slate-800"
-                >
-                  <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                    <FiChevronRight className="text-xl text-white" />
-                  </div>
-                  <h4 className="text-white text-xs font-bold leading-tight uppercase tracking-widest">
-                    Explore Full<br />Directory
-                  </h4>
-                </div>
-
-              </div>
-            </div>
-          </div>
-
-          {/* 3. PROFESSIONAL DETAIL MODAL */}
-          {selectedProfessional && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-              <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-200 dark:border-gray-800">
-                <div className={`p-8 ${selectedProfessional.color} text-white relative`}>
-                  <button onClick={() => setSelectedProfessional(null)} className="absolute top-6 right-6 hover:rotate-90 transition-transform p-1">
-                    <FiX className="text-xl" />
-                  </button>
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 border-b border-white/30 pb-1">{selectedProfessional.providerType} Information</span>
-                  <h2 className="text-3xl font-bold mt-4 tracking-tight">{selectedProfessional.name}</h2>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {Array.isArray(selectedProfessional.expertise) ? selectedProfessional.expertise.map((spec, i) => (
-                      <span key={i} className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-full border border-white/30">{spec}</span>
-                    )) : selectedProfessional.expertise}
-                  </div>
-                </div>
-
-                <div className="p-8 space-y-8">
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">About the {selectedProfessional.providerType}</h5>
-                    <p className="text-slate-600 leading-relaxed text-[15px] font-medium">{selectedProfessional.bio}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <h5 className="text-[10px] font-bold text-slate-400 uppercase mb-1">Practical Experience</h5>
-                      <p className="font-bold text-slate-800 text-base">{selectedProfessional.experience}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <h5 className="text-[10px] font-bold text-slate-400 uppercase mb-1">Service Rating</h5>
-                      <p className="font-bold text-slate-800 text-base">{selectedProfessional.rating} / 5.0 Rating</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                    <FiPhone className="text-teal-600" /> {selectedProfessional.contact}
-                  </div>
-                  <div className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                    <FiMail className="text-teal-600" /> {selectedProfessional.email}
-                  </div>
-                  <div className="flex items-center gap-3 text-slate-600 text-sm font-medium col-span-full">
-                    <FiMapPin className="text-teal-600" /> {selectedProfessional.location}
-                  </div>
-
-                  <button
-                    onClick={async () => {
-                      try {
-                        const token = localStorage.getItem("token");
-                        await api.post(`/consultation/request/${submittedCase.id}/${selectedProfessional.providerId}?providerType=${selectedProfessional.providerType}`, {}, {
-                          headers: { Authorization: `Bearer ${token}` }
-                        });
-                        showToast({ type: "success", message: "Consultation requested successfully!" });
-                        setSelectedProfessional(null);
-                      } catch (err) {
-                        console.error(err);
-                        const errorMessage = err.response?.data?.message || err.response?.data || "Failed to request consultation";
-                        showToast({
-                          type: "error",
-                          message: typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : errorMessage
-                        });
-                      }
-                    }}
-                    className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-sm tracking-wide hover:bg-teal-700 transition-all shadow-md">
-                    Request Consultation
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // 
   // if (submittedCase) {
-  //   return (
-  //     <div className="w-full bg-slate-50 min-h-screen p-4 md:p-10 font-sans">
-  //       <div className="max-w-7xl mx-auto space-y-10">
+  //     return (
+  //       <div className="w-full bg-[#FAFBFF] min-h-screen p-4 md:p-12 font-sans animate-in fade-in duration-700">
+  //         <div className="max-w-5xl mx-auto space-y-10">
 
-  //         {/* 1. SUCCESS MESSAGE (Now in its own clean box) */}
-  //         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-  //           <div className="flex items-center gap-6">
-  //             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
-  //               <FiCheck className="text-3xl text-emerald-600" />
+  //           {/* SECTION 1: HEADER & ACTIVE STATUS */}
+  //           <header className="text-center space-y-6">
+  //             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-widest">
+  //               <span className="relative flex h-2 w-2">
+  //                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+  //                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+  //               </span>
+  //               Case Live
   //             </div>
-  //             <div className="text-left">
-  //               <h2 className="text-2xl font-bold text-slate-900">Case Submitted Successfully!</h2>
-  //               <p className="text-slate-500 font-medium">Reference: <span className="text-teal-600 font-mono">{submittedCase.id}</span></p>
+  //             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Your case is in motion.</h1>
+
+  //             {/* ENHANCED MATCHING STATUS BOX (Moved to top as requested) */}
+  //             <div className="max-w-md mx-auto p-4 bg-white border-2 border-teal-500 rounded-2xl shadow-xl shadow-teal-500/10 flex items-center gap-4">
+  //                <div className="bg-teal-500 text-white text-xs font-black p-2 rounded-lg">02</div>
+  //                <div className="text-left">
+  //                   <h4 className="font-bold text-slate-800 text-sm">Expert Matching Phase</h4>
+  //                   <p className="text-xs text-slate-500 italic">Our algorithm is currently vetting {activeTab}s...</p>
+  //                </div>
   //             </div>
-  //           </div>
-  //           <div className="flex gap-3">
-  //             <button onClick={() => window.location.reload()} className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm">Dashboard</button>
-  //             <button onClick={() => setSubmittedCase(null)} className="px-6 py-3 border border-slate-200 text-slate-600 rounded-xl font-bold text-sm">New Case</button>
-  //           </div>
-  //         </div>
 
-  //         {/* 2. SEPARATE DIV FOR RECOMMENDATIONS */}
-  //         <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 p-8 md:p-12">
-  //           <div className="mb-10 text-center md:text-left">
-  //             <h3 className="text-3xl font-black text-slate-900 tracking-tight">Personalized Recommendations</h3>
-  //             <p className="text-slate-500 font-medium mt-2">Based on your {formData.category} case, we found 5 Lawyers and 5 NGOs near you.</p>
-  //           </div>
+  //             <p className="text-slate-500 max-w-lg mx-auto">Reference <span className="font-mono font-bold text-slate-800">#{submittedCase.id}</span>. Experts in <span className="text-teal-600 underline decoration-2 underline-offset-4">{formData.category}</span> are being ranked.</p>
+  //           </header>
 
-  //           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-  //             {STATIC_SUGGESTIONS.map((item) => (
-  //               <div 
-  //                 key={item.id} 
-  //                 onClick={() => setSelectedProfessional(item)}
-  //                 className="bg-slate-50 rounded-3xl p-6 border border-transparent hover:border-teal-500 hover:bg-white hover:shadow-xl transition-all cursor-pointer group flex flex-col items-center text-center"
-  //               >
-  //                 <div className={`w-14 h-14 rounded-2xl mb-4 flex items-center justify-center ${item.type === "Lawyer" ? "bg-teal-100 text-teal-600" : "bg-emerald-100 text-emerald-600"}`}>
-  //                   <MaterialIcon name={item.type === "Lawyer" ? "account_balance" : "volunteer_activism"} className="text-2xl" />
-  //                 </div>
-  //                 <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">{item.name}</h4>
-  //                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-3">{item.expertise}</p>
-  //                 <div className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-1 rounded-md mb-4">{item.rating} ★</div>
-  //                 <button className="mt-auto text-[10px] font-black uppercase text-teal-600 group-hover:underline">View Details</button>
+  //           {/* SECTION 2: THE MATCH LIST WITH PERCENTAGE */}
+  //           <div className="space-y-6">
+  //             <div className="flex items-center justify-between">
+  //               <h3 className="text-2xl font-bold text-slate-800">Top Recommendations</h3>
+  //               <div className="flex bg-slate-200/50 p-1 rounded-lg">
+  //                 {["Lawyer", "NGO"].map(t => (
+  //                   <button 
+  //                     key={t}
+  //                     onClick={() => setActiveTab(t)}
+  //                     className={`px-6 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+  //                   >
+  //                     {t}s
+  //                   </button>
+  //                 ))}
   //               </div>
-  //             ))}
+  //             </div>
+
+  //             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  //               {STATIC_SUGGESTIONS.filter(item => item.type === activeTab).slice(0, 4).map((item, idx) => (
+  //                 <div 
+  //                   key={item.id} 
+  //                   onClick={() => setSelectedProfessional(item)}
+  //                   className="group relative bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer"
+  //                 >
+  //                   {/* MATCH PERCENTAGE BADGE */}
+  //                   <div className="absolute top-4 right-4 flex flex-col items-end">
+  //                     <span className="text-[10px] font-bold text-slate-400 uppercase">Match Score</span>
+  //                     <span className="text-xl font-black text-teal-600">{item.matchScore || "98"}%</span>
+  //                   </div>
+
+  //                   {idx === 0 && (
+  //                     <span className="absolute -top-3 left-6 bg-amber-400 text-amber-950 text-[10px] font-black px-3 py-1 rounded-full uppercase">Best Match</span>
+  //                   )}
+
+  //                   <div className="flex gap-5">
+  //                     <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-2xl">
+  //                       {activeTab === "Lawyer" ? "⚖️" : "🤝"}
+  //                     </div>
+  //                     <div className="flex-1">
+  //                       <h4 className="font-bold text-lg text-slate-900 group-hover:text-teal-600 transition-colors pr-16">{item.name}</h4>
+  //                       <p className="text-xs font-semibold text-teal-600 uppercase tracking-tighter mb-3">{item.expertise}</p>
+  //                       <div className="flex items-center gap-1 text-sm font-bold text-slate-700 mb-2">
+  //                         ⭐ {item.rating}
+  //                       </div>
+  //                       <div className="flex items-center justify-between border-t pt-4">
+  //                          <span className="text-xs font-bold text-slate-400">View Details</span>
+  //                          <span className="text-xs font-bold text-teal-600 group-hover:underline">Contact →</span>
+  //                       </div>
+  //                     </div>
+  //                   </div>
+  //                 </div>
+  //               ))}
+  //             </div>
   //           </div>
+
+  //           {/* BOTTOM ACTION BAR */}
+  //           <footer className="flex flex-col md:flex-row items-center justify-between gap-4 p-8 bg-slate-900 rounded-3xl text-white">
+  //             <div>
+  //               <h4 className="text-lg font-bold">Need more options?</h4>
+  //               <p className="text-slate-400 text-sm">Browse our full directory of {activeTab}s worldwide.</p>
+  //             </div>
+  //             <button 
+  //                 onClick={() => navigate(`/discovery/${activeTab.toLowerCase()}s`)}
+  //                 className="w-full md:w-auto px-8 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold rounded-xl transition-colors shadow-lg shadow-teal-500/20"
+  //             >
+  //               Explore Full Directory
+  //             </button>
+  //           </footer>
   //         </div>
 
-  //         {/* 3. DETAIL MODAL (Shown when a professional is clicked) */}
+  //         {/* MODAL: PROFESSIONAL DETAILS */}
   //         {selectedProfessional && (
-  //           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-  //             <div className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-  //               <div className={`p-8 ${selectedProfessional.color} text-white flex justify-between items-start`}>
-  //                 <div>
-  //                   <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1 rounded-full">{selectedProfessional.type}</span>
-  //                   <h2 className="text-3xl font-bold mt-3">{selectedProfessional.name}</h2>
-  //                   <p className="opacity-80 font-medium">{selectedProfessional.expertise} Specialist</p>
-  //                 </div>
-  //                 <button onClick={() => setSelectedProfessional(null)} className="bg-white/20 hover:bg-white/40 p-2 rounded-full transition">
-  //                   <FiX className="text-2xl" />
-  //                 </button>
-  //               </div>
+  //           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+  //             <div className="bg-white w-full max-w-lg rounded-[2rem] overflow-hidden shadow-2xl relative">
+  //               {/* Close Button */}
+  //               <button 
+  //                 onClick={() => setSelectedProfessional(null)}
+  //                 className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+  //               >
+  //                 ✕
+  //               </button>
+
   //               <div className="p-8 space-y-6">
-  //                 <div>
-  //                   <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">About</h5>
-  //                   <p className="text-slate-600 leading-relaxed">{selectedProfessional.bio}</p>
-  //                 </div>
-  //                 <div className="grid grid-cols-2 gap-4">
-  //                   <div className="bg-slate-50 p-4 rounded-2xl">
-  //                     <h5 className="text-[10px] font-black text-slate-400 uppercase mb-1">Experience</h5>
-  //                     <p className="font-bold text-slate-800">{selectedProfessional.exp}</p>
+  //                 <div className="flex items-center gap-6">
+  //                   <div className="w-20 h-20 rounded-2xl bg-teal-50 flex items-center justify-center text-3xl">
+  //                     {activeTab === "Lawyer" ? "⚖️" : "🤝"}
   //                   </div>
-  //                   <div className="bg-slate-50 p-4 rounded-2xl">
-  //                     <h5 className="text-[10px] font-black text-slate-400 uppercase mb-1">Rating</h5>
-  //                     <p className="font-bold text-slate-800">{selectedProfessional.rating} / 5.0</p>
+  //                   <div>
+  //                     <h2 className="text-2xl font-black text-slate-900">{selectedProfessional.name}</h2>
+  //                     <p className="text-teal-600 font-bold text-sm uppercase">{selectedProfessional.expertise}</p>
+  //                     <div className="flex items-center gap-1 text-slate-700 font-bold">⭐ {selectedProfessional.rating}</div>
   //                   </div>
   //                 </div>
-  //                 <div className="space-y-3 pt-4 border-t border-slate-100">
-  //                   <div className="flex items-center gap-3 text-slate-600"><FiPhone className="text-teal-600"/> {selectedProfessional.contact}</div>
-  //                   <div className="flex items-center gap-3 text-slate-600"><FiMail className="text-teal-600"/> {selectedProfessional.email}</div>
-  //                   <div className="flex items-center gap-3 text-slate-600"><FiMapPin className="text-teal-600"/> {selectedProfessional.office}</div>
+
+  //                 <div className="space-y-4">
+  //                   <div className="bg-slate-50 p-4 rounded-xl">
+  //                     <h5 className="text-[10px] font-black text-slate-400 uppercase mb-1">About Expert</h5>
+  //                     <p className="text-sm text-slate-600 leading-relaxed">{selectedProfessional.bio}</p>
+  //                   </div>
+
+  //                   <div className="grid grid-cols-2 gap-4">
+  //                     <div className="bg-slate-50 p-4 rounded-xl">
+  //                       <h5 className="text-[10px] font-black text-slate-400 uppercase mb-1">Experience</h5>
+  //                       <p className="text-sm font-bold text-slate-800">{selectedProfessional.exp}</p>
+  //                     </div>
+  //                     <div className="bg-slate-50 p-4 rounded-xl">
+  //                       <h5 className="text-[10px] font-black text-slate-400 uppercase mb-1">Response Time</h5>
+  //                       <p className="text-sm font-bold text-slate-800">~2 Hours</p>
+  //                     </div>
+  //                   </div>
+
+  //                   <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+  //                     <h5 className="text-[10px] font-black text-emerald-600 uppercase mb-1">Contact Information</h5>
+  //                     <p className="text-sm font-bold text-slate-800 italic">Available upon scheduling</p>
+  //                   </div>
   //                 </div>
-  //                 <button className="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl font-bold shadow-lg shadow-teal-100 transition-all">
-  //                   Contact Now
-  //                 </button>
+
+  //                 {/* MODAL ACTIONS */}
+  //                 <div className="grid grid-cols-2 gap-4 pt-2">
+  //                   <button className="py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+  //                     💬 Chat Now
+  //                   </button>
+  //                   <button className="py-4 bg-teal-500 text-slate-900 font-bold rounded-2xl hover:bg-teal-400 transition-all shadow-lg shadow-teal-500/20">
+  //                     📅 Schedule
+  //                   </button>
+  //                 </div>
   //               </div>
   //             </div>
   //           </div>
   //         )}
-
   //       </div>
-  //     </div>
-  //   );
-  // }
+  //     );
+  //   }
 
-  return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-blue-50/30 dark:from-gray-900 dark:to-gray-800">
-      {/* Header */}
-      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border-b border-gray-200/50 dark:border-gray-800/50 top-0 z-40">
-        <div className="max-w-4xl mx-none px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-linear-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                <FiFileText className="text-xl text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Submit Legal Case
-                </h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Complete the form to submit your case
-                </p>
+  if (submittedCase) {
+    return (
+      <div className="w-full bg-[#FAFBFF] dark:bg-gray-900 min-h-screen p-4 md:p-12 font-sans animate-in fade-in duration-700 transition-colors">
+        <div className="max-w-5xl mx-auto space-y-10">
+
+          {/* SECTION 1: HEADER & ACTIVE STATUS */}
+          <header className="text-center space-y-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-widest">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Case Live
+            </div>
+            <h1 className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Your case is in motion.</h1>
+
+            <div className="max-w-md mx-auto p-4 bg-white dark:bg-gray-800 border-2 border-teal-500 rounded-2xl shadow-xl shadow-teal-500/10 flex items-center gap-4">
+              <div className="bg-teal-500 text-white text-xs font-black p-2 rounded-lg">02</div>
+              <div className="text-left">
+                <h4 className="font-bold text-slate-800 dark:text-gray-200 text-sm">Expert Matching Phase</h4>
+                <p className="text-xs text-slate-500 dark:text-gray-400 italic">Algorithm ranking top 1% of {activeTab}s...</p>
               </div>
             </div>
-            {autoSaveStatus && (
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                <FiSave className="text-green-600" />
-                <span>{autoSaveStatus}</span>
+          </header>
+
+          {/* SECTION 2: MATCH LIST WITH SORTING */}
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Top Recommendations</h3>
+                <div className="flex gap-4 mt-2">
+                  <button onClick={() => setSortBy("match")} className={`text-xs font-bold ${sortBy === 'match' ? 'text-teal-600 dark:text-teal-400 underline' : 'text-slate-400 dark:text-gray-500'}`}>Highest Match</button>
+                  <button onClick={() => setSortBy("rating")} className={`text-xs font-bold ${sortBy === 'rating' ? 'text-teal-600 dark:text-teal-400 underline' : 'text-slate-400 dark:text-gray-500'}`}>Top Rated</button>
+                </div>
               </div>
-            )}
+
+              <div className="flex bg-slate-200/50 dark:bg-gray-700/50 p-1 rounded-lg self-start">
+                {["Lawyer", "NGO"].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setActiveTab(t)}
+                    className={`px-6 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === t ? "bg-white dark:bg-gray-600 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-gray-400"}`}
+                  >
+                    {t}s
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-6">
+              {displayedMatches.map((item, idx) => (
+                <ProfileCard
+                  key={item.id}
+                  viewMode="detailed"
+                  submissionMode={true}
+                  profile={{
+                    ...item,
+                    // Mapping to ProfileCard expectations
+                    type: activeTab === "Lawyer" ? "lawyer" : "ngo",
+                    specialization: item.expertise ? [item.expertise] : [],
+                    experience: item.exp,
+                    casesHandled: item.casesHandled || 120, // dynamic if available
+                    verified: true,
+                    city: item.city || "Mumbai",
+                    state: "India", // default or fetched
+                    languages: ["English", "Hindi"], // default or fetched
+                    phoneNumber: item.phone || item.contact,
+                    email: item.email,
+                    isRequested: false // manage local state if needed
+                  }}
+                  onContact={(p) => setSelectedProfessional(p)} // Opens the modal
+                />
+              ))}
+            </div>
           </div>
+
+          {/* BOTTOM ACTION BAR */}
+          <footer className="flex flex-col md:flex-row items-center justify-between gap-4 p-8 bg-slate-900 dark:bg-gray-800 rounded-3xl text-white">
+            <div>
+              <h4 className="text-lg font-bold">Need more options?</h4>
+              <p className="text-slate-400 dark:text-gray-400 text-sm">Browse our full directory of {activeTab}s worldwide.</p>
+            </div>
+            <button
+              onClick={() => {
+                const typeParam = activeTab === "Lawyer" ? "LAWYER" : "NGO";
+                navigate(`/citizen/dashboard?tab=directory&fromCase=true&caseId=${submittedCase.id}&caseType=${encodeURIComponent(formData.category)}&type=${typeParam}`);
+              }}
+              className="w-full md:w-auto px-8 py-3 bg-teal-500 hover:bg-teal-400 text-slate-900 font-bold rounded-xl transition-colors"
+            >
+              Explore Full Directory
+            </button>
+          </footer>
         </div>
+
+        {/* MODAL: PROFESSIONAL DETAILS + REQUEST BUTTON */}
+        {/* {selectedProfessional && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl relative border border-white/20">
+              <button 
+                onClick={() => setSelectedProfessional(null)}
+                className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+              >
+                ✕
+              </button>
+
+              <div className="p-8 md:p-10 space-y-6">
+                <div className="flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-3xl bg-teal-50 flex items-center justify-center text-4xl shadow-inner">
+                    {activeTab === "Lawyer" ? "⚖️" : "🤝"}
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">{selectedProfessional.name}</h2>
+                    <p className="text-teal-600 font-bold text-sm uppercase tracking-widest">{selectedProfessional.expertise}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-slate-800 font-bold text-lg">⭐ {selectedProfessional.rating}</span>
+                      <span className="text-slate-400 text-sm">• {selectedProfessional.exp} Exp</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-slate-50 p-5 rounded-3xl">
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Biography</h5>
+                    <p className="text-sm text-slate-600 leading-relaxed">{selectedProfessional.bio}</p>
+                  </div>
+
+                  <div className="bg-slate-900 p-5 rounded-3xl text-white">
+                    <h5 className="text-[10px] font-black text-teal-400 uppercase mb-2 tracking-widest">Contact Details</h5>
+                    <div className="text-sm space-y-1">
+                        <p><span className="text-slate-400 font-medium">Email:</span> {selectedProfessional.email || 'verified@expert.com'}</p>
+                        <p><span className="text-slate-400 font-medium">Phone:</span> {selectedProfessional.phone || '+1 (555) 000-0000'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* MODAL ACTIONS - NOW WITH REQUEST BUTTON */}
+        {/* <div className="space-y-3 pt-2">
+                  <button className="w-full py-4 bg-teal-500 text-slate-900 text-lg font-black rounded-2xl hover:bg-teal-400 transition-all shadow-xl shadow-teal-500/20 active:scale-95">
+                    🚀 Request Legal Assistance
+                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button className="py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                      💬 Chat
+                    </button>
+                    <button className="py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                      📅 Schedule
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}  */}
+        {/* MODAL: PROFESSIONAL DETAILS + REQUEST BUTTON */}
+        {selectedProfessional && (
+          <ProfileViewModel
+            profile={{
+              ...selectedProfessional,
+              // Map CaseSubmissionForm's professional object to ProfileViewModel's expected structure if needed
+              // CaseSubmissionForm uses: name, expertise, rating, exp, bio, email, phone, city, casesHandled
+              // ProfileViewModel expects: name, type, city, state, email, phone, experience, rating, casesHandled, bio, specialization (array), languages (array), qualification, mission
+              type: selectedProfessional.type || (activeTab === "Lawyer" ? "lawyer" : "ngo"), // ensure lowercase for icon logic
+              specialization: selectedProfessional.expertise ? [selectedProfessional.expertise] : [], // wrap in array
+              experience: selectedProfessional.exp,
+              verified: true, // Assuming recommendations are verified
+              isRequested: false, // You might want to track this state locally if needed
+              isLoading: false
+            }}
+            onClose={() => setSelectedProfessional(null)}
+            onRequestConsultation={async (profile) => {
+              // Handle Request Logic similar to DirectorySearch
+              // Since CaseSubmissionForm might not have all the logic for direct request here, 
+              // we should implement a simple handler or reuse caseService.
+              // For now, let's keep it simple: Just close/toast or implement the actual call if easy.
+              // The inline modal had "Request Assistance". 
+              // Let's implement the request call.
+              try {
+                startLoading("Sending request...");
+                await caseService.requestConsultation(submittedCase.id, profile.id, profile.type.toUpperCase());
+                showToast({ type: "success", message: `Request sent to ${profile.name}!` });
+                setSelectedProfessional(null);
+              } catch (error) {
+                console.error("Request failed", error);
+                showToast({ type: "error", message: "Failed to send request." });
+              } finally {
+                stopLoading();
+              }
+            }}
+            showConsultationButton={true} // or use submissionMode logic inside ViewModel
+          />
+        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="w-full transition-colors duration-300">
+      {/* Header */}
+
 
       {/* Progress Steps */}
-    <div className="w-full
-max-w-none
-px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
-        <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 p-6 shadow-sm">
+      <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700 p-6 shadow-sm">
           <div className="flex items-center justify-between relative">
             {steps.map((step, index) => (
               <React.Fragment key={step.id}>
@@ -961,7 +1059,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
                       ? "bg-linear-to-r from-green-500 to-green-600 text-white shadow-lg shadow-green-500/25"
                       : index === currentStep
                         ? "bg-linear-to-r from-primary to-primary/80 text-white shadow-lg shadow-primary/25 ring-4 ring-primary/20"
-                        : "bg-gray-100 text-gray-400 border-2 border-gray-200"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-2 border-gray-200 dark:border-gray-600"
                       }`}
                   >
                     {index < currentStep ? (
@@ -971,7 +1069,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
                     )}
                   </div>
                   <span
-                    className={`mt-3 text-sm font-medium text-center ${index <= currentStep ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-600"
+                    className={`mt-3 text-sm font-medium text-center ${index <= currentStep ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"
                       }`}
                   >
                     {step.title}
@@ -981,7 +1079,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
                   <div
                     className={`w-16 h-0.5 transition-all duration-300 shrink-0 ${index < currentStep
                       ? "bg-linear-to-r from-green-500 to-green-600"
-                      : "bg-gray-200"
+                      : "bg-gray-200 dark:bg-gray-700"
                       }`}
                   />
                 )}
@@ -992,10 +1090,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 py-8">
       </div>
 
       {/* User Info Card */}
-      <div className="w-full
-max-w-none
-px-4 sm:px-6 lg:px-10 xl:px-16 mb-8">
-        <div className="bg-linear-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-blue-200/50 p-6">
+      <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 mb-8">
+        <div className="bg-linear-to-r from-blue-500/10 to-indigo-500/10 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 p-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
               <FiUser className="text-xl text-white" />
@@ -1005,11 +1101,11 @@ px-4 sm:px-6 lg:px-10 xl:px-16 mb-8">
                 {user?.firstName} {user?.lastName}
               </p>
               <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                   <FiMail className="text-gray-400" />
                   {user?.email}
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                   <FiPhone className="text-gray-400" />
                   {user?.phone || "Not provided"}
                 </span>
@@ -1020,10 +1116,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 mb-8">
       </div>
 
       {/* Form Steps */}
-      <div className="w-full
-max-w-none
-px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
-        <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-800/50 p-8">
+      <div className="w-full max-w-none px-4 sm:px-6 lg:px-8 pb-12">
+        <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200/50 dark:border-gray-700 p-8">
           {/* Step 0: Basic Details */}
           {currentStep === 0 && (
             <div className="space-y-8">
@@ -1049,9 +1143,9 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                       value={formData.title}
                       onChange={handleInputChange}
                       placeholder="Brief title describing your legal issue"
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white ${errors.title
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 ${errors.title
+                        ? "border-red-500 bg-red-50 dark:bg-red-900/10 dark:border-red-500/50"
+                        : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
                         }`}
                     />
                   </div>
@@ -1064,7 +1158,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 </div>
 
                 <div className="group">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     <FiInfo className="text-primary" />
                     Legal Category <span className="text-red-500">*</span>
                   </label>
@@ -1073,9 +1167,9 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white appearance-none cursor-pointer ${errors.category
-                        ? "border-red-500 bg-red-50 dark:bg-red-900/20"
-                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 appearance-none cursor-pointer ${errors.category
+                        ? "border-red-500 bg-red-50 dark:bg-red-900/10 dark:border-red-500/50"
+                        : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
                         }`}
                     >
                       <option value="">Select a category</option>
@@ -1099,7 +1193,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="group">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       <FiClock className="text-primary" />
                       Urgency Level
                     </label>
@@ -1108,7 +1202,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                         name="urgency"
                         value={formData.urgency}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white appearance-none cursor-pointer hover:border-gray-300"
+                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 appearance-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-500"
                       >
                         {urgencyLevels.map((level) => (
                           <option key={level.value} value={level.value}>
@@ -1123,7 +1217,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                   </div>
 
                   <div className="group">
-                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
+                    <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       <FiUser className="text-primary" />
                       Preferred Language
                     </label>
@@ -1132,7 +1226,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                         name="preferredLanguage"
                         value={formData.preferredLanguage}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-800 dark:text-white appearance-none cursor-pointer hover:border-gray-300"
+                        className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:ring-4 focus:ring-primary/20 focus:border-primary transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white dark:placeholder-gray-400 appearance-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-500"
                       >
                         {languages.map((lang) => (
                           <option key={lang} value={lang}>
@@ -1167,7 +1261,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                   onChange={handleInputChange}
                   rows={6}
                   placeholder="Provide a detailed description of your legal issue, including relevant facts, timeline, and what you're seeking..."
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none bg-white dark:bg-gray-800 dark:text-white ${errors.description ? "border-red-500" : "border-gray-300 dark:border-gray-700"
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 ${errors.description ? "border-red-500 dark:border-red-500" : "border-gray-300 dark:border-gray-600"
                     }`}
                 />
                 {errors.description && (
@@ -1176,7 +1270,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                     {errors.description}
                   </p>
                 )}
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   {formData.description.length}/50 characters minimum
                 </p>
               </div>
@@ -1200,7 +1294,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                             formData.categorySpecificData[field.name] || ""
                           }
                           onChange={handleCategorySpecificChange}
-                          className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 dark:text-white"
+                          // onChange={handleCategorySpecificChange}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         >
                           <option value="">Select...</option>
                           {field.options.map((opt) => (
@@ -1217,7 +1312,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                           }
                           onChange={handleCategorySpecificChange}
                           rows={3}
-                          className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none bg-white dark:bg-gray-800 dark:text-white"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       ) : (
                         <input
@@ -1227,7 +1322,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                             formData.categorySpecificData[field.name] || ""
                           }
                           onChange={handleCategorySpecificChange}
-                          className="w-full p-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-800 dark:text-white"
+                          // onChange={handleCategorySpecificChange}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                         />
                       )}
                     </div>
@@ -1287,7 +1383,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                         <li
                           key={index}
                           onClick={() => selectSearchResult(result)}
-                          className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-700 flex items-start gap-2 text-gray-800 dark:text-gray-200"
+                          className="px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-700 flex items-start gap-2 text-gray-900 dark:text-gray-200"
                         >
                           <span className="material-symbols-outlined text-gray-400 text-lg mt-0.5">
                             location_on
@@ -1308,7 +1404,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
               </div>
 
               {/* Leaflet Map */}
-              <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 relative z-0">
+              <div className="w-full h-[250px] mb-4 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-600 relative z-0">
                 <MapContainer
                   center={[position.lat, position.lng]}
                   zoom={13}
@@ -1329,7 +1425,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 <button
                   type="button"
                   onClick={handleCurrentLocation}
-                  className="absolute bottom-3 right-3 z-[1000] bg-white dark:bg-gray-800 p-2.5 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                  className="absolute bottom-3 right-3 z-[1000] bg-white dark:bg-gray-800 p-2.5 rounded-lg shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                   title="Use Current Location"
                 >
                   <span className="material-symbols-outlined text-xl">
@@ -1418,18 +1514,16 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                           paddingLeft: "2.75rem", // space for icon
                           borderRadius: "0.75rem",
                           borderColor: fieldErrors.state
-                            ? "#fca5a5"
+                            ? isDarkMode ? "rgba(239, 68, 68, 0.5)" : "#fca5a5"
                             : state.isFocused
                               ? "#11676a"
-                              : isDarkMode
-                                ? "#374151" // gray-700
-                                : "#e5e7eb",
+                              : isDarkMode ? "#4b5563" : "#e5e7eb",
                           boxShadow: state.isFocused
                             ? "0 0 0 2px rgba(17,103,106,0.4)"
                             : "0 1px 2px rgba(0,0,0,0.05)",
-                          backgroundColor: isDarkMode ? "#1f2937" : "#ffffff", // gray-800
+                          backgroundColor: isDarkMode ? "#374151" : "#ffffff",
                           "&:hover": {
-                            borderColor: "#11676a",
+                            borderColor: isDarkMode ? "#9ca3af" : "#11676a",
                           },
                         }),
 
@@ -1442,18 +1536,18 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                           ...base,
                           margin: 0,
                           padding: 0,
-                          color: isDarkMode ? "#ffffff" : "#111827",
+                          color: isDarkMode ? "#f3f4f6" : "#111827",
                         }),
 
                         placeholder: (base) => ({
                           ...base,
-                          color: "#9ca3af",
+                          color: isDarkMode ? "#9ca3af" : "#9ca3af",
                           fontSize: "0.875rem",
                         }),
 
                         singleValue: (base) => ({
                           ...base,
-                          color: isDarkMode ? "#ffffff" : "#111827",
+                          color: isDarkMode ? "#f3f4f6" : "#111827",
                           fontSize: "0.875rem",
                         }),
 
@@ -1463,7 +1557,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
 
                         dropdownIndicator: (base) => ({
                           ...base,
-                          color: "#9ca3af",
+                          color: isDarkMode ? "#9ca3af" : "#9ca3af",
                           "&:hover": {
                             color: "#11676a",
                           },
@@ -1474,7 +1568,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                           zIndex: 50,
                           borderRadius: "0.75rem",
                           boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-                          backgroundColor: isDarkMode ? "#1f2937" : "#ffffff", // gray-800
+                          backgroundColor: isDarkMode ? "#1f2937" : "#ffffff",
                         }),
 
                         option: (base, state) => ({
@@ -1482,17 +1576,13 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                           backgroundColor: state.isSelected
                             ? "#11676a"
                             : state.isFocused
-                              ? isDarkMode
-                                ? "#374151"
-                                : "#f3f4f6"
+                              ? isDarkMode ? "#374151" : "#f0fdf4"
                               : "transparent",
                           color: state.isSelected
                             ? "#ffffff"
-                            : isDarkMode
-                              ? "#e5e7eb"
-                              : "#1f2937",
+                            : isDarkMode ? "#f3f4f6" : "#111827",
                           cursor: "pointer",
-                          ":active": {
+                          "&:active": {
                             backgroundColor: "#11676a",
                           },
                         }),
@@ -1513,7 +1603,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Postal / Zip Code <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
@@ -1533,7 +1623,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Country <span className="text-gray-400 font-normal"></span>
                   </label>
                   <div className="relative">
@@ -1577,7 +1667,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 Supporting Documents
               </h2>
 
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center hover:border-primary transition-colors">
+              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-primary transition-colors">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1609,10 +1699,10 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                   {formData.documents.map((file, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                     >
                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 border border-gray-300">
+                        <div className="w-12 h-12 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500">
                           {file.type.startsWith("image/") ? (
                             <img
                               src={URL.createObjectURL(file)}
@@ -1656,8 +1746,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 </div>
               )}
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm text-amber-800">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
                   <strong>Recommended documents:</strong> Any relevant
                   contracts, agreements, photographs, receipts, legal notices,
                   or other evidence supporting your case.
@@ -1669,42 +1759,42 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
           {/* Step 4: Review */}
           {currentStep === 4 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
                 Review Your Submission
               </h2>
 
               <div className="space-y-4">
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-2">
                     Basic Information
                   </h3>
                   <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     <p>
-                      <strong className="text-gray-900 dark:text-white">Title:</strong> {formData.title}
+                      <strong>Title:</strong> {formData.title}
                     </p>
                     <p>
-                      <strong className="text-gray-900 dark:text-white">Category:</strong> {formData.category}
+                      <strong>Category:</strong> {formData.category}
                     </p>
                     <p>
-                      <strong className="text-gray-900 dark:text-white">Urgency:</strong>{" "}
+                      <strong>Urgency:</strong>{" "}
                       {
                         urgencyLevels.find((l) => l.value === formData.urgency)
                           ?.label
                       }
                     </p>
                     <p>
-                      <strong className="text-gray-900 dark:text-white">Language:</strong> {formData.preferredLanguage}
+                      <strong>Language:</strong> {formData.preferredLanguage}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-2">
                     Case Details
                   </h3>
                   <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     <p>
-                      <strong className="text-gray-900 dark:text-white">Description:</strong>
+                      <strong>Description:</strong>
                     </p>
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                       {formData.description}
@@ -1713,8 +1803,8 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                     {formData.category &&
                       categoryFields[formData.category] &&
                       Object.keys(formData.categorySpecificData).length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                          <p className="font-medium mb-1 text-gray-900 dark:text-white">
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                          <p className="font-medium mb-1">
                             Additional {formData.category} Details:
                           </p>
                           {Object.entries(formData.categorySpecificData).map(
@@ -1724,7 +1814,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                               ].find((f) => f.name === key);
                               return value ? (
                                 <p key={key}>
-                                  <strong className="text-gray-900 dark:text-white">{field?.label}:</strong> {value}
+                                  <strong>{field?.label}:</strong> {value}
                                 </p>
                               ) : null;
                             }
@@ -1734,14 +1824,14 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                   </div>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-2">Location</h3>
                   <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     <p>{formData.location?.address || "Not specified"}</p>
                   </div>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                   <h3 className="font-medium text-gray-900 dark:text-white mb-2">Documents</h3>
                   <div className="space-y-1 text-sm text-gray-700 dark:text-gray-300">
                     {formData.documents.length > 0 ? (
@@ -1760,7 +1850,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                 </div>
               </div>
 
-              <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-4">
                 <p className="text-sm text-green-800 dark:text-green-300">
                   <strong>Ready to submit?</strong> Please review all
                   information carefully. Once submitted, you'll receive a
@@ -1778,7 +1868,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
               type="button"
               onClick={prevStep}
               disabled={currentStep === 0}
-              className="order-2 sm:order-1 px-6 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
+              className="order-2 sm:order-1 px-6 py-3 bg-white dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-300 dark:hover:border-gray-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
             >
               <FiChevronLeft className="text-lg" />
               Previous
@@ -1789,7 +1879,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
               {errors.submit && (
                 <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 flex items-start gap-3 animate-pulse">
                   <FiAlertCircle className="text-red-600 shrink-0 mt-0.5 text-lg" />
-                  <p className="text-sm text-red-800 font-medium">
+                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">
                     {errors.submit}
                   </p>
                 </div>
@@ -1812,17 +1902,10 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                     disabled={isSubmitting}
                     className="flex-1 sm:flex-none px-8 py-3 bg-linear-to-r from-green-500 to-green-600 text-white rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-green-500/25 transform hover:scale-105 disabled:transform-none"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <FiCheck className="text-lg" />
-                        Submit Case
-                      </>
-                    )}
+                    <>
+                      <FiCheck className="text-lg" />
+                      Submit Case
+                    </>
                   </button>
                 )}
               </div>
@@ -1841,17 +1924,17 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
       {/* Resume Draft Modal */}
       {showDraftModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 animate-scale-in">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 shadow-2xl p-6 animate-scale-in">
             {/* Header */}
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                 <FiSave className="text-blue-600 text-lg" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Resume Draft?</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Resume Draft?</h2>
             </div>
 
             {/* Content */}
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               We found a previously saved draft of your case. Would you like to
               continue where you left off?
             </p>
@@ -1863,7 +1946,7 @@ px-4 sm:px-6 lg:px-10 xl:px-16 pb-12">
                   localStorage.removeItem(`caseDraft_${user.id}`);
                   setShowDraftModal(false);
                 }}
-                className="px-4 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium"
               >
                 Discard
               </button>

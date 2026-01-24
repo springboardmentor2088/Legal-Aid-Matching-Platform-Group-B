@@ -11,8 +11,10 @@ import {
 import { FiCalendar, FiClock, FiEdit2, FiX, FiSun, FiMoon, FiUser } from "react-icons/fi";
 import calendarService from "../../services/calendarService";
 import { caseService } from "../../services/caseService";
+import { useGlobalLoader } from "../../context/GlobalLoaderContext";
 import { useToast } from "../common/ToastContext";
 import { useSearchParams } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   getMonthDays,
   navigateMonth,
@@ -108,8 +110,13 @@ const formatHour = (h) => {
   return `${h - 12} pm`;
 };
 
-const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderId, refreshKey }) => {
+const ScheduleDashboard = ({ userRole: propUserRole, user: propUser, selectedProviderId: forcedProviderId, refreshKey }) => {
+  const { user: authUser, userRole: authRole } = useAuth();
+  const user = propUser || authUser;
+  const userRole = propUserRole || (user?.role || authRole);
+
   const { isDarkMode } = useTheme();
+  const { startLoading, stopLoading } = useGlobalLoader();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [scheduleEvents, setScheduleEvents] = useState([]);
@@ -480,6 +487,12 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
       return;
     }
 
+    // Block booking for resolved cases
+    if (caseContext && (caseContext.status === 'RESOLVED' || caseContext.status === 'CLOSED')) {
+      showToast({ type: 'error', message: 'Cannot book appointments for resolved cases' });
+      return;
+    }
+
     // Additional safety check using canBookSlot
     const slotData = availableSlots.find(s => s.time === primarySlot);
     if (!canBookSlot(slotData, selectedDate)) {
@@ -487,7 +500,7 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
       return;
     }
 
-    setLoading(true);
+    startLoading("Requesting appointment...");
     try {
       const bookingData = buildBookingPayload(
         selectedDate,
@@ -515,7 +528,7 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
         }
       ]);
 
-      showToast({ type: 'success', message: 'Appointment requested successfully!' });
+      stopLoading(true, 'Appointment requested successfully!');
       setTitle('');
       setNotes('');
       setSelectedSlot('');
@@ -526,14 +539,14 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
       debouncedFetchAvailability(selectedProviderId, selectedDate, user?.id);
     } catch (err) {
       const errorMessage = handleApiError(err, 'Failed to book appointment');
-      showToast({ type: 'error', message: errorMessage });
+      stopLoading(false, errorMessage);
 
       // Auto-refresh availability on booking failure to prevent stale data
       if (err.response?.status === 409 || err.response?.status === 422) {
         debouncedFetchAvailability(selectedProviderId, selectedDate, user?.id);
       }
     } finally {
-      setLoading(false);
+      setLoading(false); // Can keep this if needed for UI state, or remove if GlobalLoader fully replaces it. I'll keep it for local disabling if buttons depend on it.
     }
   };
 
@@ -627,19 +640,47 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
       const fetchProviders = async () => {
         try {
           const fetchedProviders = await calendarService.getAllProviders();
-          setProviders(fetchedProviders);
+
+          let finalProviders = fetchedProviders;
+          if (userRole === 'CITIZEN') {
+            // Filter providers to only those assigned in userCases
+            // Logic: Collect all unique lawyerIds from userCases
+            // Note: userCases must be populated. If it's empty, we might show none?
+            // Or we rely on the fact that if it's loading, we wait.
+            // But here we just filter if we have cases.
+            if (userCases.length > 0) {
+              const assignedLawyerIds = new Set(
+                userCases
+                  .filter(c => c.lawyerId) // Ensure case has lawyer
+                  .map(c => c.lawyerId)
+              );
+              finalProviders = fetchedProviders.filter(p => assignedLawyerIds.has(p.userId || p.id));
+            } else {
+              // If citizen has no cases, maybe show empty list or all?
+              // Requirement: "Filter out unassigned lawyers".
+              // Use Empty list to be safe.
+              finalProviders = [];
+            }
+          }
+
+          setProviders(finalProviders);
+
           // Auto-select first if none selected and NOT in case context
-          if (fetchedProviders.length > 0 && !selectedProviderId && !caseIdParam) {
-            setSelectedProviderId(fetchedProviders[0].userId || fetchedProviders[0].id);
+          if (finalProviders.length > 0 && !selectedProviderId && !caseIdParam) {
+            setSelectedProviderId(finalProviders[0].userId || finalProviders[0].id);
           }
         } catch (err) {
           console.error("Failed to fetch providers", err);
           showToast({ type: 'error', message: "Failed to load lawyers list" });
         }
       };
+
+      // If citizen, wait for userCases to be populated? 
+      // userCases is initialized to []. We fetch it in another useEffect.
+      // We should probably depend on userCases.
       fetchProviders();
     }
-  }, [userRole, forcedProviderId, caseContext, caseIdParam]);
+  }, [userRole, forcedProviderId, caseContext, caseIdParam, userCases]);
 
   // Check Google Calendar Connection Status
   const [isGCalConnected, setIsGCalConnected] = useState(false);
@@ -662,7 +703,11 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
           if (searchParams.get('oauth_success')) {
             showToast({ type: 'success', message: 'Google Calendar Connected Successfully!' });
             // Clear param to clean URL
-            setSearchParams({});
+            setSearchParams(prev => {
+              const newParams = new URLSearchParams(prev);
+              newParams.delete('oauth_success');
+              return newParams;
+            });
           }
         } catch (err) {
           console.error("Failed to check calendar status", err);
@@ -801,7 +846,7 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
       <div className="p-6 flex-1 flex flex-col gap-6">
 
         {/* SECTION 1: Case Selection (ALL Roles) */}
-        <div className="w-full max-w-lg">
+        <div className="w-full">
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Select Case to Book Appointment</label>
           <select
             value={caseContext?.id || caseIdParam || ""}
@@ -809,11 +854,13 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
             className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all shadow-sm"
           >
             <option value="">-- Select a Case --</option>
-            {userCases.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.title} (Case #{c.displayId || c.caseNumber || c.id})
-              </option>
-            ))}
+            {userCases
+              .filter(c => c.status !== 'RESOLVED' && c.status !== 'CLOSED' && c.status !== 'REMOVED' && c.lawyerId)
+              .map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.title} (Case #{c.displayId || c.caseNumber || c.id})
+                </option>
+              ))}
           </select>
           {!caseContext && (
             <p className="text-sm text-gray-500 mt-2 flex items-center gap-2">
@@ -885,7 +932,7 @@ const ScheduleDashboard = ({ userRole, user, selectedProviderId: forcedProviderI
               </div>
 
               {/* Day Grid */}
-                <div className="grid grid-cols-7 gap-3">
+              <div className="grid grid-cols-7 gap-3">
                 {Array.from({ length: monthStartWeekday }).map((_, i) => (
                   <div key={`pad-${i}`} className="aspect-square" />
                 ))}

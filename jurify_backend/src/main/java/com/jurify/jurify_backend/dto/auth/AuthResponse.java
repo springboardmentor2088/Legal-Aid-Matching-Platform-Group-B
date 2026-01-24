@@ -77,4 +77,5 @@ public class AuthResponse {
     private Boolean isActive = true;
 
     private java.util.List<String> caseTypes;
+    private java.util.Map<String, Object> preferences;
 }

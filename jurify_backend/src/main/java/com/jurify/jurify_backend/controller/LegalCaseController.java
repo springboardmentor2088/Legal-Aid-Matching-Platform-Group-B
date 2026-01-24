@@ -49,4 +49,13 @@ public class LegalCaseController {
                 .category(request.getCategory())
                 .build()); // Minimal DTO just for ID and basic confirmation
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/{id}/requested-providers")
+    public ResponseEntity<List<Long>> getRequestedProviders(
+            @org.springframework.web.bind.annotation.PathVariable Long id) {
+        // Now calling ConsultationService via a specific endpoint or logic if needed,
+        // but for now, let's keep this as a bridge if frontend still expects it here.
+        // Actually, let's point it to consultation service.
+        return ResponseEntity.ok(legalCaseService.getRequestedProviderIds(id));
+    }
 }

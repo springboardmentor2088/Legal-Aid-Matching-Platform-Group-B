@@ -38,8 +38,14 @@ public class MatchingEngineService {
         List<MatchResponseDTO> dtos = new ArrayList<>();
 
         // 1. Match Lawyers
-        // STRICT MATCHING: Only fetch lawyers in the same state
-        List<Lawyer> lawyers = lawyerRepository.findByStateAndIsVerifiedTrue(getCaseState(legalCase));
+        // Relaxed matching: Fetch all lawyers in the same state (verified or not)
+        String caseState = getCaseState(legalCase);
+        List<Lawyer> lawyers = lawyerRepository.findByState(caseState);
+
+        // Fallback: If no lawyers in state, fetch all lawyers
+        if (lawyers.isEmpty()) {
+            lawyers = lawyerRepository.findAll();
+        }
 
         for (Lawyer lawyer : lawyers) {
             double score = calculateLawyerScore(legalCase, lawyer);
@@ -69,8 +75,13 @@ public class MatchingEngineService {
         }
 
         // 2. Match NGOs
-        // STRICT MATCHING: Only fetch NGOs in the same state
-        List<NGO> ngos = ngoRepository.findByStateAndIsVerifiedTrue(getCaseState(legalCase));
+        // Relaxed matching: Fetch all NGOs in the same state (verified or not)
+        List<NGO> ngos = ngoRepository.findByState(caseState);
+
+        // Fallback: If no NGOs in state, fetch all NGOs
+        if (ngos.isEmpty()) {
+            ngos = ngoRepository.findAll();
+        }
         for (NGO ngo : ngos) {
             double score = calculateNgoScore(legalCase, ngo);
             if (score > 1) {
@@ -226,9 +237,11 @@ public class MatchingEngineService {
                 .location(lawyer.getCity() + ", " + lawyer.getState())
                 .bio(lawyer.getBio() != null ? lawyer.getBio() : "No bio available")
                 .matchScore(match.getMatchScore())
+                .matchScore(match.getMatchScore())
                 .matchReason(match.getMatchReasons())
-                .rating(4.8) // Mock rating if not available on entity
+                .rating(lawyer.getAverageRating() != null ? lawyer.getAverageRating() : 0.0)
                 .experience(lawyer.getYearsOfExperience() != null ? lawyer.getYearsOfExperience() + " yrs" : "N/A")
+                .casesHandled(lawyer.getCasesHandled() != null ? lawyer.getCasesHandled() : 0)
                 .contact(lawyer.getPhoneNumber())
                 .email(lawyer.getUser() != null ? lawyer.getUser().getEmail() : "")
                 .isAvailable(lawyer.getIsAvailable())
@@ -247,8 +260,9 @@ public class MatchingEngineService {
                 .bio(ngo.getDescription() != null ? ngo.getDescription() : "No description available")
                 .matchScore(match.getMatchScore())
                 .matchReason(match.getMatchReasons())
-                .rating(4.9) // Mock
+                .rating(ngo.getAverageRating() != null ? ngo.getAverageRating() : 0.0)
                 .experience("Active")
+                .casesHandled(ngo.getCasesHandled() != null ? ngo.getCasesHandled() : 0)
                 .contact(ngo.getOrganizationPhone())
                 .email(ngo.getUser() != null ? ngo.getUser().getEmail() : "")
                 .isAvailable(ngo.getIsActive())
@@ -271,95 +285,126 @@ public class MatchingEngineService {
     }
 
     private double calculateLawyerScore(LegalCase legalCase, Lawyer lawyer) {
-        double score = 0;
-
-        // 1. Strict State Check
-        String caseState = getCaseState(legalCase);
-        if (caseState != null && !caseState.isEmpty()) {
-            if (lawyer.getState() == null || !caseState.equalsIgnoreCase(lawyer.getState())) {
-                return 0; // REJECT: Wrong State
-            }
-            score += 20;
-            // City Bonus
-            if (legalCase.getLocation() != null && legalCase.getLocation().getCity() != null
-                    && legalCase.getLocation().getCity().equalsIgnoreCase(lawyer.getCity())) {
-                score += 10;
+        // 0. STRICT FILTERS
+        // A. Language Filter
+        if (legalCase.getPreferredLanguage() != null) {
+            if (lawyer.getLanguages() == null || !lawyer.getLanguages().toLowerCase()
+                    .contains(legalCase.getPreferredLanguage().name().toLowerCase())) {
+                return 0; // Exclude if language doesn't match
             }
         }
 
-        // 2. Strict Category/Specialization Check
+        // B. Category/Specialization Filter
         String category = legalCase.getCategory();
         if (category != null && !category.isEmpty()) {
             if (lawyer.getSpecializations() == null || lawyer.getSpecializations().isEmpty()) {
-                return 0; // REJECT: No specializations
+                return 0; // Exclude if no specializations
             }
             boolean expertiseMatch = lawyer.getSpecializations().stream()
                     .anyMatch(spec -> spec.getLegalCategory().getName().equalsIgnoreCase(category));
             if (!expertiseMatch) {
-                return 0; // REJECT: Specialization mismatch
+                return 0; // Exclude if specialization doesn't match
             }
-            score += 40;
+        } else {
+            // If case has no category, maybe allow? Or strictly exclude?
+            // Usually cases have category. If not, safe to return 0 or low score?
+            // Assuming valid cases have categories.
         }
 
-        // 3. Strict Language Check
-        if (legalCase.getPreferredLanguage() != null) {
-            String prefLang = legalCase.getPreferredLanguage().name();
-            if (lawyer.getLanguages() == null
-                    || !lawyer.getLanguages().toLowerCase().contains(prefLang.toLowerCase())) {
-                return 0; // REJECT: Language mismatch
+        double score = 10; // Base score for any lawyer
+
+        // 1. State Match (bonus)
+        String caseState = getCaseState(legalCase);
+        if (caseState != null && !caseState.isEmpty()) {
+            if (lawyer.getState() != null && caseState.equalsIgnoreCase(lawyer.getState())) {
+                score += 20; // State match bonus
+                // City Bonus
+                if (legalCase.getLocation() != null && legalCase.getLocation().getCity() != null
+                        && legalCase.getLocation().getCity().equalsIgnoreCase(lawyer.getCity())) {
+                    score += 10;
+                }
             }
-            score += 20;
         }
+
+        // 2. Category/Specialization Bonus (We already strictly matched, but can give
+        // points for it being a match?)
+        // Since we strictly matched above, we know it matches. We can keep the points
+        // to prioritize it over others if needed,
+        // or just consider it part of the base validation.
+        // Let's keep the points so 'specialized' matches rank higher if we had partial
+        // matches (but we don't anymore).
+        // Actually, let's keep it to boost score so it > 1.
+        score += 40;
+
+        // 3. Language Bonus (Already matched strictly)
+        score += 20;
 
         // Availability Bonus
         if (Boolean.TRUE.equals(lawyer.getIsAvailable())) {
             score += 10;
         }
 
-        return score;
+        // Verification Bonus
+        if (Boolean.TRUE.equals(lawyer.getIsVerified())) {
+            score += 15;
+        }
+
+        // Cap at 100%
+        return Math.min(score, 100);
     }
 
     private double calculateNgoScore(LegalCase legalCase, NGO ngo) {
-        double score = 0;
-
-        // 1. Strict State Check
-        String caseState = getCaseState(legalCase);
-        if (caseState != null && !caseState.isEmpty()) {
-            if (ngo.getState() == null || !caseState.equalsIgnoreCase(ngo.getState())) {
-                return 0; // REJECT: Wrong State
-            }
-            score += 20;
-            if (legalCase.getLocation() != null && legalCase.getLocation().getCity() != null
-                    && legalCase.getLocation().getCity().equalsIgnoreCase(ngo.getCity())) {
-                score += 10;
+        // 0. STRICT FILTERS
+        // A. Language Filter
+        if (legalCase.getPreferredLanguage() != null) {
+            if (ngo.getLanguages() == null || !ngo.getLanguages().toLowerCase()
+                    .contains(legalCase.getPreferredLanguage().name().toLowerCase())) {
+                return 0; // Exclude
             }
         }
 
-        // 2. Strict Category/Specialization Check
+        // B. Category/Specialization Filter
         String category = legalCase.getCategory();
         if (category != null && !category.isEmpty()) {
             if (ngo.getSpecializations() == null || ngo.getSpecializations().isEmpty()) {
-                return 0; // REJECT: No specializations
+                return 0; // Exclude
             }
             boolean expertiseMatch = ngo.getSpecializations().stream()
                     .anyMatch(spec -> spec.getLegalCategory().getName().equalsIgnoreCase(category));
             if (!expertiseMatch) {
-                return 0; // REJECT: Specialization mismatch
+                return 0; // Exclude
             }
-            score += 40;
         }
 
-        // NGO might not have language field standardized, adding simple check if exists
-        // Assuming NGO might support local languages implicitly, strict check might be
-        // too harsh if field missing
-        // But per user request "It should match... language", we should enforce if
-        // possible.
-        // NGO model checking...
+        double score = 10; // Base score for any NGO
 
-        if (Boolean.TRUE.equals(ngo.getIsActive()))
+        // 1. State Match (bonus)
+        String caseState = getCaseState(legalCase);
+        if (caseState != null && !caseState.isEmpty()) {
+            if (ngo.getState() != null && caseState.equalsIgnoreCase(ngo.getState())) {
+                score += 20; // State match bonus
+                if (legalCase.getLocation() != null && legalCase.getLocation().getCity() != null
+                        && legalCase.getLocation().getCity().equalsIgnoreCase(ngo.getCity())) {
+                    score += 10;
+                }
+            }
+        }
+
+        // 2. Category Bonus (Already matched)
+        score += 40;
+
+        // Activity Bonus
+        if (Boolean.TRUE.equals(ngo.getIsActive())) {
             score += 10;
+        }
 
-        return score;
+        // Verification Bonus
+        if (Boolean.TRUE.equals(ngo.getIsVerified())) {
+            score += 15;
+        }
+
+        // Cap at 100%
+        return Math.min(score, 100);
     }
 
     private String generateReason(double score) {

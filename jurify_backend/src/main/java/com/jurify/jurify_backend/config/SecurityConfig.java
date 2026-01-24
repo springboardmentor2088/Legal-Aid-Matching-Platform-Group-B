@@ -24,6 +24,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+        @org.springframework.beans.factory.annotation.Value("${cors.allowed.origins}")
+        private String allowedOrigins;
+
         private final JwtAuthenticationFilter jwtAuthenticationFilter;
         private final com.jurify.jurify_backend.service.CustomOAuth2UserService customOAuth2UserService;
         private final com.jurify.jurify_backend.service.CustomOidcUserService customOidcUserService;
@@ -50,6 +53,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                                                 .anyRequest().authenticated())
+                                .exceptionHandling(e -> e
+                                                .authenticationEntryPoint(
+                                                                new org.springframework.security.web.authentication.HttpStatusEntryPoint(
+                                                                                org.springframework.http.HttpStatus.UNAUTHORIZED)))
                                 .oauth2Login(oauth2 -> oauth2
                                                 .userInfoEndpoint(userInfo -> userInfo
                                                                 .userService(customOAuth2UserService)
@@ -65,9 +72,10 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
-                configuration.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174")); // Frontend
-                                                                                                            // URL
-                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                // Use patterns to allow wildcards with credentials
+                configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+                configuration.setAllowedMethods(
+                                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
                 configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "x-auth-token"));
                 configuration.setExposedHeaders(List.of("x-auth-token"));
                 configuration.setAllowCredentials(true);

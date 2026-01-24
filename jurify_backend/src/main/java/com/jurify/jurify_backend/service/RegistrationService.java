@@ -46,7 +46,7 @@ public class RegistrationService {
         public RegisterResponse registerCitizen(CitizenRegisterRequest request,
                         org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
                 // Check if email already exists
-                if (userRepository.existsByEmail(request.getEmail())) {
+                if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
                         throw new RuntimeException("Email already registered");
                 }
 
@@ -64,7 +64,7 @@ public class RegistrationService {
                         }
 
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
                                                                                                             // password
                                         .role(UserRole.CITIZEN)
@@ -94,7 +94,7 @@ public class RegistrationService {
                                 throw new RuntimeException("Password must be at least 8 characters");
                         }
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(request.getPassword()))
                                         .role(UserRole.CITIZEN)
                                         .isEmailVerified(false)
@@ -164,7 +164,7 @@ public class RegistrationService {
         public RegisterResponse registerLawyer(LawyerRegisterRequest request,
                         org.springframework.web.multipart.MultipartFile file) throws java.io.IOException {
                 // Check if email already exists
-                if (userRepository.existsByEmail(request.getEmail())) {
+                if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
                         throw new RuntimeException("Email already registered");
                 }
 
@@ -187,7 +187,7 @@ public class RegistrationService {
                         }
 
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
                                                                                                             // password
                                         .role(UserRole.LAWYER)
@@ -219,7 +219,7 @@ public class RegistrationService {
                                 throw new RuntimeException("Password must be at least 8 characters");
                         }
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(request.getPassword()))
                                         .role(UserRole.LAWYER)
                                         .isEmailVerified(false)
@@ -361,7 +361,7 @@ public class RegistrationService {
                         org.springframework.web.multipart.MultipartFile file3,
                         org.springframework.web.multipart.MultipartFile file4) throws java.io.IOException {
                 // Check if email already exists
-                if (userRepository.existsByEmail(request.getEmail())) {
+                if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
                         throw new RuntimeException("Email already registered");
                 }
 
@@ -384,7 +384,7 @@ public class RegistrationService {
                         }
 
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // Random
                                                                                                             // password
                                         .role(UserRole.NGO)
@@ -412,7 +412,7 @@ public class RegistrationService {
                                 throw new RuntimeException("Password must be at least 8 characters");
                         }
                         user = User.builder()
-                                        .email(request.getEmail())
+                                        .email(request.getEmail().toLowerCase())
                                         .passwordHash(passwordEncoder.encode(request.getPassword()))
                                         .role(UserRole.NGO)
                                         .isEmailVerified(false)
@@ -522,13 +522,13 @@ public class RegistrationService {
         @Transactional
         public RegisterResponse registerAdmin(AdminRegisterRequest request) {
                 // Check if email already exists
-                if (userRepository.existsByEmail(request.getEmail())) {
+                if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
                         throw new RuntimeException("Email already registered");
                 }
 
                 // Create User
                 User user = User.builder()
-                                .email(request.getEmail())
+                                .email(request.getEmail().toLowerCase())
                                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                                 .role(UserRole.ADMIN)
                                 .isEmailVerified(true) // Admins are auto-verified
@@ -574,7 +574,14 @@ public class RegistrationService {
                                 .build();
 
                 emailVerificationTokenRepository.save(verificationToken);
-                emailService.sendVerificationEmail(user.getEmail(), token);
+
+                try {
+                        emailService.sendVerificationEmail(user.getEmail(), token);
+                } catch (Exception e) {
+                        log.error("FAILED TO SEND VERIFICATION EMAIL to {}. Continuing registration anyway.",
+                                        user.getEmail(), e);
+                        // Do not re-throw, so transaction commits
+                }
         }
 
         private void createVerificationRequest(User user, String documentUrl, String documentType) {

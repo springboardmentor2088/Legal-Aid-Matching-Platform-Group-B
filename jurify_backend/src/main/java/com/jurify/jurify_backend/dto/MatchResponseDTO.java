@@ -21,5 +21,6 @@ public class MatchResponseDTO {
     private String email;
     private String profilePic;
     private Boolean isAvailable;
+    private Integer casesHandled;
     private String color; // UI color helper
 }
