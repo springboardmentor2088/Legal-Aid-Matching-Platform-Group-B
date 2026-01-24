@@ -29,6 +29,12 @@ public class LegalCaseService {
         private final PresenceService presenceService;
         private final MatchingEngineService matchingEngineService;
         private final com.jurify.jurify_backend.repository.AppointmentRepository appointmentRepository;
+        private final AuditLogService auditLogService;
+        private final com.jurify.jurify_backend.repository.ReviewRepository reviewRepository;
+        private final com.jurify.jurify_backend.repository.LawyerRepository lawyerRepository;
+        private final com.jurify.jurify_backend.repository.NGORepository ngoRepository;
+        private final com.jurify.jurify_backend.repository.DirectoryEntryRepository directoryEntryRepository;
+        private final com.jurify.jurify_backend.repository.ConsultationRepository consultationRepository;
 
         @org.springframework.beans.factory.annotation.Value("${cloudflare.r2.public-url}")
         private String r2PublicUrl;
@@ -41,16 +47,22 @@ public class LegalCaseService {
                 if (user.getRole() == UserRole.CITIZEN && user.getCitizen() != null) {
                         return legalCaseRepository.findByCitizenId(user.getCitizen().getId()).stream()
                                         .map(lc -> mapToDTO(lc, email))
-                                        .collect(Collectors.toList());
+                                        .collect(Collectors.toMap(LegalCaseDTO::getId, dto -> dto,
+                                                        (existing, replacement) -> existing))
+                                        .values().stream().collect(Collectors.toList());
                 } else if (user.getRole() == UserRole.LAWYER && user.getLawyer() != null) {
                         return legalCaseRepository.findByLawyerId(user.getLawyer().getId()).stream()
                                         .map(lc -> mapToDTO(lc, email))
-                                        .collect(Collectors.toList());
+                                        .collect(Collectors.toMap(LegalCaseDTO::getId, dto -> dto,
+                                                        (existing, replacement) -> existing))
+                                        .values().stream().collect(Collectors.toList());
 
                 } else if (user.getRole() == UserRole.NGO && user.getNgo() != null) {
                         return legalCaseRepository.findByNgoId(user.getNgo().getId()).stream()
                                         .map(lc -> mapToDTO(lc, email))
-                                        .collect(Collectors.toList());
+                                        .collect(Collectors.toMap(LegalCaseDTO::getId, dto -> dto,
+                                                        (existing, replacement) -> existing))
+                                        .values().stream().collect(Collectors.toList());
                 }
                 return List.of();
         }
@@ -137,6 +149,12 @@ public class LegalCaseService {
 
                 legalCase = legalCaseRepository.save(legalCase);
 
+                // Generate Case Number: CASE-YYYY-XXXX
+                int year = java.time.Year.now().getValue();
+                String caseNumber = String.format("CASE-%d-%04d", year, legalCase.getId());
+                legalCase.setCaseNumber(caseNumber);
+                legalCase = legalCaseRepository.save(legalCase);
+
                 if (documents != null && !documents.isEmpty()) {
                         List<com.jurify.jurify_backend.model.CaseDocument> caseDocuments = new java.util.ArrayList<>();
                         for (org.springframework.web.multipart.MultipartFile file : documents) {
@@ -167,6 +185,10 @@ public class LegalCaseService {
                 }
                 // Trigger Matching Engine Automatically
                 matchingEngineService.generateMatches(legalCase.getId());
+
+                // Audit Log: Case Submitted
+                auditLogService.logSystemAction("CASE_SUBMITTED", user.getId(), "CASE", legalCase.getId(),
+                                "Case submitted: " + legalCase.getTitle());
 
                 return legalCase;
         }
@@ -275,6 +297,7 @@ public class LegalCaseService {
 
                 return LegalCaseDTO.builder()
                                 .id(legalCase.getId())
+                                .caseNumber(legalCase.getCaseNumber())
                                 .title(legalCase.getTitle())
                                 .description(legalCase.getDescription())
                                 .status(legalCase.getStatus())
@@ -324,5 +347,337 @@ public class LegalCaseService {
                                 .createdAt(legalCase.getCreatedAt())
                                 .updatedAt(legalCase.getUpdatedAt())
                                 .build();
+        }
+
+        // ============== RESOLUTION METHODS ==============
+
+        /**
+         * Lawyer/NGO submits a resolution for a case
+         */
+        @Transactional
+        public com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO submitResolution(
+                        Long caseId, String providerEmail,
+                        org.springframework.web.multipart.MultipartFile document, String notes) {
+
+                System.out.println("DEBUG: Service submitResolution for case " + caseId);
+
+                User provider = userRepository.findByEmail(providerEmail)
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+
+                LegalCase legalCase = legalCaseRepository.findById(caseId)
+                                .orElseThrow(() -> new RuntimeException("Case not found"));
+
+                // Verify the provider is assigned to this case
+                boolean isAssigned = false;
+                if (provider.getRole() == UserRole.LAWYER && provider.getLawyer() != null) {
+                        isAssigned = legalCase.getLawyer() != null
+                                        && legalCase.getLawyer().getId().equals(provider.getLawyer().getId());
+                } else if (provider.getRole() == UserRole.NGO && provider.getNgo() != null) {
+                        isAssigned = legalCase.getNgo() != null
+                                        && legalCase.getNgo().getId().equals(provider.getNgo().getId());
+                }
+
+                if (!isAssigned) {
+                        throw new RuntimeException("You are not assigned to this case");
+                }
+
+                // Verify case is in ACTIVE status
+                if (legalCase.getStatus() != CaseStatus.ACTIVE) {
+                        throw new RuntimeException("Case must be ACTIVE to submit resolution");
+                }
+
+                // Upload document to R2
+                String s3Key = null;
+                String fileUrl = null;
+                if (document != null && !document.isEmpty()) {
+                        try {
+                                System.out.println("DEBUG: Uploading file to R2...");
+                                s3Key = r2Service.uploadFile(document, "cases/" + caseId + "/resolution");
+                                fileUrl = r2PublicUrl + "/" + s3Key;
+                                System.out.println("DEBUG: Upload success. URL: " + fileUrl);
+                        } catch (java.io.IOException e) {
+                                e.printStackTrace();
+                                throw new RuntimeException("Failed to upload resolution document", e);
+                        }
+                } else {
+                        System.out.println("DEBUG: Document is empty or null in service");
+                }
+
+                // Update case
+                legalCase.setResolutionDocumentUrl(fileUrl);
+                legalCase.setResolutionDocumentS3Key(s3Key);
+                legalCase.setResolutionNotes(notes);
+                legalCase.setResolutionSubmittedAt(java.time.LocalDateTime.now());
+                legalCase.setResolutionSubmittedBy(provider.getId());
+                legalCase.setStatus(CaseStatus.PENDING_RESOLUTION);
+
+                legalCaseRepository.save(legalCase);
+
+                // Audit log
+                auditLogService.logSystemAction("RESOLUTION_SUBMITTED", provider.getId(), "CASE", caseId,
+                                "Resolution submitted for case: " + legalCase.getTitle());
+
+                // Get provider name
+                String providerName = getProviderName(provider);
+
+                return com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO.builder()
+                                .caseId(caseId)
+                                .caseTitle(legalCase.getTitle())
+                                .status(legalCase.getStatus().name())
+                                .resolutionDocumentUrl(fileUrl)
+                                .resolutionNotes(notes)
+                                .resolutionSubmittedAt(legalCase.getResolutionSubmittedAt())
+                                .submittedByName(providerName)
+                                .message("Resolution submitted successfully. Awaiting citizen acknowledgment.")
+                                .build();
+        }
+
+        /**
+         * Citizen acknowledges/accepts the resolution
+         */
+        @Transactional
+        public com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO acknowledgeResolution(
+                        Long caseId, String citizenEmail,
+                        com.jurify.jurify_backend.dto.case_resolution.ResolutionAcknowledgmentDTO acknowledgmentDTO) {
+
+                User citizen = userRepository.findByEmail(citizenEmail)
+                                .orElseThrow(() -> new RuntimeException("User not found"));
+
+                if (citizen.getRole() != UserRole.CITIZEN || citizen.getCitizen() == null) {
+                        throw new RuntimeException("Only citizens can acknowledge resolutions");
+                }
+
+                LegalCase legalCase = legalCaseRepository.findById(caseId)
+                                .orElseThrow(() -> new RuntimeException("Case not found"));
+
+                // Verify citizen owns this case
+                if (!legalCase.getCitizen().getId().equals(citizen.getCitizen().getId())) {
+                        throw new RuntimeException("You are not the owner of this case");
+                }
+
+                // Verify case is in PENDING_RESOLUTION status
+                if (legalCase.getStatus() != CaseStatus.PENDING_RESOLUTION) {
+                        throw new RuntimeException("Case is not pending resolution");
+                }
+
+                // Update case to RESOLVED
+                legalCase.setStatus(CaseStatus.RESOLVED);
+                legalCase.setResolutionAcknowledgedAt(java.time.LocalDateTime.now());
+
+                legalCaseRepository.save(legalCase);
+
+                // PROCESS REVIEW IF PROVIDED
+                if (acknowledgmentDTO != null && acknowledgmentDTO.getRating() != null) {
+                        try {
+                                com.jurify.jurify_backend.model.Review review = com.jurify.jurify_backend.model.Review
+                                                .builder()
+                                                .legalCase(legalCase)
+                                                .reviewer(citizen.getCitizen())
+                                                .rating(acknowledgmentDTO.getRating())
+                                                .comment(acknowledgmentDTO.getFeedback())
+                                                .build();
+
+                                if (legalCase.getLawyer() != null) {
+                                        review.setLawyer(legalCase.getLawyer());
+                                        reviewRepository.save(review);
+                                        reviewRepository.flush(); // Ensure review is committed for stats calculation
+                                        updateLawyerStats(legalCase.getLawyer());
+                                } else if (legalCase.getNgo() != null) {
+                                        review.setNgo(legalCase.getNgo());
+                                        reviewRepository.save(review);
+                                        reviewRepository.flush(); // Ensure review is committed for stats calculation
+                                        updateNgoStats(legalCase.getNgo());
+                                }
+                        } catch (Exception e) {
+                                System.err.println("Failed to save review: " + e.getMessage());
+                        }
+                }
+
+                // Audit log
+                auditLogService.logSystemAction("RESOLUTION_ACKNOWLEDGED", citizen.getId(), "CASE", caseId,
+                                "Resolution acknowledged for case: " + legalCase.getTitle());
+                auditLogService.logSystemAction("CASE_RESOLVED", citizen.getId(), "CASE", caseId,
+                                "Case resolved: " + legalCase.getTitle());
+
+                // Sync Directory Stats
+                if (legalCase.getLawyer() != null) {
+                        syncDirectoryStats(legalCase.getLawyer().getUser());
+                } else if (legalCase.getNgo() != null) {
+                        syncDirectoryStats(legalCase.getNgo().getUser());
+                }
+
+                return com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO.builder()
+                                .caseId(caseId)
+                                .caseTitle(legalCase.getTitle())
+                                .status(legalCase.getStatus().name())
+                                .resolutionDocumentUrl(legalCase.getResolutionDocumentUrl())
+                                .resolutionNotes(legalCase.getResolutionNotes())
+                                .resolutionSubmittedAt(legalCase.getResolutionSubmittedAt())
+                                .resolutionAcknowledgedAt(legalCase.getResolutionAcknowledgedAt())
+                                .message("Case has been resolved successfully!")
+                                .build();
+        }
+
+        public com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO getResolutionDetails(
+                        Long caseId, String userEmail) {
+
+                LegalCase legalCase = legalCaseRepository.findById(caseId)
+                                .orElseThrow(() -> new RuntimeException("Case not found"));
+
+                String submitterName = null;
+                if (legalCase.getResolutionSubmittedBy() != null) {
+                        User submitter = userRepository.findById(legalCase.getResolutionSubmittedBy()).orElse(null);
+                        if (submitter != null) {
+                                submitterName = getProviderName(submitter);
+                        }
+                }
+
+                String presignedUrl = legalCase.getResolutionDocumentUrl();
+                if (legalCase.getResolutionDocumentS3Key() != null) {
+                        try {
+                                presignedUrl = r2Service.generatePresignedUrl(legalCase.getResolutionDocumentS3Key());
+                        } catch (Exception e) {
+                                System.err.println("URL gen failed for resolution doc: " + e.getMessage());
+                        }
+                }
+
+                return com.jurify.jurify_backend.dto.case_management.ResolutionResponseDTO.builder()
+                                .caseId(caseId)
+                                .caseTitle(legalCase.getTitle())
+                                .status(legalCase.getStatus().name())
+                                .resolutionDocumentUrl(presignedUrl)
+                                .resolutionNotes(legalCase.getResolutionNotes())
+                                .resolutionSubmittedAt(legalCase.getResolutionSubmittedAt())
+                                .submittedByName(submitterName)
+                                .resolutionAcknowledgedAt(legalCase.getResolutionAcknowledgedAt())
+                                .build();
+        }
+
+        private String getProviderName(User user) {
+                if (user.getLawyer() != null) {
+                        return "Adv. " + user.getLawyer().getFirstName() + " " + user.getLawyer().getLastName();
+                } else if (user.getNgo() != null) {
+                        return user.getNgo().getOrganizationName();
+                }
+                return user.getEmail();
+        }
+
+        @Transactional
+        public void markCaseAsRemoved(Long caseId) {
+                LegalCase legalCase = legalCaseRepository.findById(caseId)
+                                .orElseThrow(() -> new RuntimeException("Case not found"));
+                legalCase.setStatus(CaseStatus.REMOVED);
+                legalCaseRepository.save(legalCase);
+
+                if (appointmentRepository != null) {
+                        appointmentRepository.deleteByCaseId(caseId);
+                }
+                if (caseMatchRepository != null) {
+                        caseMatchRepository.deleteByLegalCaseId(caseId);
+                }
+        }
+
+        @Transactional
+        public void deleteCase(Long caseId) {
+                if (chatMessageRepository != null)
+                        chatMessageRepository.deleteByCaseId(caseId);
+                if (appointmentRepository != null)
+                        appointmentRepository.deleteByCaseId(caseId);
+                if (reviewRepository != null)
+                        reviewRepository.deleteByLegalCaseId(caseId);
+                if (caseMatchRepository != null)
+                        caseMatchRepository.deleteByLegalCaseId(caseId);
+
+                legalCaseRepository.deleteById(caseId);
+        }
+
+        private void syncDirectoryStats(User user) {
+                try {
+                        com.jurify.jurify_backend.model.DirectoryEntry entry = directoryEntryRepository.findByUser(user)
+                                        .orElse(null);
+                        if (entry == null)
+                                return;
+
+                        long resolvedCount = 0;
+                        Double rating = 0.0;
+
+                        if (user.getRole() == UserRole.LAWYER && user.getLawyer() != null) {
+                                resolvedCount = legalCaseRepository.countByLawyerIdAndStatus(user.getLawyer().getId(),
+                                                CaseStatus.RESOLVED);
+                                rating = user.getLawyer().getAverageRating();
+                        } else if (user.getRole() == UserRole.NGO && user.getNgo() != null) {
+                                resolvedCount = legalCaseRepository.countByNgoIdAndStatus(user.getNgo().getId(),
+                                                CaseStatus.RESOLVED);
+                                rating = user.getNgo().getAverageRating();
+                        }
+
+                        entry.setCasesHandled((int) resolvedCount);
+                        entry.setRating(rating);
+                        directoryEntryRepository.save(entry);
+                } catch (Exception e) {
+                        System.err.println("Failed to sync directory stats: " + e.getMessage());
+                }
+        }
+
+        private void updateLawyerStats(com.jurify.jurify_backend.model.Lawyer lawyer) {
+                List<com.jurify.jurify_backend.model.Review> reviews = reviewRepository.findByLawyerId(lawyer.getId());
+                if (reviews.isEmpty())
+                        return;
+                double avg = reviews.stream().mapToInt(com.jurify.jurify_backend.model.Review::getRating).average()
+                                .orElse(0.0);
+                lawyer.setAverageRating(avg);
+                lawyer.setReviewCount(reviews.size());
+                lawyerRepository.save(lawyer);
+                syncDirectoryStats(lawyer.getUser());
+        }
+
+        private void updateNgoStats(com.jurify.jurify_backend.model.NGO ngo) {
+                List<com.jurify.jurify_backend.model.Review> reviews = reviewRepository.findByNgoId(ngo.getId());
+                if (reviews.isEmpty())
+                        return;
+                double avg = reviews.stream().mapToInt(com.jurify.jurify_backend.model.Review::getRating).average()
+                                .orElse(0.0);
+                ngo.setAverageRating(avg);
+                ngo.setReviewCount(reviews.size());
+                ngoRepository.save(ngo);
+                syncDirectoryStats(ngo.getUser());
+        }
+
+        @Transactional(readOnly = true)
+        public List<Long> getRequestedProviderIds(Long caseId) {
+                java.util.Set<Long> userIds = new java.util.HashSet<>();
+
+                // 1. Get providers from CaseMatch table (AI recommendations that were
+                // contacted)
+                caseMatchRepository.findByLegalCaseIdOrderByMatchScoreDesc(caseId).stream()
+                                .filter(m -> m.getStatus() == com.jurify.jurify_backend.model.MatchStatus.CONTACTED
+                                                || m.getStatus() == com.jurify.jurify_backend.model.MatchStatus.ACCEPTED)
+                                .forEach(m -> {
+                                        // Convert entity ID to User ID
+                                        if ("LAWYER".equals(m.getProviderType())) {
+                                                lawyerRepository.findById(m.getProviderId())
+                                                                .ifPresent(l -> userIds.add(l.getUser().getId()));
+                                        } else if ("NGO".equals(m.getProviderType())) {
+                                                ngoRepository.findById(m.getProviderId())
+                                                                .ifPresent(n -> userIds.add(n.getUser().getId()));
+                                        }
+                                });
+
+                // 2. Get providers from Consultation table (direct requests)
+                LegalCase legalCase = legalCaseRepository.findById(caseId).orElse(null);
+                if (legalCase != null) {
+                        consultationRepository.findByLegalCase(legalCase).forEach(c -> {
+                                // Convert entity ID to User ID
+                                if ("LAWYER".equals(c.getProviderType())) {
+                                        lawyerRepository.findById(c.getProviderId())
+                                                        .ifPresent(l -> userIds.add(l.getUser().getId()));
+                                } else if ("NGO".equals(c.getProviderType())) {
+                                        ngoRepository.findById(c.getProviderId())
+                                                        .ifPresent(n -> userIds.add(n.getUser().getId()));
+                                }
+                        });
+                }
+
+                return new java.util.ArrayList<>(userIds);
         }
 }

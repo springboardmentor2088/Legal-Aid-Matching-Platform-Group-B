@@ -9,18 +9,14 @@ import java.util.List;
 
 public interface DirectoryEntryRepository extends JpaRepository<DirectoryEntry, Long> {
 
-        @org.springframework.data.jpa.repository.Query(value = "SELECT DISTINCT d.* FROM directory_entries d " +
-                        "LEFT JOIN users u ON d.user_id = u.id " +
-                        "LEFT JOIN lawyers l ON u.id = l.user_id " +
-                        "LEFT JOIN lawyer_specializations ls ON l.id = ls.lawyer_id " +
-                        "LEFT JOIN legal_categories lc ON ls.legal_category_id = lc.id " +
+        @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM directory_entries d " +
                         "WHERE " +
                         "(CAST(:isVerified AS boolean) IS NULL OR d.is_verified = :isVerified) AND " +
                         "(CAST(:isActive AS boolean) IS NULL OR d.is_active = :isActive) AND " +
                         "(CAST(:role AS text) IS NULL OR d.role = :role) AND " +
                         "(CAST(:state AS text) IS NULL OR d.state = :state) AND " +
                         "(CAST(:city AS text) IS NULL OR d.city = :city) AND " +
-                        "(CAST(:specialization AS text) IS NULL OR CAST(lc.name AS TEXT) ILIKE CONCAT('%', :specialization, '%')) AND "
+                        "(CAST(:specialization AS text) IS NULL OR CAST(d.specialization AS TEXT) ILIKE CONCAT('%', :specialization, '%')) AND "
                         +
                         "(CAST(:minExp AS integer) IS NULL OR d.years_of_experience >= :minExp) AND " +
                         "(CAST(:maxExp AS integer) IS NULL OR d.years_of_experience <= :maxExp) AND " +
@@ -32,19 +28,15 @@ public interface DirectoryEntryRepository extends JpaRepository<DirectoryEntry, 
                         +
                         "(CAST(:search AS text) IS NULL OR " +
                         "CAST(d.display_name AS TEXT) ILIKE CONCAT('%', :search, '%') OR " +
-                        "CAST(d.city AS TEXT) ILIKE CONCAT('%', :search, '%'))", countQuery = "SELECT count(DISTINCT d.id) FROM directory_entries d "
+                        "CAST(d.city AS TEXT) ILIKE CONCAT('%', :search, '%'))", countQuery = "SELECT count(*) FROM directory_entries d "
                                         +
-                                        "LEFT JOIN users u ON d.user_id = u.id " +
-                                        "LEFT JOIN lawyers l ON u.id = l.user_id " +
-                                        "LEFT JOIN lawyer_specializations ls ON l.id = ls.lawyer_id " +
-                                        "LEFT JOIN legal_categories lc ON ls.legal_category_id = lc.id " +
                                         "WHERE " +
                                         "(CAST(:isVerified AS boolean) IS NULL OR d.is_verified = :isVerified) AND " +
                                         "(CAST(:isActive AS boolean) IS NULL OR d.is_active = :isActive) AND " +
                                         "(CAST(:role AS text) IS NULL OR d.role = :role) AND " +
                                         "(CAST(:state AS text) IS NULL OR d.state = :state) AND " +
                                         "(CAST(:city AS text) IS NULL OR d.city = :city) AND " +
-                                        "(CAST(:specialization AS text) IS NULL OR CAST(lc.name AS TEXT) ILIKE CONCAT('%', :specialization, '%')) AND "
+                                        "(CAST(:specialization AS text) IS NULL OR CAST(d.specialization AS TEXT) ILIKE CONCAT('%', :specialization, '%')) AND "
                                         +
                                         "(CAST(:minExp AS integer) IS NULL OR d.years_of_experience >= :minExp) AND " +
                                         "(CAST(:maxExp AS integer) IS NULL OR d.years_of_experience <= :maxExp) AND " +

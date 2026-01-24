@@ -11,7 +11,7 @@ import java.util.Map;
 public class RegistryIntegrationService {
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String REGISTRY_API_URL = "https://jurify-registry-api.onrender.com/api";
+    private final String REGISTRY_API_URL = "https://jurify-registry-api-production-4bb9.up.railway.app/api";
 
     public Map<String, Object> verifyLawyer(String enrollmentNumber) {
         try {

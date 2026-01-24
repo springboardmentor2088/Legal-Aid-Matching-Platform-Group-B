@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
+import { useGlobalLoader } from '../../context/GlobalLoaderContext';
 import Logo from '../common/Logo';
 
 const ContactUs = () => {
@@ -12,7 +13,7 @@ const ContactUs = () => {
         message: ''
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [status, setStatus] = useState({ type: '', message: '' });
+    const { startLoading, stopLoading } = useGlobalLoader();
 
     const handleChange = (e) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -21,15 +22,15 @@ const ContactUs = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        setStatus({ type: '', message: '' });
+        startLoading("Sending your message...");
 
         try {
             await api.post('/auth/contact-us', formData);
-            setStatus({ type: 'success', message: 'Message sent successfully! We will get back to you soon.' });
+            stopLoading(true, 'Message sent successfully! We will be in touch.');
             setFormData({ name: '', email: '', subject: '', message: '' });
         } catch (error) {
             console.error("Contact Us Error:", error);
-            setStatus({ type: 'error', message: error.response?.data || 'Failed to send message. Please try again.' });
+            stopLoading(false, error.response?.data || 'Failed to send message. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -91,11 +92,6 @@ const ContactUs = () => {
                     {/* Right Side: Form */}
                     <div className="p-12">
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {status.message && (
-                                <div className={`p-4 rounded-xl text-sm ${status.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                                    {status.message}
-                                </div>
-                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Name</label>
@@ -154,8 +150,8 @@ const ContactUs = () => {
                                 disabled={isSubmitting}
                                 className="w-full py-3 bg-[#11676a] text-white rounded-xl font-bold hover:bg-[#0e5658] transition shadow-lg shadow-[#11676a]/30 disabled:opacity-70 flex items-center justify-center gap-2"
                             >
-                                {isSubmitting ? 'Sending...' : 'Send Message'}
-                                {!isSubmitting && <span className="material-symbols-outlined text-sm">send</span>}
+                                Send Message
+                                <span className="material-symbols-outlined text-sm">send</span>
                             </button>
                         </form>
                     </div>

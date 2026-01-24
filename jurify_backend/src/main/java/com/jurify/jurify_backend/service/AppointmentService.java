@@ -12,6 +12,7 @@ import com.jurify.jurify_backend.model.enums.AppointmentStatus;
 import com.jurify.jurify_backend.model.enums.NotificationType;
 import com.jurify.jurify_backend.model.enums.Provider;
 import com.jurify.jurify_backend.model.enums.UserRole;
+import com.jurify.jurify_backend.dto.AppointmentDTO;
 import com.jurify.jurify_backend.repository.AppointmentRepository;
 import com.jurify.jurify_backend.repository.LawyerRepository;
 import com.jurify.jurify_backend.repository.LegalCaseRepository;
@@ -43,6 +44,7 @@ public class AppointmentService {
     private final NGORepository ngoRepository;
     private final LegalCaseRepository legalCaseRepository;
     private final EmailService emailService;
+    private final AuditLogService auditLogService;
 
     @Transactional
     public Appointment requestAppointment(Appointment appointment, String initiatorEmail) {
@@ -188,6 +190,12 @@ public class AppointmentService {
             log.error("Failed to send notification for appointment request: {}", e.getMessage(), e);
         }
 
+        // Audit Log: Appointment Created
+        if (currentUser != null) {
+            auditLogService.logSystemAction("SCHEDULE_CREATED", currentUser.getId(), "APPOINTMENT", saved.getId(),
+                    "Appointment scheduled for " + appointment.getDate());
+        }
+
         return saved;
     }
 
@@ -325,84 +333,115 @@ public class AppointmentService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
-        Optional<OAuthAccount> oauth = oauthAccountRepository.findByUserIdAndProvider(user.getId(),
-                Provider.GOOGLE);
+        Optional<OAuthAccount> oauth = oauthAccountRepository.findByUserIdAndProvider(user.getId(), Provider.GOOGLE);
         if (oauth.isPresent()) {
             OAuthAccount account = oauth.get();
             try {
-                // Check if token needs refresh
-                if (account.getTokenExpiresAt() != null &&
-                        account.getTokenExpiresAt().minusMinutes(5).isBefore(LocalDateTime.now())) {
+                // Initial refresh check
+                ensureTokenFreshness(account);
 
-                    log.info("Refreshing expired token for user {}", userId);
-                    if (account.getRefreshToken() != null) {
-                        TokenResponse newToken = googleCalendarService.refreshToken(account.getRefreshToken());
-
-                        account.setAccessToken(newToken.getAccessToken());
-                        account.setTokenExpiresAt(LocalDateTime.now().plusSeconds(newToken.getExpiresInSeconds()));
-
-                        if (newToken.getRefreshToken() != null) {
-                            account.setRefreshToken(newToken.getRefreshToken());
-                        }
-                        oauthAccountRepository.save(account);
-                    }
-                }
-
-                java.time.ZoneId zone = java.time.ZoneId.systemDefault();
-                LocalDateTime startOfDay = date.atStartOfDay();
-                LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
-
-                String token = account.getAccessToken();
-                if (token != null && !token.isEmpty()) {
-                    List<com.google.api.services.calendar.model.TimePeriod> googleBusy = googleCalendarService
-                            .getBusyPeriods(token, startOfDay, endOfDay);
-
-                    if (googleBusy != null) {
-                        for (com.google.api.services.calendar.model.TimePeriod period : googleBusy) {
-                            long startMs = period.getStart().getValue();
-                            long endMs = period.getEnd().getValue();
-
-                            LocalDateTime busStart = java.time.Instant.ofEpochMilli(startMs).atZone(zone)
-                                    .toLocalDateTime();
-                            LocalDateTime busEnd = java.time.Instant.ofEpochMilli(endMs).atZone(zone).toLocalDateTime();
-
-                            // Align start to nearest 30 min block (floor)
-                            // If busStart is 14:15, blockStart should effectively catch 14:00 or 14:30
-                            // depending on logic.
-                            // However, simple logic: start checking from the hour of the start time and
-                            // check every 30 mins
-                            // if it overlaps with [busStart, busEnd)
-
-                            LocalDateTime searchStart = busStart.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
-                            // If the event actually starts later than the hour, we might still want to
-                            // block the slot containing it?
-                            // Standard practice: if an event overlaps with a slot [T, T+30), that slot is
-                            // busy.
-
-                            LocalDateTime currentSlot = searchStart;
-                            while (currentSlot.isBefore(busEnd)) {
-                                // A slot is busy if it overlaps with the busy period.
-                                // Slot interval: [currentSlot, currentSlot + 30m)
-                                // Busy interval: [busStart, busEnd)
-                                // Overlap condition: currentSlot < busEnd && (currentSlot + 30m) > busStart
-
-                                LocalDateTime slotEnd = currentSlot.plusMinutes(30);
-
-                                if (currentSlot.isBefore(busEnd) && slotEnd.isAfter(busStart)) {
-                                    if (currentSlot.toLocalDate().equals(date)) {
-                                        busyTimes.add(String.format("%02d:%02d", currentSlot.getHour(),
-                                                currentSlot.getMinute()));
-                                    }
-                                }
-                                currentSlot = slotEnd;
-                            }
-                        }
+                // Attempt to fetch with retry
+                try {
+                    fetchAndProcessGoogleSlots(account, date, busyTimes);
+                } catch (RuntimeException e) {
+                    if (isUnauthorized(e) && account.getRefreshToken() != null) {
+                        log.info("Google API 401 Unauthorized for user {}. Refreshing token and retrying...", userId);
+                        refreshAndSaveToken(account);
+                        fetchAndProcessGoogleSlots(account, date, busyTimes);
+                    } else {
+                        throw e;
                     }
                 }
             } catch (Exception e) {
                 log.error("Error fetching Google availability for user {}", userId, e);
             }
         }
+    }
+
+    // --- Helper Methods for Google Calendar Retry Logic ---
+
+    private void ensureTokenFreshness(OAuthAccount account) throws Exception {
+        if (account.getTokenExpiresAt() != null &&
+                account.getTokenExpiresAt().minusMinutes(5).isBefore(LocalDateTime.now())) {
+            refreshAndSaveToken(account);
+        }
+    }
+
+    private void refreshAndSaveToken(OAuthAccount account) throws Exception {
+        if (account.getRefreshToken() == null) {
+            throw new RuntimeException("No refresh token available");
+        }
+        TokenResponse newToken = googleCalendarService.refreshToken(account.getRefreshToken());
+        account.setAccessToken(newToken.getAccessToken());
+        account.setTokenExpiresAt(LocalDateTime.now().plusSeconds(newToken.getExpiresInSeconds()));
+        if (newToken.getRefreshToken() != null) {
+            account.setRefreshToken(newToken.getRefreshToken());
+        }
+        oauthAccountRepository.save(account);
+        log.info("Refreshed Google Access Token for user {}", account.getUser().getId());
+    }
+
+    private String createGoogleMeetingWithRetry(OAuthAccount account, Appointment appointment, String attendeeEmail)
+            throws Exception {
+        ensureTokenFreshness(account);
+        try {
+            Event event = googleCalendarService.createEvent(account.getAccessToken(), appointment, attendeeEmail);
+            return extractMeetingLink(event);
+        } catch (RuntimeException e) {
+            if (isUnauthorized(e) && account.getRefreshToken() != null) {
+                log.info("Google API 401 during createEvent. Refreshing and retrying...");
+                refreshAndSaveToken(account);
+                Event event = googleCalendarService.createEvent(account.getAccessToken(), appointment, attendeeEmail);
+                return extractMeetingLink(event);
+            }
+            throw e;
+        }
+    }
+
+    private void fetchAndProcessGoogleSlots(OAuthAccount account, java.time.LocalDate date,
+            java.util.Set<String> busyTimes) throws Exception {
+        java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        String token = account.getAccessToken();
+        if (token != null && !token.isEmpty()) {
+            List<com.google.api.services.calendar.model.TimePeriod> googleBusy = googleCalendarService
+                    .getBusyPeriods(token, startOfDay, endOfDay);
+
+            if (googleBusy != null) {
+                for (com.google.api.services.calendar.model.TimePeriod period : googleBusy) {
+                    long startMs = period.getStart().getValue();
+                    long endMs = period.getEnd().getValue();
+
+                    LocalDateTime busStart = java.time.Instant.ofEpochMilli(startMs).atZone(zone).toLocalDateTime();
+                    LocalDateTime busEnd = java.time.Instant.ofEpochMilli(endMs).atZone(zone).toLocalDateTime();
+
+                    LocalDateTime searchStart = busStart.truncatedTo(java.time.temporal.ChronoUnit.HOURS);
+                    LocalDateTime currentSlot = searchStart;
+                    while (currentSlot.isBefore(busEnd)) {
+                        LocalDateTime slotEnd = currentSlot.plusMinutes(30);
+                        if (currentSlot.isBefore(busEnd) && slotEnd.isAfter(busStart)) {
+                            if (currentSlot.toLocalDate().equals(date)) {
+                                busyTimes.add(
+                                        String.format("%02d:%02d", currentSlot.getHour(), currentSlot.getMinute()));
+                            }
+                        }
+                        currentSlot = slotEnd;
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean isUnauthorized(RuntimeException e) {
+        // Check message or cause for 401
+        Throwable cause = e.getCause();
+        if (e.getMessage() != null && e.getMessage().contains("401"))
+            return true;
+        if (cause != null && cause.getMessage() != null && cause.getMessage().contains("401"))
+            return true;
+        return false;
     }
 
     @Transactional
@@ -458,26 +497,14 @@ public class AppointmentService {
                         Provider.GOOGLE);
 
                 if (providerAuth.isPresent()) {
+                    OAuthAccount oauth = providerAuth.get();
                     try {
-                        OAuthAccount oauth = providerAuth.get();
-                        log.info("Attempting to create event via Provider {}", provider.getEmail());
-
-                        // Refresh token if needed
-                        if (oauth.getTokenExpiresAt() != null
-                                && oauth.getTokenExpiresAt().minusMinutes(5).isBefore(LocalDateTime.now())) {
-                            TokenResponse newToken = googleCalendarService.refreshToken(oauth.getRefreshToken());
-                            oauth.setAccessToken(newToken.getAccessToken());
-                            oauth.setTokenExpiresAt(LocalDateTime.now().plusSeconds(newToken.getExpiresInSeconds()));
-                            if (newToken.getRefreshToken() != null)
-                                oauth.setRefreshToken(newToken.getRefreshToken());
-                            oauthAccountRepository.save(oauth);
+                        meetingLink = createGoogleMeetingWithRetry(oauth, savedApp, requester.getEmail());
+                        if (meetingLink != null) {
+                            googleEventId = "generated-via-provider"; // We'd need to change signature to return event
+                                                                      // ID too, but this is minor
+                            log.info("Generated Google Meet link via Provider: {}", meetingLink);
                         }
-
-                        Event event = googleCalendarService.createEvent(oauth.getAccessToken(), savedApp,
-                                requester.getEmail());
-                        meetingLink = extractMeetingLink(event);
-                        googleEventId = event.getId();
-                        log.info("Generated Google Meet link via Provider: {}", meetingLink);
                     } catch (Exception e) {
                         log.error("Failed to generate link via Provider GCal", e);
                     }
@@ -485,32 +512,16 @@ public class AppointmentService {
 
                 // STRATEGY 2: Requester's Google Calendar (if Strategy 1 failed)
                 if (meetingLink == null) {
-                    Optional<OAuthAccount> requesterAuth = oauthAccountRepository.findByUserIdAndProvider(
-                            requester.getId(),
-                            Provider.GOOGLE);
+                    Optional<OAuthAccount> requesterAuth = oauthAccountRepository
+                            .findByUserIdAndProvider(requester.getId(), Provider.GOOGLE);
                     if (requesterAuth.isPresent()) {
+                        OAuthAccount oauth = requesterAuth.get();
                         try {
-                            OAuthAccount oauth = requesterAuth.get();
-                            log.info("Attempting to create event via Requester {}", requester.getEmail());
-
-                            // Refresh token if needed
-                            if (oauth.getTokenExpiresAt() != null
-                                    && oauth.getTokenExpiresAt().minusMinutes(5).isBefore(LocalDateTime.now())) {
-                                TokenResponse newToken = googleCalendarService.refreshToken(oauth.getRefreshToken());
-                                oauth.setAccessToken(newToken.getAccessToken());
-                                oauth.setTokenExpiresAt(
-                                        LocalDateTime.now().plusSeconds(newToken.getExpiresInSeconds()));
-                                if (newToken.getRefreshToken() != null)
-                                    oauth.setRefreshToken(newToken.getRefreshToken());
-                                oauthAccountRepository.save(oauth);
+                            meetingLink = createGoogleMeetingWithRetry(oauth, savedApp, provider.getEmail());
+                            if (meetingLink != null) {
+                                googleEventId = "generated-via-requester";
+                                log.info("Generated Google Meet link via Requester: {}", meetingLink);
                             }
-
-                            // Invite Provider
-                            Event event = googleCalendarService.createEvent(oauth.getAccessToken(), savedApp,
-                                    provider.getEmail());
-                            meetingLink = extractMeetingLink(event);
-                            googleEventId = event.getId();
-                            log.info("Generated Google Meet link via Requester: {}", meetingLink);
                         } catch (Exception e) {
                             log.error("Failed to generate link via Requester GCal", e);
                         }
@@ -520,7 +531,6 @@ public class AppointmentService {
                 // STRATEGY 3: Jitsi Fallback (if both GCal attempts failed)
                 if (meetingLink == null) {
                     // Generate a unique, secure-ish Jitsi room name
-                    // Format: Jurify-Appt-{ID}-{Random} to avoid guessing
                     String roomName = "Jurify-Appointment-" + savedApp.getId() + "-"
                             + java.util.UUID.randomUUID().toString().substring(0, 8);
                     meetingLink = "https://meet.jit.si/" + roomName;
@@ -534,8 +544,6 @@ public class AppointmentService {
 
             } catch (Exception e) {
                 log.error("Critical error in meeting generation logic", e);
-                // Don't fail the transaction, just log.
-                // In worst case, link remains null, users can chat to resolve.
             }
         } else if (status == AppointmentStatus.REJECTED) {
             // Notify requester that appointment was rejected
@@ -567,7 +575,7 @@ public class AppointmentService {
      * Get upcoming confirmed appointments for a user (limited to next 5)
      * Returns appointments where user is either provider or requester
      */
-    public List<Appointment> getUpcomingAppointments(Long userId, String userRole) {
+    public List<AppointmentDTO> getUpcomingAppointments(Long userId, String userRole) {
         List<Appointment> appointments;
 
         List<com.jurify.jurify_backend.model.enums.AppointmentStatus> statuses = java.util.Arrays.asList(
@@ -612,7 +620,51 @@ public class AppointmentService {
         return appointments.stream()
                 .filter(app -> !app.getDate().isBefore(today))
                 .limit(5)
+                .map(this::convertToDTO)
                 .toList();
+    }
+
+    private AppointmentDTO convertToDTO(Appointment app) {
+        AppointmentDTO dto = AppointmentDTO.builder()
+                .id(app.getId())
+                .date(app.getDate())
+                .time(app.getTime())
+                .providerId(app.getProviderId())
+                .requesterId(app.getRequesterId())
+                .caseId(app.getCaseId())
+                .status(app.getStatus())
+                .notes(app.getNotes())
+                .googleEventId(app.getGoogleEventId())
+                .meetLink(app.getMeetLink())
+                .initiatedBy(app.getInitiatedBy())
+                .build();
+
+        // Fetch Provider Name
+        userRepository.findById(app.getProviderId()).ifPresent(user -> {
+            if (user.getLawyer() != null) {
+                dto.setProviderName("Adv. " + user.getLawyer().getFirstName() + " " + user.getLawyer().getLastName());
+            } else if (user.getNgo() != null) {
+                dto.setProviderName(user.getNgo().getOrganizationName());
+            } else {
+                dto.setProviderName(user.getEmail());
+            }
+        });
+
+        // Fetch Requester Name
+        userRepository.findById(app.getRequesterId()).ifPresent(user -> {
+            if (user.getCitizen() != null) {
+                dto.setRequesterName(user.getCitizen().getFirstName() + " " + user.getCitizen().getLastName());
+            } else {
+                dto.setRequesterName(user.getEmail());
+            }
+        });
+
+        // Fetch Case Title
+        if (app.getCaseId() != null) {
+            legalCaseRepository.findById(app.getCaseId()).ifPresent(c -> dto.setCaseTitle(c.getTitle()));
+        }
+
+        return dto;
     }
 
     private String extractMeetingLink(Event event) {

@@ -15,4 +15,6 @@ public interface NGORepository extends JpaRepository<NGO, Long> {
     java.util.List<NGO> findByIsVerifiedTrue();
 
     java.util.List<NGO> findByStateAndIsVerifiedTrue(String state);
+
+    java.util.List<NGO> findByState(String state);
 }

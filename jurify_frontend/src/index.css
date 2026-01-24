@@ -18,6 +18,10 @@
   color-scheme: dark;
 }
 
+.dark body {
+  background-color: #020617; /* Slate 950 - Deep Navy */
+}
+
 html,
 body,
 #root {

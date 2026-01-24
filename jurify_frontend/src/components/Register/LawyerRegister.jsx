@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
 import Select from "react-select";
+import AuthDarkModeToggle from "../common/AuthDarkModeToggle";
+import { useGlobalLoader } from "../../context/GlobalLoaderContext";
 // Leaflet Imports
 import {
   MapContainer,
@@ -102,6 +104,7 @@ export default function LawyerRegistration() {
   const location = useLocation();
   const { preRegToken, preFilledEmail, preFilledName } = location.state || {};
   const { isDarkMode } = useTheme();
+  const { startLoading, stopLoading } = useGlobalLoader();
 
   const parseName = (fullName) => {
     if (!fullName) return { firstName: "", lastName: "" };
@@ -110,6 +113,26 @@ export default function LawyerRegistration() {
       firstName: parts[0] || "",
       lastName: parts.slice(1).join(" ") || "",
     };
+  };
+
+  const handleSearchInternal = async (query) => {
+    if (!query.trim()) return;
+    try {
+      const resp = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query + ", India"
+        )}&limit=1`,
+        { headers: { "User-Agent": "jurify-app/1.0" } }
+      );
+      const data = await resp.json();
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        setPosition({ lat: parseFloat(lat), lng: parseFloat(lon) });
+        setFormData(prev => ({ ...prev, latitude: parseFloat(lat), longitude: parseFloat(lon) }));
+      }
+    } catch (err) {
+      console.error("Internal search failed", err);
+    }
   };
 
   const { firstName: googleFirstName, lastName: googleLastName } = parseName(preFilledName);
@@ -140,6 +163,19 @@ export default function LawyerRegistration() {
     dateOfBirth: "",
     gender: "",
   });
+
+  // Handle State Change
+  const handleStateChange = (selectedOption) => {
+    const newState = selectedOption ? selectedOption.value : "";
+    setFormData((prev) => ({ ...prev, state: newState }));
+    setFieldErrors((prev) => ({ ...prev, state: "" }));
+
+    if (newState) {
+      // Trigger a search to center the map on the state
+      setSearchQuery(newState);
+      handleSearchInternal(newState);
+    }
+  };
 
   const [caseTypeOptions, setCaseTypeOptions] = useState([]);
 
@@ -275,7 +311,30 @@ export default function LawyerRegistration() {
     setPosition({ lat, lng });
     setSearchResults([]);
     setSearchQuery(result.display_name);
-    setFormData((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+
+    const addr = result.address || {};
+    const city = addr.city || addr.town || addr.village || addr.municipality || "";
+    const state = addr.state || "";
+    const pincode = addr.postcode || "";
+    const country = addr.country || "India";
+
+    setFormData((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      city,
+      state,
+      pincode,
+      country
+    }));
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      city: "",
+      state: "",
+      pincode: "",
+      location: ""
+    }));
   };
 
   const handleCurrentLocation = () => {
@@ -284,10 +343,46 @@ export default function LawyerRegistration() {
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         const { latitude, longitude } = pos.coords;
         setPosition({ lat: latitude, lng: longitude });
         setFormData((prev) => ({ ...prev, latitude, longitude }));
+        setFieldErrors((prev) => ({ ...prev, location: "" }));
+
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            { headers: { "User-Agent": "jurify-app/1.0" } }
+          );
+          const data = await response.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const city = addr.city || addr.town || addr.village || addr.municipality || "";
+            const state = addr.state || "";
+            const pincode = addr.postcode || "";
+            const country = addr.country || "India";
+
+            setFormData(prev => ({
+              ...prev,
+              city,
+              state,
+              pincode,
+              country
+            }));
+            // Also update search query for visual feedback
+            if (data.display_name) {
+              setSearchQuery(data.display_name);
+            }
+            setFieldErrors(prev => ({
+              ...prev,
+              city: "",
+              state: "",
+              pincode: ""
+            }));
+          }
+        } catch (error) {
+          console.error("Reverse geocoding failed", error);
+        }
       },
       (error) => {
         let errorMessage = "Unable to get your current location.";
@@ -425,10 +520,10 @@ export default function LawyerRegistration() {
           ...prev,
           lastName: "Last name must be at least 2 characters",
         }));
-      } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+      } else if (!/^[a-zA-Z\s.'-]+$/.test(value)) {
         setFieldErrors((prev) => ({
           ...prev,
-          lastName: "Last name should only contain letters",
+          lastName: "Last name should only contain letters, spaces, dots, hyphens or apostrophes",
         }));
       }
     }
@@ -662,8 +757,8 @@ export default function LawyerRegistration() {
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
     else if (formData.lastName.trim().length < 2)
       errors.lastName = "Last name must be at least 2 characters";
-    else if (!/^[a-zA-Z\s]+$/.test(formData.lastName))
-      errors.lastName = "Last name should only contain letters";
+    else if (!/^[a-zA-Z\s.'-]+$/.test(formData.lastName))
+      errors.lastName = "Last name should only contain letters, spaces, dots, hyphens or apostrophes";
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email.trim()) errors.email = "Email is required";
@@ -806,6 +901,7 @@ export default function LawyerRegistration() {
 
     setError("");
     setIsSubmitting(true);
+    startLoading("Registering lawyer profile...");
 
     const jsonPayload = {
       ...formData,
@@ -830,6 +926,7 @@ export default function LawyerRegistration() {
       const result = await register(finalFormData);
 
       if (result.success) {
+        stopLoading(true, "Registration successful! Please verify email.");
         setIsSuccess(true);
         if (result.pollingToken) {
           setPollingToken(result.pollingToken);
@@ -837,10 +934,12 @@ export default function LawyerRegistration() {
       } else {
         setError(result.error || "Registration failed");
         setIsSubmitting(false);
+        stopLoading(false, result.error || "Registration failed");
       }
     } catch (err) {
       setError("An unexpected error occurred.");
       setIsSubmitting(false);
+      stopLoading(false, "An unexpected error occurred.");
     }
   };
 
@@ -922,7 +1021,7 @@ export default function LawyerRegistration() {
     if (fieldErrors[fieldName]) {
       return (
         baseClass +
-        " border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-500/50 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400"
+        " border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-500 focus:ring-red-500/20 focus:border-red-500 text-red-900 dark:text-red-300 placeholder:text-red-300 dark:placeholder-red-400"
       );
     }
 
@@ -1096,6 +1195,7 @@ export default function LawyerRegistration() {
 
           <form
             onSubmit={handleRegister}
+            noValidate
             className="space-y-5 sm:space-y-6 max-h-[calc(100vh-200px)] sm:max-h-[78vh] overflow-y-auto pr-1 custom-scroll"
           >
             {/* Personal Information */}
@@ -1928,17 +2028,17 @@ export default function LawyerRegistration() {
                       option: (base, state) => ({
                         ...base,
                         backgroundColor: state.isFocused
-                            ? isDarkMode
-                                ? "#374151"
-                                : "#ecfdf5"
-                            : isDarkMode
-                                ? "#1f2937"
-                                : "white",
+                          ? isDarkMode
+                            ? "#374151"
+                            : "#ecfdf5"
+                          : isDarkMode
+                            ? "#1f2937"
+                            : "white",
                         color: isDarkMode ? "white" : "black",
                       }),
                       singleValue: (base) => ({
-                          ...base,
-                          color: isDarkMode ? "white" : "black",
+                        ...base,
+                        color: isDarkMode ? "white" : "black",
                       }),
                       control: (base, state) => ({
                         ...base,
@@ -2421,21 +2521,13 @@ export default function LawyerRegistration() {
                 className="w-full rounded-xl sm:rounded-2xl bg-primary text-white py-3 sm:py-3.5 text-sm sm:text-base font-semibold shadow-md hover:bg-primary/90 transition-all duration-200 disabled:bg-gray-400 disabled:shadow-none active:scale-95 flex items-center justify-center gap-2"
                 disabled={!isAgreed || isSubmitting}
               >
-                {isSubmitting ? (
-                  <>
-                    <span className="material-symbols-outlined text-lg animate-spin">
-                      progress_activity
-                    </span>
-                    Registering...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-lg">
-                      how_to_reg
-                    </span>
-                    Register as Lawyer
-                  </>
-                )}
+
+                <>
+                  <span className="material-symbols-outlined text-lg">
+                    how_to_reg
+                  </span>
+                  Register as Lawyer
+                </>
               </button>
 
               {/* Register Buttons */}
@@ -2474,53 +2566,29 @@ export default function LawyerRegistration() {
           </form>
 
           {/* Loading/Success Overlay */}
-          {(isSubmitting || isSuccess) && (
+          {/* Success Overlay */}
+          {isSuccess && (
             <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 rounded-2xl sm:rounded-3xl flex items-center justify-center p-6">
               <div className="text-center space-y-4 animate-in fade-in zoom-in duration-300">
-                {isSuccess ? (
-                  <>
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
-                        mail
-                      </span>
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
-                      Verify Your Email
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-300 max-w-xs mx-auto text-sm sm:text-base mb-4">
-                      We've sent a verification link to your email. Please check
-                      your inbox to activate your account.
-                    </p>
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="material-symbols-outlined text-3xl sm:text-4xl text-blue-600 animate-pulse">
-                        mark_email_unread
-                      </span>
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
-                      Verify Your Email
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-300 max-w-xs mx-auto text-sm sm:text-base mb-4">
-                      We've sent a verification link to your email.
-                    </p>
-                    <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
-                      Waiting for you to verify...
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      Keep this tab open. We'll automatically log you in once
-                      verified.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
-                      Creating Account
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-300 text-sm sm:text-base">
-                      Please wait while we process your details...
-                    </p>
-                  </>
-                )}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-green-600 animate-bounce">
+                    mail
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">
+                  Verify Your Email
+                </h3>
+                <p className="text-gray-500 dark:text-gray-300 max-w-xs mx-auto text-sm sm:text-base mb-4">
+                  We've sent a verification link to your email. Please check
+                  your inbox to activate your account.
+                </p>
+                <div className="bg-blue-50 text-blue-800 px-4 py-3 rounded-xl text-sm animate-pulse mb-4">
+                  Waiting for you to verify...
+                </div>
+                <p className="text-xs text-gray-400">
+                  Keep this tab open. We'll automatically log you in once
+                  verified.
+                </p>
               </div>
             </div>
           )}
@@ -2569,6 +2637,7 @@ export default function LawyerRegistration() {
           scroll-behavior: smooth;
         }
       `}</style>
+      <AuthDarkModeToggle />
     </div>
   );
 }

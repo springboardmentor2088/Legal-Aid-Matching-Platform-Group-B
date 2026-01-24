@@ -36,12 +36,38 @@ export const verificationService = {
         };
     },
 
-    fetchCases: async () => {
-        return [
-            { id: "C201", title: "Property Dispute", status: "OPEN", assignedTo: "U1002", createdAt: new Date().toISOString() },
-            { id: "C202", title: "Contract Review", status: "IN_PROGRESS", assignedTo: "U1002", createdAt: new Date().toISOString() },
-            { id: "C203", title: "Family Law Case", status: "RESOLVED", assignedTo: null, createdAt: new Date().toISOString() },
-        ];
+    fetchCases: async ({ page = 1, perPage = 10 } = {}) => {
+        try {
+            const response = await api.get(`/admin/cases?page=${page - 1}&size=${perPage}`);
+            return response.content; // Return array directly for compatibility with existing polling or wrapped object
+        } catch (e) {
+            console.error("Fetch cases failed", e);
+            return [];
+        }
+    },
+
+    fetchAuditLogs: async ({ page = 1, perPage = 20, startDate, endDate, action, role } = {}) => {
+        let url = `/admin/audit-logs?page=${page - 1}&size=${perPage}`;
+        if (startDate) url += `&from=${encodeURIComponent(startDate)}`;
+        if (endDate) url += `&to=${encodeURIComponent(endDate)}`;
+        if (action) url += `&action=${encodeURIComponent(action)}`;
+        if (role) url += `&role=${encodeURIComponent(role)}`;
+
+        const response = await api.get(url);
+        return {
+            total: response.totalElements,
+            items: response.content
+        };
+    },
+
+    fetchAuditActions: async () => {
+        try {
+            const response = await api.get('/admin/audit-logs/actions');
+            return response || [];
+        } catch (e) {
+            console.error("Failed to fetch audit actions", e);
+            return [];
+        }
     },
 
     fetchActivities: async () => {
@@ -115,5 +141,28 @@ export const verificationService = {
     // UI Helper aliases to match the Dashboard component calls
     approveVerification: (id) => api.post(`/verification/${id}/approve`, {}),
     rejectVerification: (id, reason) => api.post(`/verification/${id}/reject`, { reason }),
-    toggleUserStatus: async (id) => { console.log("Toggle status mock", id); return true; }
+
+    // Toggle user status (suspend/activate)
+    toggleUserStatus: async (userId, currentStatus) => {
+        const newStatus = currentStatus === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+        return api.put(`/admin/users/${userId}/status`, null, {
+            params: { status: newStatus }
+        });
+    },
+
+    // Update user status with specific status
+    updateUserStatus: async (userId, status, reason = '') => {
+        return api.put(`/admin/users/${userId}/status`, null, {
+            params: { status, reason }
+        });
+    },
+
+    // Bulk update user statuses
+    bulkUpdateStatus: async (userIds, status, reason = '') => {
+        return api.post('/admin/users/bulk-status', {
+            userIds,
+            status,
+            reason
+        });
+    }
 };

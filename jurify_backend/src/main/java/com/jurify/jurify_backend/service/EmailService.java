@@ -104,10 +104,13 @@ public class EmailService {
                 "</html>";
     }
 
+    @org.springframework.beans.factory.annotation.Value("${jurify.frontend.url:http://localhost:5173}")
+    private String frontendUrl;
+
     @Async
     public void sendVerificationEmail(String to, String token) {
         String subject = "Verify your Jurify Account";
-        String verificationUrl = "http://localhost:5173/verify-email?token=" + token;
+        String verificationUrl = frontendUrl + "/verify-email?token=" + token;
 
         String htmlBody = getEmailTemplate(
                 "Welcome to Jurify!",
@@ -122,7 +125,7 @@ public class EmailService {
     @Async
     public void sendPasswordResetEmail(String to, String token) {
         String subject = "Reset your Jurify Password";
-        String resetUrl = "http://localhost:5173/reset-password?token=" + token;
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
 
         String htmlBody = getEmailTemplate(
                 "Password Reset Request",
@@ -156,7 +159,7 @@ public class EmailService {
                         "We have received your message regarding '<strong>" + subject + "</strong>'.<br>" +
                         "Our team will review your inquiry and get back to you as soon as possible.",
                 "Visit Homepage",
-                "http://localhost:5173");
+                frontendUrl);
         sendHtmlEmail(fromEmail, userSubject, userBody);
     }
 

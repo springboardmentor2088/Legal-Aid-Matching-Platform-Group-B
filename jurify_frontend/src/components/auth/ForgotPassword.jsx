@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { useGlobalLoader } from '../../context/GlobalLoaderContext';
 
 export default function ForgotPassword() {
+    const { startLoading, stopLoading } = useGlobalLoader();
     const [email, setEmail] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [message, setMessage] = useState('');
@@ -11,13 +13,16 @@ export default function ForgotPassword() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+        startLoading("Sending password reset link...");
         setError('');
         setMessage('');
 
         try {
             await authService.forgotPassword(email);
+            stopLoading(true, "Reset link sent!");
             setMessage('If an account exists with this email, you will receive password reset instructions.');
         } catch (err) {
+            stopLoading(false, "Failed to send link");
             setError(err.response?.data?.message || 'An error occurred. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -102,7 +107,7 @@ export default function ForgotPassword() {
                                     disabled={isSubmitting}
                                     className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#11676a] hover:bg-[#0e5255] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#11676a] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isSubmitting ? 'Sending...' : 'Send reset link'}
+                                    Send reset link
                                 </button>
                             </div>
                         </form>

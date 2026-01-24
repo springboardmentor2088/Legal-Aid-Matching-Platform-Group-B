@@ -62,6 +62,9 @@ public class User {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private String verificationPollingToken;
 
+    @Column(columnDefinition = "TEXT")
+    private String preferences;
+
     // Relationships
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Citizen citizen;

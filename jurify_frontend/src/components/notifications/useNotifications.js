@@ -67,8 +67,9 @@ export const useNotifications = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
       const response = await fetch(
-        `http://localhost:8080/api/notifications?filter=${filter}`,
+        `${baseUrl}/notifications?filter=${filter}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -114,7 +115,8 @@ export const useNotifications = () => {
   const markAsRead = useCallback(async (notificationIds) => {
     try {
       const token = localStorage.getItem('accessToken');
-      await fetch('http://localhost:8080/api/notifications/read', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      await fetch(`${baseUrl}/notifications/read`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,7 +142,8 @@ export const useNotifications = () => {
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      await fetch('http://localhost:8080/api/notifications/read/all', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      await fetch(`${baseUrl}/notifications/read/all`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -161,7 +164,8 @@ export const useNotifications = () => {
   const deleteNotifications = useCallback(async (notificationIds) => {
     try {
       const token = localStorage.getItem('accessToken');
-      await fetch('http://localhost:8080/api/notifications', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+      await fetch(`${baseUrl}/notifications`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -27,6 +27,8 @@ const languageOptions = [
 ];
 import { caseService } from "../../services/caseService";
 import Logo from "../common/Logo";
+import logo1 from "../../assets/logo1.png";
+import logo4 from "../../assets/logo4.png";
 import { FiMenu, FiX } from "react-icons/fi";
 import NgoChat from "../chat/views/NgoChat";
 import { useToast } from "../common/ToastContext";
@@ -35,7 +37,15 @@ import NotificationPage from "../notifications/NotificationPage";
 import NotificationPanel from "../notifications/NotificationPanel";
 import ScheduleDashboard from "./ScheduleDashboard";
 import MyCases from "./myCase";
+import VerificationPage from "./VerificationPage";
 import DarkModeToggle from "../common/DarkModeToggle";
+import StatsCard from "../analytics/StatsCard";
+import CaseDistributionChart from "../analytics/CaseDistributionChart";
+import ResolutionTrendChart from "../analytics/ResolutionTrendChart";
+import GeographicMapChart from "../analytics/GeographicMapChart";
+import { NGOSettings } from "../settings";
+import Leaderboard from "../analytics/Leaderboard";
+import ReportCaseModal from "../case/ReportCaseModal";
 
 import {
     FaHome,
@@ -50,7 +60,7 @@ import {
     FaTimes,
     FaBell,
 } from "react-icons/fa";
-import { FiBriefcase } from "react-icons/fi";
+import { FiBriefcase, FiTrendingUp, FiUsers, FiClock, FiMapPin, FiCalendar, FiCheckCircle } from "react-icons/fi";
 
 // List of Indian States
 const INDIAN_STATES = [
@@ -124,8 +134,8 @@ const NotificationDropdown = ({ show, onClose, notifications, onNotificationClic
     if (!show) return null;
 
     return (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+        <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-lg shadow-lg border border-gray-200 dark:border-slate-800 z-50">
+            <div className="p-4 border-b border-gray-100 dark:border-slate-800">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Notifications</h3>
                     <button
@@ -155,7 +165,7 @@ const NotificationDropdown = ({ show, onClose, notifications, onNotificationClic
                                         <p className="text-xs font-medium text-gray-800 dark:text-white truncate">
                                             {notification.title || "New Notification"}
                                         </p>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                                        <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">
                                             {notification.message || notification.description}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-1">
@@ -168,10 +178,10 @@ const NotificationDropdown = ({ show, onClose, notifications, onNotificationClic
                     </div>
                 ) : (
                     <div className="p-6 text-center">
-                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
                             <FaBell className="text-gray-400 dark:text-gray-500 text-sm" />
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                        <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">
                             No notifications
                         </p>
                         <p className="text-xs text-gray-400 mt-1">You're all caught up!</p>
@@ -180,7 +190,7 @@ const NotificationDropdown = ({ show, onClose, notifications, onNotificationClic
             </div>
 
             {notifications && notifications.length > 0 && (
-                <div className="p-3 border-t border-gray-100 dark:border-gray-700">
+                <div className="p-3 border-t border-gray-100 dark:border-slate-800">
                     <button
                         onClick={() => {
                             onClose();
@@ -196,6 +206,58 @@ const NotificationDropdown = ({ show, onClose, notifications, onNotificationClic
     );
 };
 
+// Status Confirmation Modal
+const StatusConfirmationModal = ({ show, onClose, onConfirm, isActive }) => {
+    if (!show) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 flex flex-col items-center justify-center shadow-2xl transform transition-all scale-100 max-w-md w-full mx-4">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isActive ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                    <span className="material-symbols-outlined text-4xl">
+                        {isActive ? 'visibility_off' : 'visibility'}
+                    </span>
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">
+                    {isActive ? 'Hide Profile?' : 'Activate Profile?'}
+                </h3>
+                <p className="text-slate-500 dark:text-slate-400 text-center mb-6">
+                    {isActive
+                        ? "You are currently visible to citizens. Hiding your profile means you won't receive new consultation requests."
+                        : "You are currently hidden. Activating your profile will make you visible in search results and allow citizens to contact you."}
+                </p>
+                <div className="flex gap-3 w-full">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-slate-200 dark:hover:bg-gray-600 transition"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className={`flex-1 px-4 py-2 rounded-lg font-bold text-white transition ${isActive
+                            ? 'bg-orange-500 hover:bg-orange-600'
+                            : 'bg-green-600 hover:bg-green-700'
+                            }`}
+                    >
+                        {isActive ? 'Hide Profile' : 'Go Live'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Helper to parse dates that might be in array format [yyyy, MM, dd, HH, mm]
+const parseAppointmentDate = (dateData) => {
+    if (!dateData) return null;
+    if (Array.isArray(dateData)) {
+        const [year, month, day, hour = 0, minute = 0] = dateData;
+        return new Date(year, month - 1, day, hour, minute);
+    }
+    return new Date(dateData);
+};
+
 const NgoDashboard = () => {
     const { theme } = useTheme();
     const isDarkMode = theme === 'dark';
@@ -204,6 +266,15 @@ const NgoDashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
+
+    // Added State for Confirmation
+    const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+
+    // Track which case is being processed for loading state
+    const [processingCaseId, setProcessingCaseId] = useState(null);
+
+    // ... existing state and logic ...
+
 
     const getInitialTab = () => {
         const params = new URLSearchParams(location.search);
@@ -217,12 +288,44 @@ const NgoDashboard = () => {
     const [editForm, setEditForm] = useState({});
     const [leads, setLeads] = useState([]);
     const [selectedLead, setSelectedLead] = useState(null);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [selectedLeadForReport, setSelectedLeadForReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalCases: 0,
         activeCases: 0,
         pendingCases: 0,
         resolvedCases: 0,
+    });
+
+    // NGO Analytics Mock Data
+    const [ngoAnalytics, setNgoAnalytics] = useState({
+        totalCasesSupported: 156,
+        activeCases: 42,
+        beneficiariesReached: 2847,
+        avgResolutionTime: 28,
+        caseDistribution: [
+            { name: 'Family Law', value: 45 },
+            { name: 'Property Law', value: 38 },
+            { name: 'Criminal Law', value: 32 },
+            { name: 'Civil Law', value: 28 },
+            { name: 'Labor Law', value: 13 }
+        ],
+        resolutionTrend: [
+            { name: 'Jan', value: 12 },
+            { name: 'Feb', value: 18 },
+            { name: 'Mar', value: 15 },
+            { name: 'Apr', value: 22 },
+            { name: 'May', value: 19 },
+            { name: 'Jun', value: 24 }
+        ],
+        geographicData: [
+            { city: 'Mumbai', state: 'Maharashtra', cases: 45, lat: 19.0760, lng: 72.8777 },
+            { city: 'Delhi', state: 'Delhi', cases: 38, lat: 28.6139, lng: 77.2090 },
+            { city: 'Bangalore', state: 'Karnataka', cases: 32, lat: 12.9716, lng: 77.5946 },
+            { city: 'Chennai', state: 'Tamil Nadu', cases: 28, lat: 13.0827, lng: 80.2707 },
+            { city: 'Kolkata', state: 'West Bengal', cases: 13, lat: 22.5726, lng: 88.3639 }
+        ]
     });
     const [recentCases, setRecentCases] = useState([]);
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
@@ -233,6 +336,24 @@ const NgoDashboard = () => {
     const [showNotificationPanel, setShowNotificationPanel] = useState(false);
     const [showComingSoon, setShowComingSoon] = useState(false);
     const [comingSoonFeature, setComingSoonFeature] = useState("");
+    const [categoryOptions, setCategoryOptions] = useState([]);
+
+    useEffect(() => {
+        // Fetch Categories
+        const fetchCategories = async () => {
+            try {
+                const response = await api.get("/categories");
+                if (response.data) {
+                    setCategoryOptions(response.data.map(c => ({ value: c.name, label: c.name })));
+                } else {
+                    setCategoryOptions((response || []).map(c => ({ value: c.name, label: c.name })));
+                }
+            } catch (error) {
+                console.error("Failed to fetch categories", error);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     // Use notifications hook
     const {
@@ -292,7 +413,11 @@ const NgoDashboard = () => {
                 ]);
 
                 setProfile(profileRes);
-                setEditForm(profileRes || {});
+                setEditForm({
+                    ...profileRes,
+                    // Ensure serviceAreas is populated from profile
+                    serviceAreas: profileRes.serviceAreas ? profileRes.serviceAreas.split(", ") : []
+                });
                 setStats(statsRes);
                 setRecentCases(casesRes);
             } catch (error) {
@@ -309,6 +434,7 @@ const NgoDashboard = () => {
     }, [user]);
 
     const handleLogout = () => {
+        showToast({ message: "Logged out successfully", type: "info" });
         logout();
         navigate("/login");
     };
@@ -335,10 +461,8 @@ const NgoDashboard = () => {
 
     useEffect(() => {
         // Show coming soon modal for specific tabs
-        if (
-            activeTab === "verification" ||
-            activeTab === "settings"
-        ) {
+        // Verification is now implemented
+        if (activeTab === "settings") {
             setShowComingSoon(true);
             setComingSoonFeature(activeTab);
         }
@@ -431,6 +555,7 @@ const NgoDashboard = () => {
     // ... existing code
 
     const handleAcceptCase = async (caseId) => {
+        setProcessingCaseId(caseId);
         try {
             const token = localStorage.getItem("accessToken");
             await api.post(`/consultation/accept/${caseId}`, {}, {
@@ -439,18 +564,28 @@ const NgoDashboard = () => {
             fetchLeads(); // Refresh leads
             // Refresh other stats if needed
             showToast({ message: "Case Accepted Successfully!", type: "success" });
+            setSelectedLead(null); // Close modal
+
+            // Navigate to messages tab to start conversation
+            if (typeof setActiveTab === 'function') {
+                setActiveTab("messages");
+            }
         } catch (err) {
             console.error(err);
             showToast({ message: "Failed to accept case", type: "error" });
+        } finally {
+            setProcessingCaseId(null);
         }
     };
 
     // ... existing code
 
-    const handleStatusToggle = async () => {
+    const confirmStatusChange = async () => {
         try {
             const newStatus = !profile?.isActive;
             setProfile((prev) => ({ ...prev, isActive: newStatus }));
+            setShowStatusConfirm(false); // Close Modal
+
             await authService.updateDirectoryStatus(newStatus);
             showToast({ message: "Visibility status updated", type: "success" });
         } catch (error) {
@@ -458,6 +593,10 @@ const NgoDashboard = () => {
             setProfile((prev) => ({ ...prev, isActive: !prev.isActive }));
             showToast({ message: "Failed to update visibility status.", type: "error" });
         }
+    };
+
+    const handleStatusToggle = () => {
+        setShowStatusConfirm(true);
     };
 
     const handleUpdateProfile = async () => {
@@ -578,7 +717,15 @@ const NgoDashboard = () => {
     ];
 
     return (
-        <div className="h-screen bg-gray-50 dark:bg-gray-900 flex font-sans transition-colors duration-300">
+        <div className="h-screen bg-gray-50 dark:bg-slate-950 flex font-sans transition-colors duration-300">
+            {/* Status Confirmation Modal */}
+            <StatusConfirmationModal
+                show={showStatusConfirm}
+                onClose={() => setShowStatusConfirm(false)}
+                onConfirm={confirmStatusChange}
+                isActive={profile?.isActive}
+            />
+
             {/* Custom Success Modal */}
             <SuccessModal
                 show={showSuccessModal}
@@ -587,15 +734,15 @@ const NgoDashboard = () => {
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary dark:bg-gray-900 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-                    } lg:translate-x-0 shadow-xl border-r border-transparent dark:border-gray-800`}
+                className={`fixed inset-y-0 left-0 z-40 w-64 bg-primary dark:bg-slate-950 text-white transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                    } lg:translate-x-0 shadow-xl border-r border-transparent dark:border-slate-700`}
             >
                 <div className="flex flex-col h-full">
                     {/* Logo Area */}
-                    <div className="h-30 flex items-center px-5 border-b border-primary-dark dark:border-gray-800 gap-5 shrink-0">
+                    <div className="h-30 flex items-center px-5 border-b border-primary-dark dark:border-slate-700 gap-5 shrink-0">
                         {/* Logo */}
-                        <div className="flex items-center w-2rem h-10">
-                            <Logo />
+                        <div className="flex items-center w-full h-10">
+                            <img src={isDarkMode ? logo4 : logo1} alt="Jurify Logo" className="h-full object-contain" />
                         </div>
 
                         {/* Close button */}
@@ -607,16 +754,16 @@ const NgoDashboard = () => {
                         </button>
                     </div>
                     {/* User Info */}
-                    <div className="p-6 border-b border-primary-dark dark:border-gray-800">
+                    <div className="p-6 border-b border-primary-dark dark:border-slate-700">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg font-bold">
                                 {user?.firstName?.charAt(0).toUpperCase() || "N"}
                             </div>
                             <div className="overflow-hidden">
-                                <p className="font-semibold truncate text-white dark:text-gray-200">
+                                <p className="font-semibold truncate text-white dark:text-slate-200">
                                     {user?.firstName || "NGO User"}
                                 </p>
-                                <p className="text-xs text-blue-100 dark:text-gray-400 capitalize">
+                                <p className="text-xs text-blue-100 dark:text-slate-400 capitalize">
                                     {user?.role?.toLowerCase() || "ngo"}
                                 </p>
                             </div>
@@ -629,15 +776,12 @@ const NgoDashboard = () => {
                             <button
                                 key={id}
                                 onClick={() => {
-                                    setActiveTab(id);
+                                    navigate(`?tab=${id}`);
                                     setSidebarOpen(false);
-                                    if (id === 'schedule') {
-                                        setSearchParams({});
-                                    }
                                 }}
                                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition ${activeTab === id
-                                    ? "bg-white/10 dark:bg-gray-800 text-white border-l-4 border-white dark:border-primary"
-                                    : "text-blue-100 dark:text-gray-400 hover:bg-white/5 dark:hover:bg-gray-800 hover:text-white"
+                                    ? "bg-white/10 dark:bg-slate-900 text-white border-l-4 border-white dark:border-primary"
+                                    : "text-blue-100 dark:text-slate-400 hover:bg-white/5 dark:hover:bg-gray-800 hover:text-white"
                                     }`}
                             >
                                 <Icon className="text-xl shrink-0" />
@@ -648,10 +792,10 @@ const NgoDashboard = () => {
                 </div>
 
                 {/* Bottom Logout Button */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark dark:border-gray-800">
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-dark dark:border-slate-700">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark dark:bg-gray-800 hover:bg-red-600 dark:hover:bg-red-900/50 transition"
+                        className="flex items-center gap-3 px-4 py-3 rounded-md w-full text-left text-base text-white bg-primary-dark dark:bg-slate-900 hover:bg-red-600 dark:hover:bg-red-900/50 transition"
                     >
                         <FaSignOutAlt className="text-xl shrink-0" />
                         <span>Logout</span>
@@ -670,18 +814,45 @@ const NgoDashboard = () => {
             {/* Main Content */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden lg:ml-64">
                 {/* Top Header */}
-                <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-colors duration-300">
+                {/* Top Header - Redesigned */}
+                <header className="bg-white dark:bg-slate-900 shadow-sm border-b border-gray-200 dark:border-slate-800 h-30 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
                             onClick={() => setSidebarOpen(true)}
-                            className="lg:hidden text-gray-600 dark:text-gray-300 hover:text-primary"
+                            className="lg:hidden text-gray-600 dark:text-gray-300 hover:text-primary transition-colors"
                         >
                             <FiMenu className="w-6 h-6" />
                         </button>
-                        <h1 className="text-lg md:text-xl font-bold text-[#11676a] dark:text-[#198f93]">
-                            {links.find((l) => l.id === activeTab)?.name || "NGO Dashboard"}
-                        </h1>
+
+                        {/* Icon Box */}
+                        <div className="hidden md:flex w-12 h-12 bg-linear-to-br from-[#11676a] to-[#0e5658] rounded-xl items-center justify-center shadow-lg shadow-[#11676a]/20 shrink-0">
+                            {(() => {
+                                const ItemIcon = links.find(i => i.id === activeTab)?.icon || FaHome;
+                                return <ItemIcon className="text-xl text-white" />;
+                            })()}
+                        </div>
+
+                        <div>
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                                {links.find((l) => l.id === activeTab)?.name || "NGO Dashboard"}
+                            </h1>
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 hidden md:block">
+                                {(() => {
+                                    const subtitles = {
+                                        overview: "Track your social impact and volunteer efforts",
+                                        cases: "Manage pro-bono cases and legal aid",
+                                        verification: "Complete your organization verification",
+                                        schedule: "Coordinate legal aid camps and sessions",
+                                        messages: "Communicate with beneficiaries and lawyers",
+                                        profile: "Update your organization profile",
+                                        settings: "Configure your organization settings"
+                                    };
+                                    return subtitles[activeTab] || "Empowering Justice Together";
+                                })()}
+                            </p>
+                        </div>
                     </div>
+
                     <div className="flex items-center gap-2 md:gap-4 relative">
                         <DarkModeToggle />
                         <button
@@ -690,10 +861,12 @@ const NgoDashboard = () => {
                             }
                             className="p-2 text-gray-400 hover:text-primary transition relative"
                         >
-                            <MaterialIcon name="notifications" className="text-2xl" />
-                            {unreadCount > 0 && (
-                                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
-                            )}
+                            <div className="relative">
+                                <MaterialIcon name="notifications" className="text-2xl" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                                )}
+                            </div>
                         </button>
 
                         <NotificationDropdown
@@ -709,226 +882,165 @@ const NgoDashboard = () => {
                 {/* Dashboard Content */}
                 <div className={`flex-1 ${activeTab === 'messages' ? 'overflow-hidden' : 'overflow-y-auto'} p-4 md:p-6 lg:p-8`}>
                     {/* OVERVIEW TAB */}
+                    {activeTab === "settings" && <NGOSettings />}
                     {activeTab === "overview" && (
                         <>
-                            {/* Welcome Banner */}
-                            <div className="bg-gradient-to-r from-[#11676a] to-[#0f5a5d] rounded-2xl p-8 text-white shadow-lg mb-8">
-                                <h2 className="text-3xl font-bold mb-2">
-                                    Welcome back, {user?.firstName}!
-                                </h2>
-                                <p className="text-blue-100 max-w-xl">
-                                    You have {stats.activeCases} active cases. Manage your cases
-                                    and schedule efficiently.
-                                </p>
-                                <button
-                                    onClick={() => setActiveTab("verification")}
-                                    className="mt-6 bg-white text-primary px-6 py-2 rounded-lg font-bold hover:bg-blue-50 transition shadow flex items-center gap-2"
-                                >
-                                    <MaterialIcon name="verified" /> Check Verification Status
-                                </button>
-                            </div>
+                            {/* SECTION 1 — Greeting + Smart Banner */}
+                            {/* Smart Welcome Banner - Only for NGOs */}
+                            {user?.role === 'NGO' && (() => {
+                                // Profile completion check for NGOs
+                                const isProfileIncomplete = !profile?.bio || !profile?.yearsOfExperience || !profile?.caseTypes?.length || !profile?.barCouncilNumber;
+                                const isVerificationPending = !profile?.isVerified;
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                                {[
-                                    {
-                                        label: "Active Cases",
-                                        value: stats.activeCases,
-                                        icon: "gavel",
-                                        color: "bg-blue-50 dark:bg-blue-900/30 text-primary dark:text-blue-400",
-                                    },
-                                    {
-                                        label: "Pending Requests",
-                                        value: stats.pendingCases,
-                                        icon: "pending_actions",
-                                        color: "bg-yellow-50 dark:bg-yellow-900/30 text-primary dark:text-yellow-400",
-                                    },
-                                    {
-                                        label: "Total Cases",
-                                        value: stats.totalCases,
-                                        icon: "folder",
-                                        color: "bg-purple-50 dark:bg-purple-900/30 text-primary dark:text-purple-400",
-                                    },
-                                    {
-                                        label: "Verification",
-                                        value: profile?.isVerified ? "Verified" : "Pending",
-                                        icon: "verified_user",
-                                        color: profile?.isVerified
-                                            ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                                            : "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
-                                    },
-                                ].map((stat, i) => (
-                                    <div
-                                        key={i}
-                                        className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition transform hover:-translate-y-1 flex flex-col justify-between h-40"
-                                    >
-                                        <div className={`p-2 rounded-lg inline-flex ${stat.color}`}>
-                                            <MaterialIcon name={stat.icon} />
-                                        </div>
-                                        <div>
-                                            <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-                                                {stat.label}
-                                            </p>
-                                            <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
-                                                {stat.value}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                // Performance feedback
+                                const monthlyResolvedCases = stats.resolvedCases || 0;
+                                const hasPerformance = monthlyResolvedCases > 0;
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 space-y-6">
-                                    {/* NEW LEADS SECTION */}
-                                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
-                                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
-                                            <FiBriefcase className="text-primary dark:text-[#198f93]" /> New Consultation Leads
+                                // Determine banner content based on priority
+                                let subtitle, ctaText, ctaAction;
+
+                                if (isProfileIncomplete || isVerificationPending) {
+                                    subtitle = "Complete your profile to receive more consultation requests.";
+                                    ctaText = "Complete Verification";
+                                    ctaAction = () => setActiveTab('verification');
+                                } else if (hasPerformance) {
+                                    subtitle = `Great work! You supported ${ngoAnalytics.beneficiariesReached || 0} beneficiaries this month. Keep it up!`;
+                                    ctaText = "View Impact";
+                                    ctaAction = () => {
+                                        const analyticsSection = document.getElementById('ngo-performance-overview');
+                                        if (analyticsSection) {
+                                            analyticsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    };
+                                } else {
+                                    subtitle = "Check new consultation requests and manage your volunteer coordination.";
+                                    ctaText = "View Requests";
+                                    ctaAction = () => {
+                                        const leadsSection = document.getElementById('ngo-new-leads');
+                                        if (leadsSection) {
+                                            leadsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    };
+                                }
+
+                                return (
+                                    <div className="bg-linear-to-r from-primary to-primary-dark dark:[#134E4A] rounded-2xl p-6 md:p-8 text-white shadow-lg mb-8">
+                                        <h2 className="text-2xl md:text-3xl font-bold mb-2">
+                                            Welcome back, {profile?.firstName || user?.firstName || 'NGO'}!
                                         </h2>
-                                        {!leads || leads.length === 0 ? (
-                                            <div className="text-center py-10 bg-slate-50 dark:bg-white/5 rounded-xl border border-dashed border-slate-200 dark:border-gray-600">
-                                                <p className="text-slate-500 dark:text-slate-400 font-medium">No new leads available at the moment.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                                {leads.map((lead) => (
-                                                    <div key={lead.caseId} className="bg-slate-50 dark:bg-gray-700/50 rounded-xl p-5 border border-slate-200 dark:border-gray-600 hover:shadow-md transition-all relative">
-                                                        {lead.matchStatus === "CONTACTED" && (
-                                                            <span className="absolute top-3 right-3 bg-primary/10 text-primary font-bold px-2 py-1 rounded-full text-[10px] uppercase tracking-wider">
-                                                                Specific Request
-                                                            </span>
-                                                        )}
-                                                        <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-1">{lead.caseTitle}</h3>
-                                                        <p className="text-sm text-slate-500 dark:text-gray-400 mb-4">{lead.citizenName} • {lead.location}</p>
-                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${lead.urgency === 'HIGH' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                                                                {lead.urgency} Priority
-                                                            </span>
-                                                            <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 dark:bg-gray-600 text-slate-600 dark:text-gray-300 uppercase tracking-wider">
-                                                                {new Date(lead.requestedAt).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                onClick={() => setSelectedLead(lead)}
-                                                                className="px-3 py-2 bg-slate-100 dark:bg-gray-600 text-slate-600 dark:text-gray-200 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-500 transition-colors"
-                                                                title="View Details"
-                                                            >
-                                                                <MaterialIcon name="visibility" className="text-lg" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleAcceptCase(lead.caseId)}
-                                                                className="flex-1 py-2 bg-slate-900 dark:bg-[#11676a] text-white rounded-lg font-bold text-sm hover:bg-primary dark:hover:bg-[#0e5658] transition-colors">
-                                                                Accept Case
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                        <p className="text-blue-100 max-w-xl text-sm md:text-base mb-4 md:mb-6">
+                                            {subtitle}
+                                        </p>
+                                        <button
+                                            onClick={ctaAction}
+                                            className="bg-white text-primary px-4 md:px-6 py-2 rounded-lg font-bold hover:bg-blue-50 transition shadow text-sm md:text-base"
+                                        >
+                                            {ctaText}
+                                        </button>
                                     </div>
+                                );
+                            })()}
 
-                                    {selectedLead && (
-                                        <CaseDetailsModal
-                                            lead={selectedLead}
-                                            onClose={() => setSelectedLead(null)}
-                                            onAccept={(id) => {
-                                                handleAcceptCase(id);
-                                                setSelectedLead(null);
-                                            }}
-                                        />
-                                    )}
-
-
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-4 md:p-6 transition-colors duration-300">
-                                        <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-lg">
-                                            Recent Cases
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {recentCases.length > 0 ? (
-                                                recentCases.slice(0, 3).map((legalCase) => (
-                                                    <div
-                                                        key={legalCase.id}
-                                                        className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
-                                                                <MaterialIcon name="description" />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                                                                    {legalCase.title}
-                                                                </p>
-                                                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    Updated{" "}
-                                                                    {new Date(
-                                                                        legalCase.updatedAt
-                                                                    ).toLocaleDateString()}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <span
-                                                            className={`px-2 py-1 text-xs font-semibold rounded shrink-0 ${legalCase.status === "PENDING"
-                                                                ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                                                : legalCase.status === "ACTIVE"
-                                                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                                                    : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                                                }`}
-                                                        >
-                                                            {legalCase.status}
+                            {/* SECTION 2 — Immediate Actions */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                                {/* New Consultation / Case Assignment Requests (Larger Column) */}
+                                <div id="ngo-new-leads" className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 transition-colors duration-300">
+                                    <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                                        <FiBriefcase className="text-teal-600 dark:text-teal-400" /> New Consultation Requests
+                                    </h2>
+                                    {!leads || leads.length === 0 ? (
+                                        <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-gray-600">
+                                            <p className="text-slate-500 dark:text-slate-400 font-medium">No new consultation requests at the moment.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {leads.slice(0, 4).map((lead) => (
+                                                <div key={lead.caseId} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-gray-600 hover:shadow-md transition-all relative">
+                                                    {lead.matchStatus === "CONTACTED" && (
+                                                        <span className="absolute top-3 right-3 bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+                                                            Specific Request
+                                                        </span>
+                                                    )}
+                                                    <h3 className="font-bold text-slate-800 dark:text-white text-base mb-1 truncate">
+                                                        {lead.caseTitle} <span className="text-xs font-normal text-gray-400">({lead.caseNumber || `#${lead.caseId}`})</span>
+                                                    </h3>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{lead.citizenName} • {lead.location}</p>
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${lead.urgency === 'HIGH' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
+                                                            {lead.urgency} Priority
+                                                        </span>
+                                                        <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 dark:bg-gray-600 text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                                                            {new Date(lead.requestedAt).toLocaleDateString()}
                                                         </span>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                                                    No recent cases found.
-                                                </p>
-                                            )}
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedLead(lead)}
+                                                            className="px-3 py-2 bg-slate-100 dark:bg-gray-600 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-gray-500 transition-colors"
+                                                            title="View Details"
+                                                        >
+                                                            <MaterialIcon name="visibility" className="text-lg" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedLeadForReport(lead);
+                                                                setShowReportModal(true);
+                                                            }}
+                                                            className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800"
+                                                            title="Report Invalid Case"
+                                                        >
+                                                            <MaterialIcon
+                                                                name="flag"
+                                                                className="text-lg"
+                                                            />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setSelectedLead(lead)}
+                                                            disabled={processingCaseId === lead.caseId}
+                                                            className="flex-1 py-2 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-teal-600 transition-colors disabled:opacity-50">
+                                                            {processingCaseId === lead.caseId ? "Accepting..." : "Accept Case"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
+
+                                {/* Right Column Wrapper */}
                                 <div className="space-y-6">
-                                    {/* PENDING APPOINTMENTS SECTION */}
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 transition-colors duration-300">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
-                                                <MaterialIcon name="pending_actions" className="text-orange-500" />
-                                                Pending Appointments
-                                            </h3>
-                                            <button
-                                                onClick={() => setActiveTab("schedule")}
-                                                className="text-sm text-primary dark:text-[#198f93] font-medium hover:underline"
-                                            >
-                                                Manage
-                                            </button>
-                                        </div>
+                                    {/* Pending Appointments / Coordination Requests */}
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 transition-colors duration-300">
+                                        <h2 className="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                                            <FiCalendar className="text-orange-500" /> Coordination Requests
+                                        </h2>
                                         {loadingAppointments ? (
-                                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading...</div>
+                                            <div className="text-center py-4 text-gray-500">Loading...</div>
                                         ) : !upcomingAppointments || upcomingAppointments.filter(app => app.status === 'PENDING').length === 0 ? (
-                                            <div className="text-center py-6 bg-slate-50 dark:bg-white/5 rounded-xl border border-dashed border-slate-200 dark:border-gray-600">
-                                                <p className="text-slate-500 dark:text-slate-400 font-medium">No pending appointment requests.</p>
-                                            </div>
+                                            <p className="text-sm text-gray-500 italic text-center py-8">No coordination requests</p>
                                         ) : (
                                             <div className="space-y-3">
                                                 {upcomingAppointments
                                                     .filter(app => app.status === 'PENDING')
                                                     .slice(0, 3)
-                                                    .map(app => (
-                                                        <div key={app.id} className="bg-orange-50 dark:bg-orange-900/10 p-3 rounded-lg border border-orange-100 dark:border-orange-900/30">
+                                                    .map((appointment) => (
+                                                        <div key={appointment.id} className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg border border-orange-100 dark:border-orange-900/30">
                                                             <div className="flex justify-between items-start mb-2">
-                                                                <p className="font-bold text-gray-800 dark:text-white text-sm">
-                                                                    {new Date(app.date).toLocaleDateString()}
+                                                                <p className="font-bold text-slate-800 dark:text-white text-sm">
+                                                                    {parseAppointmentDate(appointment.date)?.toLocaleDateString() || "Invalid Date"}
                                                                 </p>
-                                                                <span className="text-xs bg-white dark:bg-gray-700 px-2 py-0.5 rounded border border-orange-200 dark:border-orange-900/50 text-orange-700 dark:text-orange-400 font-medium">
-                                                                    {app.time}
+                                                                <span className="text-xs bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 font-medium">
+                                                                    {appointment.time}
                                                                 </span>
                                                             </div>
-                                                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 line-clamp-1">
-                                                                {app.caseId ? `Case #${app.caseId}` : 'Consultation'}
+                                                            <p className="text-xs text-gray-600 dark:text-slate-400 mb-2 line-clamp-1">
+                                                                With {appointment.requesterName || 'Citizen'} {appointment.caseId ? `• Case #${appointment.caseId}` : ''}
                                                             </p>
                                                             <button
                                                                 onClick={() => setActiveTab("schedule")}
-                                                                className="w-full py-1.5 bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900/50 rounded text-xs font-bold hover:bg-orange-100 dark:hover:bg-gray-600 transition"
+                                                                className="w-full py-1.5 bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800 rounded text-xs font-bold hover:bg-orange-100 dark:hover:bg-gray-700 transition"
                                                             >
-                                                                View Request
+                                                                View Details
                                                             </button>
                                                         </div>
                                                     ))}
@@ -936,69 +1048,262 @@ const NgoDashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* UPCOMING SCHEDULE SECTION */}
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm p-6 transition-colors duration-300">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-gray-800 dark:text-white text-lg flex items-center gap-2">
-                                                <MaterialIcon name="event" className="text-blue-500" />
-                                                Upcoming Schedule
-                                            </h3>
+                                    {/* Leaderboards */}
+                                    <Leaderboard type="ngos" limit={10} />
+                                </div>
+                            </div>
+
+                            {/* MODALS */}
+                            {selectedLead && (
+                                <CaseDetailsModal
+                                    lead={selectedLead}
+                                    onClose={() => setSelectedLead(null)}
+                                    onAccept={(id) => {
+                                        handleAcceptCase(id);
+                                        setSelectedLead(null);
+                                    }}
+                                    processingCaseId={processingCaseId}
+                                />
+                            )}
+
+                            {/* Report Modal */}
+                            <ReportCaseModal
+                                show={showReportModal}
+                                onClose={() => {
+                                    setShowReportModal(false);
+                                    setSelectedLeadForReport(null);
+                                }}
+                                caseId={selectedLeadForReport?.caseId}
+                                onSuccess={() => {
+                                    fetchLeads();
+                                }}
+                            />
+
+                            {/* SECTION 3 — Workload Snapshot (KPIs) */}
+                            <div className="mb-8">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Workload Snapshot</h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                                    <StatsCard
+                                        title="Active Cases"
+                                        value={stats.activeCases}
+                                        icon={FiBriefcase}
+                                        trend="up"
+                                        trendValue="12%"
+                                        color="blue"
+                                    />
+                                    {/* <StatsCard
+                                        title="Total Cases Supported"
+                                        value={ngoAnalytics.totalCasesSupported}
+                                        icon={FiUsers}
+                                        trend="up"
+                                        trendValue="8%"
+                                        color="purple"
+                                    /> */}
+                                    <StatsCard
+                                        title="Resolved Cases"
+                                        value={stats.resolvedCases}
+                                        icon={FiCheckCircle}
+                                        trend="up"
+                                        trendValue="8%"
+                                        color="green"
+                                    />
+
+
+                                    <StatsCard
+                                        title="Volunteers Active"
+                                        value="12"
+                                        icon={FiUsers}
+                                        color="orange"
+                                    />
+                                    <StatsCard
+                                        title="Verification"
+                                        value={profile?.isVerified ? "Verified" : "Pending"}
+                                        icon={FiCheckCircle}
+                                        color={profile?.isVerified ? "green" : "yellow"}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* SECTION 4 — Impact & Performance Analytics */}
+                            <div id="ngo-performance-overview" className="mb-8">
+                                <div className="mb-6">
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Organization Performance Overview</h2>
+                                    {/* <p className="text-gray-500 dark:text-slate-400 text-sm">Based on cases you have supported</p> */}
+                                </div>
+
+                                {/* <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 p-6 transition-colors duration-300"> */}
+                                {/* Mini KPI Cards - Top Row */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                    <StatsCard
+                                        title="Total Cases Supported"
+                                        value={ngoAnalytics.totalCasesSupported}
+                                        icon={FiBriefcase}
+                                        trend="up"
+                                        trendValue="12%"
+                                        color="blue"
+                                    />
+                                    <StatsCard
+                                        title="Beneficiaries Reached"
+                                        value={ngoAnalytics.beneficiariesReached}
+                                        icon={FiTrendingUp}
+                                        color="emerald"
+                                    />
+                                    <StatsCard
+                                        title="Avg Resolution"
+                                        value={`${ngoAnalytics.avgResolutionTime} days`}
+                                        icon={FiClock}
+                                        color="orange"
+                                    />
+                                    <StatsCard
+                                        title="Success Rate"
+                                        value="92%"
+                                        icon={FiTrendingUp}
+                                        trend="up"
+                                        trendValue="5%"
+                                        color="emerald"
+                                    />
+                                </div>
+
+                                {/* Charts - Two Column Grid */}
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-6 border border-gray-100 dark:border-gray-600">
+                                        <h4 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                                            <FiBriefcase className="text-blue-500" />
+                                            Case Status Distribution
+                                        </h4>
+                                        <div className="h-[400px] w-full overflow-hidden bg-white dark:bg-slate-900 rounded-xl  p-4">
+                                            <CaseDistributionChart data={ngoAnalytics.caseDistribution} />
                                         </div>
-                                        {loadingAppointments ? (
-                                            <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading...</div>
-                                        ) : !upcomingAppointments || upcomingAppointments.filter(app => app.status === 'CONFIRMED').length === 0 ? (
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center py-2">No confirmed appointments</p>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {upcomingAppointments
-                                                    .filter(app => app.status === 'CONFIRMED')
-                                                    .slice(0, 3)
-                                                    .map(app => (
-                                                        <div key={app.id} className="flex gap-3 items-start">
-                                                            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-lg text-center min-w-[3rem] shrink-0">
-                                                                <span className="block text-[10px] font-bold uppercase">
-                                                                    {new Date(app.date).toLocaleString('default', { month: 'short' })}
-                                                                </span>
-                                                                <span className="block text-lg font-bold leading-none">
-                                                                    {new Date(app.date).getDate()}
-                                                                </span>
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
-                                                                    {app.providerName || 'Consultation'}
-                                                                </p>
-                                                                {app.caseId && (
-                                                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                                                        Case #{app.caseId}
-                                                                    </p>
-                                                                )}
-                                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                                                                    {app.time} • Virtual
-                                                                </p>
-                                                                {app.meetLink && (
-                                                                    <a
-                                                                        href={app.meetLink}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className="text-[10px] inline-block bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
-                                                                    >
-                                                                        Join
-                                                                    </a>
-                                                                )}
-                                                            </div>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-slate-800/50 rounded-xl p-6 border border-gray-100 dark:border-gray-600">
+                                        <h4 className="font-semibold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                                            <FiClock className="text-green-500" />
+                                            Resolution Timeline
+                                        </h4>
+                                        <div className="h-[400px] w-full overflow-hidden bg-white dark:bg-slate-900 rounded-xl  p-4">
+                                            <ResolutionTrendChart data={ngoAnalytics.resolutionTrend} />
+                                        </div>
+                                    </div>
+                                </div>
+                                {/* </div> */}
+                            </div>
+
+                            {/* SECTION 5 — Operations & Tracking */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                {/* Recent Cases */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6 transition-colors duration-300">
+                                    <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-lg">
+                                        Recent Cases
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {recentCases.length > 0 ? (
+                                            recentCases.slice(0, 3).map((legalCase) => (
+                                                <div
+                                                    key={legalCase.id}
+                                                    className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition border border-transparent hover:border-gray-100 dark:hover:border-gray-600"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-2 h-2 bg-primary rounded-full"></div>
+                                                        <div>
+                                                            <p className="font-medium text-sm text-gray-800 dark:text-white">
+                                                                {legalCase.title}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-slate-400">
+                                                                {legalCase.clientName}
+                                                            </p>
                                                         </div>
-                                                    ))}
-                                            </div>
+                                                    </div>
+                                                    <span className={`text-xs px-2 py-1 rounded-full ${legalCase.status === 'RESOLVED'
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                        }`}>
+                                                        {legalCase.status}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-gray-500 text-sm">
+                                                No recent cases found.
+                                            </p>
                                         )}
                                     </div>
+                                </div>
+
+                                {/* Upcoming Schedule */}
+                                <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 shadow-sm p-4 md:p-6 transition-colors duration-300">
+                                    <h3 className="font-bold text-gray-800 dark:text-white mb-4 text-lg flex items-center gap-2">
+                                        <FiCalendar className="text-blue-500" />
+                                        Upcoming Schedule
+                                    </h3>
+                                    {loadingAppointments ? (
+                                        <div className="text-center py-4 text-gray-500">Loading...</div>
+                                    ) : !upcomingAppointments || upcomingAppointments.filter(app => app.status === 'CONFIRMED').length === 0 ? (
+                                        <p className="text-sm text-gray-500 dark:text-slate-400 italic text-center py-2">No confirmed appointments</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {upcomingAppointments
+                                                .filter(app => app.status === 'CONFIRMED')
+                                                .slice(0, 3)
+                                                .map(app => (
+                                                    <div key={app.id} className="flex gap-3 items-start">
+                                                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-lg text-center min-w-[3rem] shrink-0">
+                                                            <span className="block text-[10px] font-bold uppercase">
+                                                                {parseAppointmentDate(app.date)?.toLocaleString('default', { month: 'short' }) || 'ERR'}
+                                                            </span>
+                                                            <span className="block text-lg font-bold leading-none">
+                                                                {parseAppointmentDate(app.date)?.getDate() || '0'}
+                                                            </span>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm font-bold text-gray-800 dark:text-white truncate">
+                                                                {app.requesterName || 'Coordination Meeting'}
+                                                            </p>
+                                                            {app.caseId && (
+                                                                <p className="text-xs text-gray-500 dark:text-slate-400 font-medium truncate">
+                                                                    Case #{app.caseId} {app.caseTitle && `- ${app.caseTitle}`}
+                                                                </p>
+                                                            )}
+                                                            <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">
+                                                                {app.time} • Virtual
+                                                            </p>
+                                                            {app.meetLink && (
+                                                                <a
+                                                                    href={app.meetLink}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="text-[10px] inline-block bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700"
+                                                                >
+                                                                    Join Meet
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Geographic Impact Distribution */}
+                            <div className="mb-8 mt-7">
+                                <div className="h-[600px] w-full overflow-hidden bg-white dark:bg-slate-900 rounded-xl p-4">
+                                    <GeographicMapChart data={ngoAnalytics.geoDistribution} />
                                 </div>
                             </div>
                         </>
                     )}
 
+                    {/* VERIFICATION TAB */}
+                    {activeTab === "verification" && (
+                        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
+                            <VerificationPage embedded profile={profile} />
+                        </div>
+                    )}
+
                     {/* PROFILE TAB */}
                     {activeTab === "profile" && (
-                        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 {/* GREEN HEADER BAND */}
                                 <div className="bg-emerald-50 dark:bg-emerald-900/10 px-5 sm:px-6 py-4 flex items-center justify-between transition-colors duration-300">
@@ -1158,7 +1463,7 @@ const NgoDashboard = () => {
                                 </div>
 
                                 {/* WHITE BODY WITH ONLY YOUR FIELDS */}
-                                <div className="bg-white dark:bg-gray-800 border-t border-emerald-100 dark:border-gray-700 p-6 lg:p-8 transition-colors duration-300">
+                                <div className="bg-white dark:bg-slate-900 border-t border-emerald-100 dark:border-slate-800 p-6 lg:p-8 transition-colors duration-300">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
                                         {/* Registration */}
                                         <div className="md:col-span-2">
@@ -1168,7 +1473,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 NGO name
                                             </label>
                                             <input
@@ -1182,14 +1487,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Darpan ID
                                             </label>
                                             <input
@@ -1203,14 +1508,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Registration number
                                             </label>
                                             <input
@@ -1224,14 +1529,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Registration year
                                             </label>
                                             <input
@@ -1245,8 +1550,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
@@ -1259,7 +1564,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Official email
                                             </label>
                                             <input
@@ -1273,22 +1578,52 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Official phone
                                             </label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300">
-                                                        <span className="text-[11px] font-medium">IN</span>
-                                                        <span className="h-3 w-px bg-gray-300" />
-                                                        <span className="font-semibold text-[11px]">
+                                                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-slate-300 shadow-sm">
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            viewBox="0 0 36 27"
+                                                            className="w-5 h-3.5 rounded-[1px]"
+                                                        >
+                                                            <rect width="36" height="9" fill="#FF9933" />
+                                                            <rect width="36" height="9" y="9" fill="#FFFFFF" />
+                                                            <rect width="36" height="9" y="18" fill="#138808" />
+                                                            <circle cx="18" cy="13.5" r="3.6" fill="#000080" />
+                                                            <circle cx="18" cy="13.5" r="3.2" fill="#FFFFFF" />
+                                                            <circle cx="18" cy="13.5" r="0.8" fill="#000080" />
+                                                            <g fill="#000080">
+                                                                {[...Array(24)].map((_, i) => {
+                                                                    const angle = ((i * 15 - 90) * Math.PI) / 180;
+                                                                    const x1 = 18 + 1.2 * Math.cos(angle);
+                                                                    const y1 = 13.5 + 1.2 * Math.sin(angle);
+                                                                    const x2 = 18 + 2.8 * Math.cos(angle);
+                                                                    const y2 = 13.5 + 2.8 * Math.sin(angle);
+                                                                    return (
+                                                                        <line
+                                                                            key={i}
+                                                                            x1={x1}
+                                                                            y1={y1}
+                                                                            x2={x2}
+                                                                            y2={y2}
+                                                                            stroke="#000080"
+                                                                            strokeWidth="0.3"
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </g>
+                                                        </svg>
+                                                        <span className="font-semibold text-[11px] text-gray-700 dark:text-gray-300">
                                                             +91
                                                         </span>
                                                     </div>
@@ -1310,8 +1645,8 @@ const NgoDashboard = () => {
                                                     disabled={!isEditing}
                                                     placeholder="9845693235"
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 pl-20 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                        ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                         }`}
                                                 />
                                             </div>
@@ -1325,7 +1660,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Languages Spoken
                                             </label>
                                             {isEditing ? (
@@ -1401,7 +1736,7 @@ const NgoDashboard = () => {
                                                     name="languages"
                                                     value={profile?.languages || "Not specified"}
                                                     disabled
-                                                    className="w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                                                    className="w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300 cursor-not-allowed"
                                                 />
                                             )}
                                         </div>
@@ -1414,7 +1749,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Name
                                             </label>
                                             <input
@@ -1428,14 +1763,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Role / designation
                                             </label>
                                             <input
@@ -1449,14 +1784,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Representative email
                                             </label>
                                             <input
@@ -1470,19 +1805,19 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Representative phone
                                             </label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-gray-300">
+                                                    <div className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 text-xs text-gray-600 dark:text-slate-300">
                                                         <span className="text-[11px] font-medium">IN</span>
                                                         <span className="h-3 w-px bg-gray-300" />
                                                         <span className="font-semibold text-[11px]">
@@ -1507,8 +1842,8 @@ const NgoDashboard = () => {
                                                     disabled={!isEditing}
                                                     placeholder="9845693235"
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 pl-20 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                        ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                         }`}
                                                 />
                                             </div>
@@ -1522,7 +1857,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Rep date of birth
                                             </label>
                                             <div className="relative">
@@ -1556,15 +1891,15 @@ const NgoDashboard = () => {
                                                     }}
                                                     disabled={!isEditing}
                                                     className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                        ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                        : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                        ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                        : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                         }`}
                                                 />
                                             </div>
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Rep gender
                                             </label>
                                             <select
@@ -1577,8 +1912,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             >
                                                 <option value="">Select</option>
@@ -1596,7 +1931,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Address
                                             </label>
                                             <textarea
@@ -1610,14 +1945,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 City
                                             </label>
                                             <input
@@ -1629,14 +1964,14 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 State
                                             </label>
                                             {isEditing ? (
@@ -1644,11 +1979,11 @@ const NgoDashboard = () => {
                                                     name="state"
                                                     value={editForm.state || ""}
                                                     onChange={handleProfileChange}
-                                                    className="w-full p-2 border rounded-lg border-primary bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 ring-primary/20 dark:text-white"
+                                                    className="w-full p-2 border rounded-lg border-primary bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 ring-primary/20 dark:text-white"
                                                 >
                                                     <option value="">Select state</option>
                                                     {INDIAN_STATES.map((s) => (
-                                                        <option key={s} value={s} className="dark:bg-gray-800">
+                                                        <option key={s} value={s} className="dark:bg-slate-900">
                                                             {s}
                                                         </option>
                                                     ))}
@@ -1659,13 +1994,13 @@ const NgoDashboard = () => {
                                                     name="state"
                                                     value={profile?.state || ""}
                                                     disabled
-                                                    className="w-full p-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg"
+                                                    className="w-full p-2 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-slate-300 rounded-lg"
                                                 />
                                             )}
                                         </div>
 
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Pincode
                                             </label>
                                             <input
@@ -1679,26 +2014,81 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
 
                                         {/* Areas of work & location */}
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Areas of work
                                             </label>
                                             {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    name="areasOfWork"
-                                                    value={editForm.serviceAreas || ""}
-                                                    onChange={handleProfileChange}
-                                                    disabled={!isEditing}
-                                                    placeholder="Legal aid, child rights, community outreach..."
-                                                    className="w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                <Select
+                                                    isMulti
+                                                    name="serviceAreas"
+                                                    options={categoryOptions}
+                                                    className="basic-multi-select text-sm"
+                                                    classNamePrefix="select"
+                                                    value={
+                                                        editForm.serviceAreas
+                                                            ? editForm.serviceAreas.map((area) => ({
+                                                                value: area,
+                                                                label: area,
+                                                            }))
+                                                            : []
+                                                    }
+                                                    onChange={(selectedOptions) => {
+                                                        const values = selectedOptions
+                                                            ? selectedOptions.map((opt) => opt.value)
+                                                            : [];
+                                                        setEditForm((prev) => ({ ...prev, serviceAreas: values }));
+                                                    }}
+                                                    styles={{
+                                                        control: (base) => ({
+                                                            ...base,
+                                                            borderColor: isDarkMode ? "#4b5563" : "#e5e7eb",
+                                                            borderRadius: "0.5rem",
+                                                            paddingTop: "2px",
+                                                            paddingBottom: "2px",
+                                                            boxShadow: "none",
+                                                            backgroundColor: isDarkMode ? "#374151" : "white",
+                                                            color: isDarkMode ? "white" : "inherit",
+                                                            "&:hover": {
+                                                                borderColor: isDarkMode ? "#9ca3af" : "#d1d5db",
+                                                            },
+                                                        }),
+                                                        menu: (base) => ({
+                                                            ...base,
+                                                            zIndex: 9999,
+                                                            backgroundColor: isDarkMode ? "#1f2937" : "white",
+                                                        }),
+                                                        option: (base, { isFocused, isSelected }) => ({
+                                                            ...base,
+                                                            backgroundColor: isSelected
+                                                                ? "#11676a"
+                                                                : isFocused
+                                                                    ? isDarkMode
+                                                                        ? "#374151"
+                                                                        : "#f3f4f6"
+                                                                    : "transparent",
+                                                            color: isSelected ? "white" : isDarkMode ? "white" : "gray",
+                                                        }),
+                                                        singleValue: (base) => ({
+                                                            ...base,
+                                                            color: isDarkMode ? "white" : "gray",
+                                                        }),
+                                                        multiValue: (base) => ({
+                                                            ...base,
+                                                            backgroundColor: isDarkMode ? "#374151" : "#e5e7eb",
+                                                        }),
+                                                        multiValueLabel: (base) => ({
+                                                            ...base,
+                                                            color: isDarkMode ? "white" : "gray",
+                                                        }),
+                                                    }}
                                                 />
                                             ) : (
                                                 <div className="flex flex-wrap gap-2">
@@ -1721,7 +2111,7 @@ const NgoDashboard = () => {
                                         </div>
 
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                                                 Location (optional)
                                             </label>
                                             <input
@@ -1735,8 +2125,8 @@ const NgoDashboard = () => {
                                                 onChange={handleProfileChange}
                                                 disabled={!isEditing}
                                                 className={`w-full text-sm rounded-lg border px-3 py-2.5 shadow-sm focus:outline-none transition ${isEditing
-                                                    ? "border-primary/60 bg-white dark:bg-gray-700 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
-                                                    : "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+                                                    ? "border-primary/60 bg-white dark:bg-slate-800 dark:border-primary/40 focus:ring-2 focus:ring-primary/20 dark:text-white"
+                                                    : "bg-gray-50 dark:bg-slate-900 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-slate-300"
                                                     }`}
                                             />
                                         </div>
@@ -1752,18 +2142,7 @@ const NgoDashboard = () => {
                     )}
 
                     {/* Coming Soon Tabs */}
-                    {activeTab === "verification" && (
-                        <div className="w-full">
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                                <div className="text-center py-8">
-                                    <FaUserCheck className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                                    <p className="text-gray-600 dark:text-gray-400">
-                                        Verification management coming soon...
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+
                     {activeTab === "schedule" && (
                         <div className="w-full">
                             <ScheduleDashboard userRole="NGO" user={user} />
@@ -1774,18 +2153,7 @@ const NgoDashboard = () => {
                             <NgoChat />
                         </div>
                     )}
-                    {activeTab === "settings" && (
-                        <div className="w-full">
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-                                <div className="text-center py-8">
-                                    <FaCog className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                                    <p className="text-gray-600 dark:text-gray-400">
-                                        Settings management coming soon...
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+
                 </div>
             </div>
 
@@ -1806,22 +2174,25 @@ const NgoDashboard = () => {
     );
 };
 
-const CaseDetailsModal = ({ lead, onClose, onAccept }) => {
+const CaseDetailsModal = ({ lead, onClose, onAccept, processingCaseId }) => {
     if (!lead) return null;
+
+    const isProcessing = processingCaseId === lead.caseId;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fadeIn p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl transform transition-all scale-100 animate-bounceIn relative border border-gray-200 dark:border-gray-700">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 w-full max-w-lg shadow-2xl transform transition-all scale-100 animate-bounceIn relative border border-gray-200 dark:border-slate-800">
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+                    disabled={isProcessing}
                 >
                     <FaTimes className="text-xl" />
                 </button>
 
                 <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{lead.caseTitle}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 flex items-center gap-2">
-                    <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">{lead.caseId}</span>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mb-4 flex items-center gap-2">
+                    <span className="font-mono bg-gray-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">{lead.caseId}</span>
                     <span>•</span>
                     <span className="text-primary dark:text-[#198f93] font-bold">{lead.category}</span>
                 </p>
@@ -1856,18 +2227,27 @@ const CaseDetailsModal = ({ lead, onClose, onAccept }) => {
                     </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-slate-800 flex justify-end gap-3">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
+                        className="px-4 py-2 text-gray-600 dark:text-slate-300 font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition"
+                        disabled={isProcessing}
                     >
                         Close
                     </button>
                     <button
                         onClick={() => onAccept(lead.caseId)}
-                        className="px-6 py-2 bg-slate-900 dark:bg-[#11676a] text-white font-bold text-sm rounded-lg hover:bg-primary dark:hover:bg-[#0e5658] transition shadow-md"
+                        disabled={isProcessing}
+                        className={`px-6 py-2 bg-slate-900 dark:bg-[#11676a] text-white font-bold text-sm rounded-lg hover:bg-primary dark:hover:bg-[#0e5658] transition shadow-md flex items-center gap-2 ${isProcessing ? 'opacity-75 cursor-not-allowed' : ''}`}
                     >
-                        Accept Case
+                        {isProcessing ? (
+                            <>
+                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                Accepting...
+                            </>
+                        ) : (
+                            "Accept Case"
+                        )}
                     </button>
                 </div>
             </div>

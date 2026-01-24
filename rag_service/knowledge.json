@@ -1,0 +1,958 @@
+[
+    {
+        "role": "CITIZEN",
+        "question": "Open Case Form",
+        "answer": "I'm opening the case submission form for you.",
+        "action": {
+            "label": "Open Case Form",
+            "uiAction": "OPEN_SUBMIT_CASE",
+            "tab": "new-case"
+        }
+    },
+    {
+        "role": "CITIZEN",
+        "question": "Open Schedule",
+        "answer": "Here is your schedule.",
+        "action": {
+            "label": "Open Schedule",
+            "uiAction": "OPEN_SCHEDULE",
+            "tab": "schedule"
+        }
+    },
+    {
+        "role": "CITIZEN",
+        "question": "Open My Cases",
+        "answer": "Navigating to your cases.",
+        "action": {
+            "label": "Open My Cases",
+            "uiAction": "OPEN_MY_CASES",
+            "tab": "cases"
+        }
+    },
+    {
+        "role": "LAWYER",
+        "question": "Open Assigned Cases",
+        "answer": "Opening your assigned cases.",
+        "action": {
+            "label": "Open Cases",
+            "uiAction": "OPEN_ASSIGNED_CASE",
+            "tab": "cases"
+        }
+    },
+    {
+        "role": "LAWYER",
+        "question": "Open Schedule",
+        "answer": "Opening your schedule.",
+        "action": {
+            "label": "Open Schedule",
+            "uiAction": "OPEN_SCHEDULE_MODAL",
+            "tab": "schedule"
+        }
+    },
+    {
+        "role": "NGO",
+        "question": "Open Verification Queue",
+        "answer": "Navigating to verification queue.",
+        "action": {
+            "label": "Verification Queue",
+            "uiAction": "OPEN_VERIFICATION_QUEUE",
+            "tab": "verification"
+        }
+    },
+    {
+        "role": "NGO",
+        "question": "Open Beneficiary List",
+        "answer": "Opening beneficiary list.",
+        "action": {
+            "label": "Beneficiary List",
+            "uiAction": "OPEN_BENEFICIARY_LIST",
+            "tab": "beneficiaries"
+        }
+    },
+    {
+        "role": "CITIZEN",
+        "question": "How do I submit a case?",
+        "answer": "To submit a case, go to your Citizen Dashboard and click on the 'Submit New Case' button. Fill in the required details like case type, description, and upload relevant documents."
+    },
+    {
+        "role": "CITIZEN",
+        "question": "How can I track my case?",
+        "answer": "You can track the progress of your submitted cases from the 'My Cases' tab in your dashboard."
+    },
+    {
+        "role": "CITIZEN",
+        "question": "How does verification work?",
+        "answer": "Go to Profile > Verification to upload your ID proof. Once approved by an Admin, you will be a verified citizen."
+    },
+    {
+        "role": "LAWYER",
+        "question": "How do I accept cases?",
+        "answer": "You can view available cases in the 'New Consultation Leads' section. Click 'Accept' on cases that match your expertise."
+    },
+    {
+        "role": "LAWYER",
+        "question": "Where can I manage my appointments?",
+        "answer": "Appointments are managed in the 'Schedule' tab of your Lawyer Dashboard. You can view upcoming sessions and update your availability."
+    },
+    {
+        "role": "NGO",
+        "question": "What is the role of an NGO?",
+        "answer": "NGOs verify documents and preliminary case details before they are assigned to lawyers, ensuring a smoother process."
+    },
+    {
+        "role": "NGO",
+        "question": "How do I monitor case distribution?",
+        "answer": "NGO admins can view beneficiary statistics and case distribution charts in the NGO Dashboard analytics section."
+    },
+    {
+        "role": "ADMIN",
+        "question": "How do I approve users?",
+        "answer": "Go to the Admin Dashboard > User Management. Review pending verification requests and click Approve or Reject."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Account Management",
+        "question": "How do I create a citizen account?",
+        "answer": "Go to the registration page, select 'Citizen' as your role, and fill in your name, email, password, and preferred language. You will be redirected to the dashboard upon success."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Account Management",
+        "question": "Can I update my profile details?",
+        "answer": "Yes, go to the 'Profile' tab in your dashboard. You can update your name, phone number, DOB, and other personal details. Click 'Save Changes' to update."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Account Management",
+        "question": "How do I reset my password?",
+        "answer": "If you forgot your password, use the 'Forgot Password' link on the login page. If you are logged in, you can change it from the 'Settings' tab."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Account Management",
+        "question": "How do I delete my account?",
+        "answer": "Please contact support via the Help section to request permanent account deletion. This will also remove your personal data."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Dashboard",
+        "question": "What information is on my dashboard?",
+        "answer": "Your dashboard shows an overview of your legal activities, including 'Total Cases', 'Active Cases', 'Pending', and 'Resolved' stats. It also lists your 'Recent Cases' and 'Upcoming Actions'."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Dashboard",
+        "question": "How do I navigate between different features?",
+        "answer": "Use the sidebar on the left. It has links for 'Overview', 'Submit Case', 'My Cases', 'Directory', 'Schedule', 'Messages', and 'Settings'."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "How do I submit a new legal case?",
+        "answer": "Click on the 'Submit Case' tab in the sidebar. This will open a multi-step form where you can provide case details."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "What are the steps to submit a case?",
+        "answer": "The process has 5 steps: 1. Basic Details, 2. Case Details (description, urgency), 3. Location, 4. Documents Upload, and 5. Review & Submit."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "Can I save my case application and finish it later?",
+        "answer": "Yes, the form has an auto-save feature that saves your progress as a draft. You can resume it later from the 'Submit Case' tab."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "What kind of documents can I upload?",
+        "answer": "You can upload relevant legal documents, evidence, or IDs. Supported formats usually include PDF, JPG, and PNG."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "What if I don't have all documents right now?",
+        "answer": "You can submit the case with the essential details and send additional documents later via the chat once a lawyer accepts your case."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "How do I specify the location of the incident?",
+        "answer": "In the 'Location' step, you can enter the address manually or use the integrated map to pin the exact location."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "What happens after I submit a case?",
+        "answer": "After submission, you will see a list of 'Matched Lawyers & NGOs' that fit your case criteria. You can choose to contact them directly."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Submission",
+        "question": "I received an error while uploading documents. What should I do?",
+        "answer": "Ensure your file size is within the limit (usually 5MB) and is a supported format. If the issue persists, try refreshing the page or contacting support."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Management",
+        "question": "Where can I see the status of my submitted cases?",
+        "answer": "Go to the 'My Cases' tab. It lists all your cases with their current status (e.g., Open, In Progress, Resolved)."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Management",
+        "question": "Can I edit a case after submission?",
+        "answer": "Once submitted, you cannot strictly edit the form, but you can add information by messaging your lawyer or discussing it during a consultation."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Management",
+        "question": "How do I know if a lawyer has accepted my case?",
+        "answer": "You will receive a notification in the 'Messages' tab or via the notification bell icon when a lawyer accepts your case request."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Case Management",
+        "question": "Can I file a case on behalf of someone else?",
+        "answer": "Yes, but please specify in the case description that you are a representative or guardian for the affected party."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Directory",
+        "question": "How do I find a lawyer or NGO?",
+        "answer": "Navigate to the 'Directory' tab. You can search by name or use filters like 'State', 'Professional Type' (Lawyer/NGO), 'Case Type', and 'Language'."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Directory",
+        "question": "Can I filter lawyers by language?",
+        "answer": "Yes, use the 'Language' filter in the Directory to find professionals who speak your preferred language."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Directory",
+        "question": "How do I view a lawyer's profile?",
+        "answer": "In the Directory search results, click on the 'View Profile' button on a lawyer's card to see their experience, bio, and specialty."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Scheduling",
+        "question": "How do I book an appointment with a lawyer?",
+        "answer": "Go to the 'Schedule' tab. Select a professional, choose an available date and time slot from the calendar, and click 'Book Appointment'."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Scheduling",
+        "question": "Can I reschedule an appointment?",
+        "answer": "Yes, in the 'Schedule' dashboard, find your upcoming appointment and select the option to reschedule to a different time slot."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Scheduling",
+        "question": "How do I cancel a booked appointment?",
+        "answer": "Navigate to the 'Schedule' tab, select the appointment you wish to cancel, and click the 'Cancel' button. Please provide a reason if prompted."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Messages",
+        "question": "How can I chat with my lawyer?",
+        "answer": "Go to the 'Messages' tab. Select the conversation with your lawyer from the list to send and receive text messages."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Messages",
+        "question": "Can I send files in the chat?",
+        "answer": "Yes, the chat interface supports file attachments. Look for the paperclip or attachment icon in the message input area."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Notifications",
+        "question": "Where can I see my notifications?",
+        "answer": "Click the bell icon in the top header. It shows alerts for case updates, messages, and appointment reminders."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Notifications",
+        "question": "How do I mark all notifications as read?",
+        "answer": "Open the notification dropdown and click 'View all notifications' or mark individual ones as read by clicking on them."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Settings",
+        "question": "How do I enable dark mode?",
+        "answer": "Toggle the 'Dark Mode' switch located in the top header or within the 'Settings' tab to switch the interface theme."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Settings",
+        "question": "Can I change my registered email?",
+        "answer": "Currently, email changes may require admin approval or creating a new query with support. Check your Profile settings."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Troubleshooting",
+        "question": "The map isn't loading in the location step. What do I do?",
+        "answer": "Check your internet connection. If the problem persists, you can manually enter your address in the text fields provided below the map area."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Troubleshooting",
+        "question": "My dashboard is not updating with new data.",
+        "answer": "Try refreshing the page. The system uses real-time events, but a manual refresh ensures you satisfy the latest data from the server."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Analytics",
+        "question": "What does the 'Resolution Trends' chart show?",
+        "answer": "It visualizes the status of your cases over time, helping you track how many are pending versus resolved month by month."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "General",
+        "question": "Is there a cost to submit a case?",
+        "answer": "The platform itself is free for citizens to submit cases. Fees for legal representation depend on the lawyer or NGO you connect with (many NGOs offer pro bono services)."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "General",
+        "question": "What is the 'Impact Analytics' section?",
+        "answer": "This section displays platform-wide statistics, showing how many cases have been resolved and the number of active lawyers assisting citizens."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Access",
+        "question": "Can I access the platform on my mobile?",
+        "answer": "Yes, the dashboard and forms are responsive and will adapt to your mobile device's screen size."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Security",
+        "question": "Is my case data secure?",
+        "answer": "Yes, your case details and documents are stored securely and are only shared with the lawyers or relevant authorities you choose to engage with."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Onboarding",
+        "question": "What happens if I select the wrong language during registration?",
+        "answer": "Don't worry, you can easily change your preferred language settings in your Profile or Settings tab after logging in."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Search",
+        "question": "I can't find a lawyer in my specific city.",
+        "answer": "Try broadening your search to your State. Detailed filtering allows you to search by State if a specific city yields no results."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Feedback",
+        "question": "How can I provide feedback on a lawyer?",
+        "answer": "After a case is resolved, you may be presented with an option to rate or review your experience. Check your 'My Cases' history."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Verification",
+        "question": "Do I need to be verified to submit a case?",
+        "answer": "No, citizens do not strictly need professional verification to submit a case, but completing your profile helps lawyers trust your request."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Workflow",
+        "question": "Can I withdraw a case after submission?",
+        "answer": "Yes, navigate to the specific case in 'My Cases' and look for a 'Withdraw' or 'Close' option if the case hasn't been legally filed yet."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Scheduling",
+        "question": "What if no time slots are available for a lawyer?",
+        "answer": "You can send them a message to request a custom time or search for another lawyer in the Directory with availability."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "Support",
+        "question": "Who do I contact if I have technical issues?",
+        "answer": "You can use the platform's support email or check the 'Help' section in Settings."
+    },
+    {
+        "role": "CITIZEN",
+        "category": "General",
+        "question": "Can an NGO help me instead of a lawyer?",
+        "answer": "Yes, in the Directory, select 'NGO' under 'Professional Type' to find organizations that can provide legal aid and support."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Onboarding",
+        "question": "How do I get my lawyer account verified?",
+        "answer": "Go to the 'Verification' tab in your dashboard. Upload your Bar Council Membership Card or relevant ID. The status will update to 'Verified' once approved by an Admin."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Onboarding",
+        "question": "Why is my profile showing as incomplete?",
+        "answer": "Ensure you have filled in your Bio, Years of Experience, Case Types, and Bar Council Number in the 'Profile' tab."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Leads",
+        "question": "Where can I find new case requests?",
+        "answer": "Check the 'New Consultation Leads' section on your 'Overview' tab. It lists incoming requests from citizens."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Leads",
+        "question": "How do I accept a consultation lead?",
+        "answer": "Click the 'Accept' button on a lead card. This will move the case to your 'My Cases' list and allow you to contact the citizen."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Leads",
+        "question": "How do I filter leads by location?",
+        "answer": "Currently, leads are sorted by relevance. You can check the location detail on each lead card before accepting."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Dashboard",
+        "question": "What does the 'Resolution Trends' chart tell me?",
+        "answer": "It shows your performance over time, specifically the number of cases you have resolved month-by-month."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Profile",
+        "question": "How can I change my availability status?",
+        "answer": "In the 'Settings' tab, toggle the 'Active Status' switch. Being 'Active' makes you visible in the public directory."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Profile",
+        "question": "Can I update my practice areas?",
+        "answer": "Yes, go to 'Profile' and edit the 'Case Types' or 'Specialization' section to reflect your current areas of practice."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Scheduling",
+        "question": "How do I manage my appointments?",
+        "answer": "Use the 'Schedule' tab. You can view your calendar, see upcoming appointments, and create new time slots."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Scheduling",
+        "question": "Can I initiate a meeting with a client?",
+        "answer": "Yes, you can schedule an appointment from your dashboard and invite the client, or message them to agree on a time."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Scheduling",
+        "question": "Can I take a break or go on vacation mode?",
+        "answer": "Yes, set your availability toggle to 'Inactive' in Settings. You can also block out dates in your Schedule."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Messages",
+        "question": "How do I communicate with a client?",
+        "answer": "Select the client from your 'Messages' tab. You can send secure text messages and share documents."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Messages",
+        "question": "What file formats does the chat support?",
+        "answer": "The chat supports standard formats like PDF, JPG, and PNG for sharing case-related documents."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Case Management",
+        "question": "How do I mark a case as resolved?",
+        "answer": "Open the case details in 'My Cases' and update the status to 'Resolved'. You may be asked to provide a closing summary."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Case Management",
+        "question": "What if a client is unresponsive?",
+        "answer": "You can follow up via the Message tab. If they remain unresponsive, you may mark the case as 'Pending' or archiving it after a certain period."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Verification",
+        "question": "What happens if my verification is rejected?",
+        "answer": "You will receive a notification with the rejection reason. You can then re-upload the correct documents via the 'Verification' tab."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Analytics",
+        "question": "What is the 'Leaderboard'?",
+        "answer": "Participating lawyers are ranked based on cases resolved and pro bono hours. Check the analytics section to see your standing."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Notifications",
+        "question": "Will I get notified of new leads?",
+        "answer": "Yes, the notification bell will alert you to new consultation requests and messages from potential clients."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Settings",
+        "question": "Can I hide my profile from the directory temporarily?",
+        "answer": "Yes, toggle your status to 'Inactive' in Settings. You can still manage existing cases but won't appear in new searches."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Document Management",
+        "question": "How do I view documents uploaded by a client?",
+        "answer": "Go to the specific case detail view. There is a 'Documents' section where you can preview or download client files."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Account",
+        "question": "How do I update my professional bio?",
+        "answer": "Navigate to the 'Profile' tab, click 'Edit', and update the Bio field. This text is visible to citizens searching for help."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Account",
+        "question": "Does the platform verify my years of experience?",
+        "answer": "You self-report your experience, but it should match your Bar Council registration. Verification confirms your identity as a legal professional."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Account",
+        "question": "How do I change my email address?",
+        "answer": "Please reach out to Admin support for email changes to ensure your verification status is preserved."
+    },
+    {
+        "role": "LAWYER",
+        "category": "General",
+        "question": "Is there a limit to how many cases I can accept?",
+        "answer": "There is no hard limit, but we recommend accepting only what you can handle effectively to ensure quality legal aid."
+    },
+    {
+        "role": "LAWYER",
+        "category": "General",
+        "question": "Is there a subscription fee for lawyers?",
+        "answer": "Currently, the platform offers free access to connecting with citizens. Any future premium tiers will be announced."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Troubleshooting",
+        "question": "I can't upload my verification document.",
+        "answer": "Ensure the document is a valid PDF or image file and provide a accessible URL if the form asks for a link. Check your network connection."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Workflow",
+        "question": "Can I refer a case to another lawyer?",
+        "answer": "Currently, you should decline the case if you cannot handle it, allowing the citizen to find another match. Direct referrals may be added in future updates."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Privacy",
+        "question": "Is my phone number visible to everyone?",
+        "answer": "Your contact details are shared primarily with clients you accept. Public visibility depends on your directory settings."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Analytics",
+        "question": "How is my 'Success Rate' calculated?",
+        "answer": "It is based on the number of cases marked 'Resolved' versus the total number of cases accepted and closed."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Dashboard",
+        "question": "What is the 'Geographic Map Chart'?",
+        "answer": "It visualizes the locations of your clients, helping you understand which regions your practice serves most."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Pro Bono",
+        "question": "How do I indicate I do Pro Bono work?",
+        "answer": "There may be a checkbox in your Profile or Case Preferences to signal willingness to accept pro bono cases."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Security",
+        "question": "How secure is the client messaging?",
+        "answer": "Messages are stored securely within the platform. We prioritize confidentiality for all attorney-client communications."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Support",
+        "question": "How do I report a fake case?",
+        "answer": "You can flag a case or contact Admin support if you believe a request is spam or fraudulent."
+    },
+    {
+        "role": "LAWYER",
+        "category": "General",
+        "question": "Can I export my case history?",
+        "answer": "Currently, you can view your full history in 'My Cases'. Export functionality is a planned feature."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Profile",
+        "question": "How do I add languages I speak?",
+        "answer": "Update your 'Profile' settings. Adding languages helps match you with clients who speak those languages."
+    },
+    {
+        "role": "LAWYER",
+        "category": "System",
+        "question": "Does the dashboard auto-refresh?",
+        "answer": "Yes, the dashboard listens for real-time updates (e.g., new cases), but you can always refresh the browser to be sure."
+    },
+    {
+        "role": "LAWYER",
+        "category": "Support",
+        "question": "How do I contact support?",
+        "answer": "Click on the 'Help' or 'Support' link in your profile dropdown to find our support email."
+    },
+    {
+        "role": "LAWYER",
+        "category": "General",
+        "question": "Can I print case details?",
+        "answer": "You can use your browser's print function (Ctrl+P) on the case details page to save a copy as PDF."
+    },
+    {
+        "role": "NGO",
+        "category": "Onboarding",
+        "question": "How does an NGO get verified?",
+        "answer": "Go to the 'Verification' tab and upload your NGO Registration Certificate. An Admin will review and approve your status."
+    },
+    {
+        "role": "NGO",
+        "category": "Dashboard",
+        "question": "What key metrics does the NGO dashboard track?",
+        "answer": "It tracks 'Beneficiaries Reached', 'Total Cases Supported', and 'Active Cases', helping you measure your social impact."
+    },
+    {
+        "role": "NGO",
+        "category": "Leads",
+        "question": "How do we receive requests for help?",
+        "answer": "Check the 'New Consultation Leads' section. Citizens seeking NGO support will appear there."
+    },
+    {
+        "role": "NGO",
+        "category": "Profile",
+        "question": "How do we list our service areas?",
+        "answer": "In the 'Profile' tab, you can specify your geographic service areas and the legal domains (e.g., Family Law, Civil Rights) you support."
+    },
+    {
+        "role": "NGO",
+        "category": "Impact",
+        "question": "How is 'Beneficiaries Reached' calculated?",
+        "answer": "This metric aggregates the number of unique citizens assisted through your accepted cases and consultations."
+    },
+    {
+        "role": "NGO",
+        "category": "Management",
+        "question": "Can multiple members use one NGO account?",
+        "answer": "Ideally, use a central organization account. If you need multi-user access for staff, contact support for enterprise features."
+    },
+    {
+        "role": "NGO",
+        "category": "Management",
+        "question": "How do we add more volunteers?",
+        "answer": "Currently, accounts are individual. You can have your volunteers create lawyer accounts and you can refer cases to them."
+    },
+    {
+        "role": "NGO",
+        "category": "Verification",
+        "question": "What document is required for verification?",
+        "answer": "A valid NGO Registration Certificate or equivalent government proof of non-profit status."
+    },
+    {
+        "role": "NGO",
+        "category": "Settings",
+        "question": "How do we update our organization contact info?",
+        "answer": "Go to 'Settings' or 'Profile' to update the Organization Name, Contact Person, Phone, and Email."
+    },
+    {
+        "role": "NGO",
+        "category": "Settings",
+        "question": "How do we update our logo?",
+        "answer": "In the Profile edit section, look for the 'Profile Picture' or 'Logo' upload box to upload your organization's branding."
+    },
+    {
+        "role": "NGO",
+        "category": "Scheduling",
+        "question": "Can we schedule intake sessions?",
+        "answer": "Yes, use the 'Schedule' tab to create available slots for citizen intake interviews or consultations."
+    },
+    {
+        "role": "NGO",
+        "category": "Analytics",
+        "question": "Does the dashboard show where our cases come from?",
+        "answer": "Yes, the 'Geographic Map Chart' displays the distribution of your cases across different cities and states."
+    },
+    {
+        "role": "NGO",
+        "category": "Analytics",
+        "question": "What is the 'Case Distribution' chart?",
+        "answer": "It shows a breakdown of your cases by legal category (e.g., how many are Family Law vs Labor Law)."
+    },
+    {
+        "role": "NGO",
+        "category": "Collaboration",
+        "question": "Can we coordinate with lawyers on the platform?",
+        "answer": "You can refer citizens to lawyers in the directory or message lawyers directly if the feature is enabled for your tier."
+    },
+    {
+        "role": "NGO",
+        "category": "Collaboration",
+        "question": "Can we refer cases to other NGOs?",
+        "answer": "Direct referrals are not yet automated. We suggest advising the citizen to find the other NGO in the directory."
+    },
+    {
+        "role": "NGO",
+        "category": "Messages",
+        "question": "How do we communicate with beneficiaries?",
+        "answer": "Use the 'Messages' tab to chat securely with citizens who have sought your help."
+    },
+    {
+        "role": "NGO",
+        "category": "Case Management",
+        "question": "How do we track long-term cases?",
+        "answer": "Keep the case status as 'Active' or 'In Progress' in 'My Cases' until a final resolution is reached."
+    },
+    {
+        "role": "NGO",
+        "category": "Case Management",
+        "question": "How do we close a case?",
+        "answer": "Open the case details and change the status to 'Resolved'. You can add notes about the outcome."
+    },
+    {
+        "role": "NGO",
+        "category": "Notifications",
+        "question": "How do we know if a citizen sends a document?",
+        "answer": "You will receive a notification. You can view the document in the case details section."
+    },
+    {
+        "role": "NGO",
+        "category": "Profile",
+        "question": "Can we show our Pro Bono commitment?",
+        "answer": "Yes, ensure your profile highlights your free legal aid services so citizens know they can approach you without immediate fees."
+    },
+    {
+        "role": "NGO",
+        "category": "Verification",
+        "question": "Why is verification important for NGOs?",
+        "answer": "It builds trust with citizens. Verified NGOs are marked with a badge, making users more likely to seek your assistance."
+    },
+    {
+        "role": "NGO",
+        "category": "Troubleshooting",
+        "question": "I'm not receiving any leads.",
+        "answer": "Check if your profile is 'Active' and 'Verified'. Also, review your service areas to ensure they match where demand is."
+    },
+    {
+        "role": "NGO",
+        "category": "Analytics",
+        "question": "Can we download an impact report?",
+        "answer": "You can view impact stats on the dashboard. For a downloadable report, check if the 'Export' feature is available in the Analytics tab (coming soon)."
+    },
+    {
+        "role": "NGO",
+        "category": "General",
+        "question": "Is the platform free for NGOs?",
+        "answer": "Yes, the goal is to facilitate legal aid. Basic access for NGOs to connect with citizens is provided."
+    },
+    {
+        "role": "NGO",
+        "category": "General",
+        "question": "Can we receive donations through the platform?",
+        "answer": "Integration with payment gateways for donations is planned for a future release. Currently, you can list your website for external support."
+    },
+    {
+        "role": "NGO",
+        "category": "Settings",
+        "question": "How do we manage our password?",
+        "answer": "Change it securely in the 'Settings' tab. Ensure you use a strong password for organization security."
+    },
+    {
+        "role": "NGO",
+        "category": "Settings",
+        "question": "How do I reset the organization password?",
+        "answer": "Use the 'Forgot Password' link at login if locked out, or update it in Settings if you have access."
+    },
+    {
+        "role": "NGO",
+        "category": "Support",
+        "question": "How do we report a bug?",
+        "answer": "Contact the Admin via the support email listed in the platform footer or Help settings."
+    },
+    {
+        "role": "NGO",
+        "category": "Access",
+        "question": "Can we toggle our visibility?",
+        "answer": "Yes, switch your status to 'Active' or 'Inactive' in Settings to control your presence in the directory."
+    },
+    {
+        "role": "NGO",
+        "category": "Workflow",
+        "question": "What is the first step when we get a case?",
+        "answer": "Review the case details and documents. If it fits your mission, accept it and schedule an initial consultation."
+    },
+    {
+        "role": "NGO",
+        "category": "General",
+        "question": "Can we see cases from all over the country?",
+        "answer": "It depends on your service area settings. You can configure your profile to serve 'All India' or specific states."
+    },
+    {
+        "role": "NGO",
+        "category": "Communication",
+        "question": "Is there a limit to chat history?",
+        "answer": "Generally no, your conversation history with beneficiaries is preserved for case records."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Verification",
+        "question": "How do I approve a verification request?",
+        "answer": "Go to the 'Verifications' tab. You will see a list of pending requests. Review the documents and click 'Approve'."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Verification",
+        "question": "How do I reject a verification?",
+        "answer": "In the 'Verifications' tab, click 'Reject' on the request. You will be prompted to provide a reason for the rejection."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Verification",
+        "question": "Can I bulk approve requests?",
+        "answer": "Yes, select multiple requests using the checkboxes and click the 'Bulk Approve' button in the header."
+    },
+    {
+        "role": "ADMIN",
+        "category": "User Management",
+        "question": "How do I suspend a user account?",
+        "answer": "Go to the 'Directory' or 'Users' tab. Find the user, and use the toggle or action menu to change their status to 'Suspended'."
+    },
+    {
+        "role": "ADMIN",
+        "category": "User Management",
+        "question": "How do I reactivate a suspended user?",
+        "answer": "Locate the suspended user in the directory and toggle their status back to 'Active'."
+    },
+    {
+        "role": "ADMIN",
+        "category": "User Management",
+        "question": "Can I edit a user's profile?",
+        "answer": "Admins have permission to edit user profiles if intervention is required for moderation. Use the 'Edit' action in the User directory."
+    },
+    {
+        "role": "ADMIN",
+        "category": "User Management",
+        "question": "How do I add a new admin?",
+        "answer": "Currently, creating new Admins is a database-level or super-admin action. Please contact the technical lead."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Dashboard",
+        "question": "What does the 'Pending Verifications' stat mean?",
+        "answer": "It indicates the count of Lawyers and NGOs waiting for you to review their submitted documents."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Analytics",
+        "question": "How can I see system-wide case distribution?",
+        "answer": "Check the 'System Snapshot' and analytics charts on the dashboard. It shows total users, lawyers, NGOs, and case statuses."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Geographic Intelligence",
+        "question": "What is the 'Geographic Intelligence' feature?",
+        "answer": "It allows you to view platform usage by State. You can filter the dashboard to see stats for 'All India' or specific regions like 'Maharashtra'."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Geographic Intelligence",
+        "question": "How do I update the 'Indian States' list?",
+        "answer": "The list of states is currently hardcoded in the frontend configuration. A developer update is needed to change it."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Audit Logs",
+        "question": "Where can I view system activities?",
+        "answer": "Navigate to the 'Audit Logs' tab. It records important events like logins, verifications, and user updates."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Content",
+        "question": "Can I preview uploaded documents?",
+        "answer": "Yes, in the Verification view, click on the document link/icon to open a preview in a new tab."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Notifications",
+        "question": "What alerts do Admins receive?",
+        "answer": "Admins get notified about new verification requests, high-priority issues, or system flags."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Notifications",
+        "question": "How do I send a system-wide broadcast?",
+        "answer": "This feature is in development. Currently, use the 'Announcements' section if available or contact support to send emails."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Settings",
+        "question": "How do I configure platform settings?",
+        "answer": "Use the 'Settings' tab to manage global configurations, though many features may be automated."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Workflow",
+        "question": "What is the response time for verifications?",
+        "answer": "Ideally, review requests daily. The dashboard highlights pending items to help you prioritize."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Directory",
+        "question": "Can I search for a specific user?",
+        "answer": "Yes, the Directory tab has a search bar where you can find users by name, email, or role."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Case Management",
+        "question": "Can Admin view all cases?",
+        "answer": "Yes, go to the 'Cases' tab to view a master list of cases. You can filter by status (Open, Resolved, etc.)."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Security",
+        "question": "How do I handle a reported user?",
+        "answer": "Investigate via the Audit Logs or their profile. You can suspend them immediately if they violate platform policies."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Troubleshooting",
+        "question": "The analytics data seems outdated.",
+        "answer": "The dashboard polls for updates periodically (e.g., every 15 seconds). You can also manually refresh the page."
+    },
+    {
+        "role": "ADMIN",
+        "category": "General",
+        "question": "Who has Admin access?",
+        "answer": "Admin access is restricted to designated system administrators. Do not share admin credentials."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Verification",
+        "question": "What happens if I approve a request by mistake?",
+        "answer": "You can go to the User's profile in the Directory and manually revoke their 'Verified' status if needed."
+    },
+    {
+        "role": "ADMIN",
+        "category": "System",
+        "question": "How do I know if the system is healthy?",
+        "answer": "Check the 'System Snapshot' cards. If numbers (Users, Cases) are loading and updating, the core services are active."
+    },
+    {
+        "role": "ADMIN",
+        "category": "System",
+        "question": "Where do I see platform errors?",
+        "answer": "Check the 'Audit Logs' for any 'Error' or 'Failure' severity events."
+    },
+    {
+        "role": "ADMIN",
+        "category": "Data",
+        "question": "How do I export user data?",
+        "answer": "Use the 'Export CSV' button in the User Directory or Cases table (if enabled) to download data for reporting."
+    }
+]

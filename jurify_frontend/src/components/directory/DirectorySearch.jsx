@@ -5,7 +5,9 @@ import Select from "react-select";
 import ProfileViewModel from "./ProfileViewModel";
 import ProfileCard from "./ProfileCard";
 import directoryService from "../../services/directoryService";
+import { caseService } from "../../services/caseService";
 import { useTheme } from "../../context/ThemeContext";
+import { useToast } from "../../components/common/ToastContext";
 
 const CardSkeleton = () => (
   <div className="bg-slate-50 dark:bg-gray-800/50 rounded-xl p-5 border border-slate-200 dark:border-gray-700 animate-pulse hover:shadow-md">
@@ -56,8 +58,8 @@ const DirectorySearch = () => {
       backgroundColor: state.isSelected
         ? "#11676a"
         : state.isFocused
-        ? (isDarkMode ? "#374151" : "#f3f4f6")
-        : "transparent",
+          ? (isDarkMode ? "#374151" : "#f3f4f6")
+          : "transparent",
       color: state.isSelected
         ? "#ffffff"
         : (isDarkMode ? "#e5e7eb" : "#111827"),
@@ -84,6 +86,7 @@ const DirectorySearch = () => {
   const useStatic = false;
 
   // UI state
+  // UI state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedType, setSelectedType] = useState("all");
@@ -98,6 +101,12 @@ const DirectorySearch = () => {
   const [selectedLanguage, setSelectedLanguage] = useState("");
   const [selectedExperience, setSelectedExperience] = useState("");
   const [selectedAvailability, setSelectedAvailability] = useState("");
+
+  // New States for Consultation Request
+  const [requestedProviderIds, setRequestedProviderIds] = useState(new Set());
+  const [requestingId, setRequestingId] = useState(null);
+  const [currentCaseNumber, setCurrentCaseNumber] = useState("");
+  const { showToast } = useToast();
 
   // view mode: 'square' (grid) or 'detailed' (list/rectangle)
   const [viewMode, setViewMode] = useState("square");
@@ -440,7 +449,18 @@ const DirectorySearch = () => {
         );
 
         if (response && response.content) {
-          setSearchResults(response.content);
+          let results = response.content;
+
+          // Client-side sort for the current page
+          if (sortBy === "rating") {
+            results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+          } else if (sortBy === "experience") {
+            results.sort((a, b) => (b.yearsOfExperience || 0) - (a.yearsOfExperience || 0));
+          } else if (sortBy === "cases") {
+            results.sort((a, b) => (b.casesHandled || 0) - (a.casesHandled || 0));
+          }
+
+          setSearchResults(results);
           setPagination((prev) => ({
             ...prev,
             totalElements: response.totalElements,
@@ -479,12 +499,31 @@ const DirectorySearch = () => {
     const state = searchParams.get("state");
     const city = searchParams.get("city");
     const caseType = searchParams.get("caseType");
+    const type = searchParams.get("type");
 
     if (fromCase === "true") {
       setIsFromCaseSubmission(true);
       if (state) setSelectedState(state);
       if (caseType) setSelectedCaseType(caseType);
       if (city) setUserCity(city);
+      if (type) setSelectedType(type);
+
+      // Enforce list view and rating sort for case submission flow
+      setViewMode("detailed");
+      setSortBy("rating");
+
+      // Fetch requested providers
+      const caseId = searchParams.get("caseId");
+      if (caseId) {
+        console.log("[DirectorySearch] Fetching requested providers for caseId:", caseId);
+        caseService.getRequestedProviders(caseId)
+          .then(data => {
+            console.log("[DirectorySearch] Requested providers response:", data);
+            // data is already the array [Long, Long, ...] - list of user IDs
+            setRequestedProviderIds(new Set(data || []));
+          })
+          .catch(err => console.error("Failed to fetch requested providers", err));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -503,23 +542,31 @@ const DirectorySearch = () => {
   };
 
   return (
-    <div className="w-full bg-gray-50 dark:bg-black">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-5">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary rounded-xl flex items-center justify-center">
-              <FiSearch className="text-lg sm:text-xl text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white truncate">Legal Directory</h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Find verified lawyers and NGOs by name and location</p>
+    <>
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+        {/* Case Context Banner - Only shown when coming from case submission */}
+        {isFromCaseSubmission && (
+          <div className="bg-gradient-to-r from-primary/10 via-teal-50 to-primary/5 dark:from-primary/20 dark:via-gray-800 dark:to-primary/10 rounded-2xl border border-primary/20 dark:border-primary/30 p-4 sm:p-5 mb-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <FiFilter className="text-primary text-lg" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Finding Professionals for Your Case
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  Case #{searchParams.get("caseId")} • <span className="font-medium text-primary">{selectedCaseType || "All Categories"}</span>
+                  {userCity && <> • Near <span className="font-medium">{userCity}</span></>}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  Select a professional below to request a consultation. They will receive an email notification.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-6">
         {/* Search Section */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 sm:p-6 mb-6 shadow-sm hover:shadow-md transition">
           <div className="space-y-5">
@@ -585,7 +632,8 @@ const DirectorySearch = () => {
                   }}
                   options={caseCategories.map((cat) => ({ value: cat, label: cat }))}
                   placeholder="Select Case Type"
-                  isClearable
+                  isClearable={!isFromCaseSubmission}
+                  isDisabled={isFromCaseSubmission} // Lock this filter
                   className="react-select-container w-full"
                   classNamePrefix="react-select"
                   styles={customSelectStyles}
@@ -597,14 +645,19 @@ const DirectorySearch = () => {
           {/* Advanced Filters + toggle */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-5">
             <div className="flex items-center gap-4">
-              <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-primary transition-colors"
+                disabled={isFromCaseSubmission} // Lock advanced filters in case mode if we want strictness, or just let them stay but lock specific ones
+              >
                 <FiFilter />
                 <span className="hidden sm:inline">Advanced Filters</span>
                 <span className="sm:hidden">Filters</span>
                 <FiChevronDown className={`transform transition-transform ${showFilters ? "rotate-180" : ""}`} />
               </button>
 
-              {(searchQuery || selectedState || selectedType !== "all" || selectedLanguage || selectedExperience) && (
+              {/* Only show Clear Filters if NOT in strict case mode, or allow clearing only non-strict fields */}
+              {!isFromCaseSubmission && (searchQuery || selectedState || selectedType !== "all" || selectedLanguage || selectedExperience) && (
                 <button onClick={clearFilters} className="flex items-center gap-2 text-sm text-gray-600 hover:text-red-600 transition-colors">
                   <FiX />
                   <span className="hidden sm:inline">Clear Filters</span>
@@ -693,15 +746,17 @@ const DirectorySearch = () => {
                 </div>
               )}
 
-              <button
-                onClick={() => setViewMode((v) => (v === "square" ? "detailed" : "square"))}
-                title={viewMode === "square" ? "Switch to list view" : "Switch to grid view"}
-                aria-label="Toggle view"
-                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-shadow focus:outline-none
-                  ${viewMode === "square" ? "bg-primary text-white border border-primary shadow-sm" : "bg-white text-slate-600 border border-slate-200"}`}
-              >
-                {viewMode === "square" ? <FiGrid className="text-sm" /> : <FiList className="text-sm" />}
-              </button>
+              {!isFromCaseSubmission && (
+                <button
+                  onClick={() => setViewMode((v) => (v === "square" ? "detailed" : "square"))}
+                  title={viewMode === "square" ? "Switch to list view" : "Switch to grid view"}
+                  aria-label="Toggle view"
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-shadow focus:outline-none
+                    ${viewMode === "square" ? "bg-primary text-white border border-primary shadow-sm" : "bg-white text-slate-600 border border-slate-200"}`}
+                >
+                  {viewMode === "square" ? <FiGrid className="text-sm" /> : <FiList className="text-sm" />}
+                </button>
+              )}
             </div>
           </div>
 
@@ -725,6 +780,7 @@ const DirectorySearch = () => {
                         rating: result.rating || 0,
                         available: result.availableNow || false,
                         casesHandled: result.casesHandled || 0,
+                        isRequested: requestedProviderIds.has(result.userId || result.id),
                       }}
                       onContact={(res) => setSelectedProfile(res)}
                     />
@@ -748,6 +804,7 @@ const DirectorySearch = () => {
                         rating: result.rating || 0,
                         available: result.availableNow || false,
                         casesHandled: result.casesHandled || 0,
+                        isRequested: requestedProviderIds.has(result.userId || result.id),
                       }}
                       onContact={(res) => setSelectedProfile(res)}
                     />
@@ -768,9 +825,45 @@ const DirectorySearch = () => {
           ) : null}
         </div>
 
-        {selectedProfile && <ProfileViewModel profile={selectedProfile} onClose={() => setSelectedProfile(null)} />}
+        {selectedProfile && (
+          <ProfileViewModel
+            profile={{
+              ...selectedProfile,
+              isRequested: requestedProviderIds.has(selectedProfile.userId || selectedProfile.id),
+              isLoading: requestingId === (selectedProfile.userId || selectedProfile.id)
+            }}
+            onClose={() => setSelectedProfile(null)}
+            onRequestConsultation={isFromCaseSubmission ? async (profile) => {
+              const providerId = profile.userId;
+              const requestRefId = providerId || profile.id;
+              const caseId = searchParams.get("caseId");
+
+              if (!caseId) return;
+
+              if (!providerId) {
+                showToast({ type: "error", message: "Cannot identify provider user ID." });
+                return;
+              }
+
+              try {
+                setRequestingId(requestRefId);
+                await caseService.requestConsultation(caseId, providerId, profile.type || "LAWYER");
+                showToast({ type: "success", message: `Request sent to ${profile.displayName || profile.name}!` });
+                setRequestedProviderIds(prev => new Set(prev).add(providerId));
+                setTimeout(() => setSelectedProfile(null), 1500);
+              } catch (err) {
+                console.error("Failed to request consultation", err);
+                const msg = err.response?.data?.message || "Failed to send request.";
+                showToast({ type: "error", message: msg });
+              } finally {
+                setRequestingId(null);
+              }
+            } : null}
+            showConsultationButton={isFromCaseSubmission}
+          />
+        )}
       </div>
-    </div>
+    </>
   );
 };
 

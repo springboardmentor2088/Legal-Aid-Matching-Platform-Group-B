@@ -13,6 +13,7 @@ import com.jurify.jurify_backend.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final MatchingEngineService matchingEngineService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     private AuthResponse buildAuthResponse(User user, String accessToken, String refreshTokenValue) {
         AuthResponse.AuthResponseBuilder builder = AuthResponse.builder()
@@ -71,13 +73,34 @@ public class AuthenticationService {
                     .registrationNumber(user.getNgo().getRegistrationNumber())
                     .contactPersonName(user.getNgo().getContactPersonName());
         }
+        if (user.getPreferences() != null) {
+            try {
+                java.util.Map<String, Object> prefs = objectMapper.readValue(user.getPreferences(),
+                        java.util.Map.class);
+                builder.preferences(prefs);
+            } catch (Exception e) {
+                log.error("Failed to parse user preferences", e);
+            }
+        }
 
         return builder.build();
     }
 
     @Transactional
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new RuntimeException("Invalid current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    @Transactional
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(request.getEmail().toLowerCase())
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -230,7 +253,7 @@ public class AuthenticationService {
 
     @Transactional
     public void forgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmail(email.toLowerCase())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!user.getIsActive()) {

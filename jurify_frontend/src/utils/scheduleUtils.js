@@ -135,6 +135,12 @@ export const isSameCalendarDay = (dateA, dateB) => {
 export const normalizeTime = (timeString) => {
   if (!timeString) return null;
 
+  // Handle array [hour, minute] from Java LocalTime
+  if (Array.isArray(timeString)) {
+    const [hour, minute] = timeString;
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
   // Handle various time formats: "09:00", "09:00:00", "9:00 AM"
   const cleanTime = timeString.toString().trim();
 
@@ -317,12 +323,20 @@ export const formatAppointmentDate = (dateString) => {
   if (!dateString) return '';
 
   try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
+    let date;
+    if (Array.isArray(dateString)) {
+      // Handle [yyyy, MM, dd] or [yyyy, MM, dd, HH, mm]
+      const [year, month, day, hour = 0, minute = 0] = dateString;
+      date = new Date(year, month - 1, day, hour, minute);
+    } else {
+      date = new Date(dateString);
+    }
+
+    if (isNaN(date.getTime())) return String(dateString);
 
     return format(date, 'MMM d, yyyy');
   } catch {
-    return dateString;
+    return String(dateString);
   }
 };
 

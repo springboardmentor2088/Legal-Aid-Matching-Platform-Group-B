@@ -15,4 +15,6 @@ public interface LawyerRepository extends JpaRepository<Lawyer, Long> {
     java.util.List<Lawyer> findByIsVerifiedTrue();
 
     java.util.List<Lawyer> findByStateAndIsVerifiedTrue(String state);
+
+    java.util.List<Lawyer> findByState(String state);
 }

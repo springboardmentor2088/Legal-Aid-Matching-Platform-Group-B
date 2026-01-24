@@ -14,6 +14,8 @@ import java.util.List;
 public class DirectoryEntryService {
 
         private final DirectoryEntryRepository directoryEntryRepository;
+        private final com.jurify.jurify_backend.repository.LegalCaseRepository legalCaseRepository;
+        private final com.jurify.jurify_backend.repository.ReviewRepository reviewRepository;
 
         public void createLawyerEntry(User user, String fullName, String phone, String city, String state,
                         String country,
@@ -59,6 +61,30 @@ public class DirectoryEntryService {
                 directoryEntryRepository.save(entry);
         }
 
+        private int countResolvedCases(Long citizenId, Long lawyerId, Long ngoId) {
+                Long count = 0L;
+                if (lawyerId != null) {
+                        count = legalCaseRepository.countByLawyerIdAndStatus(lawyerId,
+                                        com.jurify.jurify_backend.model.enums.CaseStatus.RESOLVED);
+                } else if (ngoId != null) {
+                        count = legalCaseRepository.countByNgoIdAndStatus(ngoId,
+                                        com.jurify.jurify_backend.model.enums.CaseStatus.RESOLVED);
+                }
+                return count != null ? count.intValue() : 0;
+        }
+
+        private double calculateAverageRating(Long lawyerId, Long ngoId) {
+                List<com.jurify.jurify_backend.model.Review> reviews = java.util.Collections.emptyList();
+                if (lawyerId != null) {
+                        reviews = reviewRepository.findByLawyerId(lawyerId);
+                } else if (ngoId != null) {
+                        reviews = reviewRepository.findByNgoId(ngoId);
+                }
+                return reviews.isEmpty() ? 0.0
+                                : reviews.stream().mapToInt(com.jurify.jurify_backend.model.Review::getRating).average()
+                                                .orElse(0.0);
+        }
+
         public void ensureVerifiedLawyerEntry(User user, com.jurify.jurify_backend.model.Lawyer lawyer) {
                 // Flatten specializations
                 String specializations = lawyer.getSpecializations().stream()
@@ -81,7 +107,8 @@ public class DirectoryEntryService {
                                                 .languages(lawyer.getLanguages())
                                                 .specialization(specializations)
                                                 .isActive(true)
-                                                .casesHandled(0)
+                                                .casesHandled(countResolvedCases(null, lawyer.getId(), null))
+                                                .rating(calculateAverageRating(lawyer.getId(), null))
                                                 .build());
 
                 entry.setIsVerified(true);
@@ -94,6 +121,8 @@ public class DirectoryEntryService {
                 entry.setYearsOfExperience(lawyer.getYearsOfExperience());
                 entry.setLanguages(lawyer.getLanguages());
                 entry.setSpecialization(specializations);
+                entry.setCasesHandled(countResolvedCases(null, lawyer.getId(), null));
+                entry.setRating(calculateAverageRating(lawyer.getId(), null));
 
                 directoryEntryRepository.save(entry);
         }
@@ -121,7 +150,8 @@ public class DirectoryEntryService {
                                                                 : 0)
                                                 .specialization(specializations)
                                                 .isActive(true)
-                                                .casesHandled(0)
+                                                .casesHandled(countResolvedCases(null, null, ngo.getId()))
+                                                .rating(calculateAverageRating(null, ngo.getId()))
                                                 .build());
 
                 entry.setIsVerified(true);
@@ -252,6 +282,8 @@ public class DirectoryEntryService {
                         entry.setYearsOfExperience(lawyer.getYearsOfExperience());
                         entry.setLanguages(lawyer.getLanguages());
                         entry.setSpecialization(specializations);
+                        entry.setCasesHandled(countResolvedCases(null, lawyer.getId(), null));
+                        entry.setRating(calculateAverageRating(lawyer.getId(), null));
 
                         directoryEntryRepository.save(entry);
                 });
@@ -272,8 +304,24 @@ public class DirectoryEntryService {
                                         ? (java.time.Year.now().getValue() - ngo.getRegistrationYear())
                                         : 0);
                         entry.setSpecialization(specializations);
+                        entry.setCasesHandled(countResolvedCases(null, null, ngo.getId()));
+                        entry.setRating(calculateAverageRating(null, ngo.getId()));
 
                         directoryEntryRepository.save(entry);
                 });
+        }
+
+        public List<com.jurify.jurify_backend.model.Review> getReviews(Long directoryId) {
+                DirectoryEntry entry = getEntryById(directoryId);
+                User user = entry.getUser();
+                if (user == null)
+                        return java.util.Collections.emptyList();
+
+                if (entry.getRole() == UserRole.LAWYER && user.getLawyer() != null) {
+                        return reviewRepository.findByLawyerId(user.getLawyer().getId());
+                } else if (entry.getRole() == UserRole.NGO && user.getNgo() != null) {
+                        return reviewRepository.findByNgoId(user.getNgo().getId());
+                }
+                return java.util.Collections.emptyList();
         }
 }

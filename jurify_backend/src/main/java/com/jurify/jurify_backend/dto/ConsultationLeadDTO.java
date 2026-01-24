@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ConsultationLeadDTO {
     private Long caseId;
+    private String caseNumber;
     private String caseTitle;
     private String caseStatus; // Should be matched with Lead Status
     private String citizenName;
@@ -18,4 +19,7 @@ public class ConsultationLeadDTO {
     private String matchStatus; // CONTACTED, SUGGESTED
     private String description;
     private String category;
+    private String providerName;
+    private String providerType;
+    private String fileUrl;
 }

@@ -33,7 +33,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String providerName = userRequest.getClientRegistration().getRegistrationId().toUpperCase();
         System.out.println("Provider: " + providerName);
 
-        String email = oAuth2User.getAttribute("email");
+        String email = ((String) oAuth2User.getAttribute("email")).toLowerCase();
         System.out.println("Email: " + email);
 
         com.jurify.jurify_backend.model.enums.Provider provider = com.jurify.jurify_backend.model.enums.Provider

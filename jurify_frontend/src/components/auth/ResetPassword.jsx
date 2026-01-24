@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { useGlobalLoader } from '../../context/GlobalLoaderContext';
 
 export default function ResetPassword() {
     const [searchParams] = useSearchParams();
+    const { startLoading, stopLoading } = useGlobalLoader();
     const token = searchParams.get('token');
     const navigate = useNavigate();
 
@@ -29,13 +31,16 @@ export default function ResetPassword() {
         }
 
         setIsSubmitting(true);
+        startLoading("Resetting your password...");
 
         try {
             await authService.resetPassword(token, password);
+            stopLoading(true, "Password reset successful!");
             setIsSuccess(true);
             // Optional: Auto redirect after few seconds
             setTimeout(() => navigate('/login'), 5000);
         } catch (err) {
+            stopLoading(false, "Reset failed");
             setError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
         } finally {
             setIsSubmitting(false);
@@ -154,7 +159,7 @@ export default function ResetPassword() {
                                     disabled={isSubmitting}
                                     className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#11676a] hover:bg-[#0e5255] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#11676a] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isSubmitting ? 'Resetting...' : 'Reset Password'}
+                                    Reset Password
                                 </button>
                             </div>
                         </form>

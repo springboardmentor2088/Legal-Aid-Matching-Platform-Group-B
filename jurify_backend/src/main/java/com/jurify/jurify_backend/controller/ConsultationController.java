@@ -32,8 +32,20 @@ public class ConsultationController {
         return ResponseEntity.ok("Case accepted successfully");
     }
 
+    @PostMapping("/reject/{caseId}")
+    public ResponseEntity<String> rejectConsultation(@AuthenticationPrincipal String email,
+            @PathVariable Long caseId) {
+        consultationService.rejectConsultation(email, caseId);
+        return ResponseEntity.ok("Case rejected successfully");
+    }
+
     @GetMapping("/leads")
     public ResponseEntity<List<ConsultationLeadDTO>> getLeads(@AuthenticationPrincipal String email) {
         return ResponseEntity.ok(consultationService.getLeads(email));
+    }
+
+    @GetMapping("/my-consultations")
+    public ResponseEntity<List<ConsultationLeadDTO>> getMyConsultations(@AuthenticationPrincipal String email) {
+        return ResponseEntity.ok(consultationService.getCitizenConsultations(email));
     }
 }

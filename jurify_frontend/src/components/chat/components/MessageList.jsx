@@ -10,6 +10,9 @@ import {
   FiZoomIn,
   FiFileText,
 } from "react-icons/fi";
+import chatBg from "../../../assets/chat.png";
+import chatDarkBg from "../../../assets/chatdark.png";
+import { useTheme } from "../../../context/ThemeContext";
 
 const MessageList = ({
   messages = [],
@@ -168,7 +171,8 @@ const MessageList = ({
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
         // Use proxy endpoint
-        const proxyUrl = `http://localhost:8080/api/chat/download?key=${encodeURIComponent(file.attachmentKey || file.key)}`;
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+        const proxyUrl = `${baseUrl}/chat/download?key=${encodeURIComponent(file.attachmentKey || file.key)}`;
         // Note: We need file.attachmentKey. If not present in 'file' object, we might fail.
         // The 'file' object structure in MessageList comes from:
         //   { url, preview, type, name, attachmentKey (added in useChat transformation) }
@@ -293,9 +297,20 @@ const MessageList = ({
   };
 
   /* RENDER */
+  const { isDarkMode } = useTheme();
+
   return (
     <div className={`overflow-hidden bg-gray-50 dark:bg-gray-900 relative ${className}`}>
-      <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto overscroll-contain p-4">
+      <div
+        className="absolute inset-0 z-0 pointer-events-none opacity-40 dark:opacity-20"
+        style={{
+          backgroundImage: `url(${isDarkMode ? chatDarkBg : chatBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      />
+      <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto overscroll-contain p-4 relative z-10">
         <div className="space-y-4">
           {/* DATE SEPARATOR (MVP) */}
           <div className="flex items-center justify-center my-4">

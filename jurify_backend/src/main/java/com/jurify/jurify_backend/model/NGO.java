@@ -159,4 +159,16 @@ public class NGO {
     @OneToMany(mappedBy = "ngo", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<NGOSpecialization> specializations = new ArrayList<>();
+
+    @Column(name = "average_rating")
+    @Builder.Default
+    private Double averageRating = 0.0;
+
+    @Column(name = "review_count")
+    @Builder.Default
+    private Integer reviewCount = 0;
+
+    @Column(name = "cases_handled")
+    @Builder.Default
+    private Integer casesHandled = 0;
 }

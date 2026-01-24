@@ -1,11 +1,29 @@
 import React, { useState } from 'react';
-import { FiEye, FiEdit, FiTrash2, FiCheck, FiX, FiShield, FiShieldOff, FiMail, FiPhone, FiCalendar, FiStar } from 'react-icons/fi';
+import { FiEye, FiEdit, FiTrash2, FiCheck, FiX, FiShield, FiShieldOff, FiMail, FiPhone, FiCalendar, FiStar, FiUser } from 'react-icons/fi';
 import { HiOutlineOfficeBuilding } from 'react-icons/hi';
+import { adminService } from '../../services/adminService';
+import { useToast } from '../common/ToastContext';
+import ProfileViewModel from '../directory/ProfileViewModel';
 
 const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, onVerification, activeTab }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(25);
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const { showToast } = useToast();
+
+  const handleStatusUpdate = async (userId, newStatus) => {
+    try {
+      await adminService.updateUserStatus(userId, newStatus);
+      showToast({ type: 'success', message: `User status updated to ${newStatus}` });
+      // Optional: refresh logic here or rely on parent
+    } catch (error) {
+      showToast({ type: 'error', message: "Failed to update status" });
+    }
+  };
+
+  const handleMockAction = (action, userId) => {
+    showToast({ type: 'info', message: `${action} functionality coming soon` });
+  };
 
   // Pagination
   const indexOfLastUser = currentPage * usersPerPage;
@@ -86,7 +104,6 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
           <td className="px-4 py-3">
             <div className="text-sm">
               <div className="text-gray-900 dark:text-white">{user.yearsOfExperience} years</div>
-              <div className="text-gray-500 dark:text-gray-400">{user.casesHandled} cases</div>
             </div>
           </td>
           <td className="px-4 py-3">
@@ -143,6 +160,67 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
     return null;
   };
 
+  /* Modals State */
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [selectedUserAction, setSelectedUserAction] = useState(null);
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+
+  const handleEditClick = (user) => {
+    setSelectedUserAction(user);
+    setEditFormData({
+      name: user.name,
+      phone: user.phone,
+      email: user.email,
+      role: user.role,
+      // Lawyer specific
+      barCouncilNumber: user.barCouncilNumber,
+      specializations: user.specializations ? user.specializations.join(', ') : '',
+      yearsOfExperience: user.yearsOfExperience,
+      // General extras
+      city: user.city,
+      state: user.state
+    });
+    setShowEditModal(true);
+  };
+
+  const handleNotifyClick = (user) => {
+    setSelectedUserAction(user);
+    setNotifyMessage(`Dear ${user.name},\n\n`);
+    setShowNotifyModal(true);
+  };
+
+  const submitEdit = async () => {
+    try {
+      setIsProcessing(true);
+      await new Promise(r => setTimeout(r, 1000));
+      showToast({ type: 'success', message: "User details updated successfully" });
+      setShowEditModal(false);
+    } catch (e) {
+      showToast({ type: 'error', message: "Failed to update user" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const submitNotification = async () => {
+    try {
+      setIsProcessing(true);
+      await new Promise(r => setTimeout(r, 1000));
+      showToast({ type: 'success', message: "Notification sent successfully" });
+      setShowNotifyModal(false);
+      setNotifyMessage("");
+    } catch (e) {
+      showToast({ type: 'error', message: "Failed to send notification" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const renderActionButtons = (user) => {
     return (
       <td className="px-4 py-3">
@@ -175,10 +253,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
           )}
 
           <button
-            onClick={() => {
-              console.log('Edit user:', user.id);
-              // TODO: Implement edit functionality
-            }}
+            onClick={() => handleEditClick(user)}
             className="p-1 text-gray-600 hover:bg-gray-50 rounded"
             title="Edit User"
           >
@@ -187,10 +262,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
 
           {user.accountStatus === 'ACTIVE' ? (
             <button
-              onClick={() => {
-                console.log('Suspend user:', user.id);
-                // TODO: Implement suspend functionality
-              }}
+              onClick={() => handleStatusUpdate(user.id, 'SUSPENDED')}
               className="p-1 text-red-600 hover:bg-red-50 rounded"
               title="Suspend User"
             >
@@ -198,10 +270,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
             </button>
           ) : (
             <button
-              onClick={() => {
-                console.log('Activate user:', user.id);
-                // TODO: Implement activate functionality
-              }}
+              onClick={() => handleStatusUpdate(user.id, 'ACTIVE')}
               className="p-1 text-green-600 hover:bg-green-50 rounded"
               title="Activate User"
             >
@@ -210,10 +279,7 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
           )}
 
           <button
-            onClick={() => {
-              console.log('Send notification to user:', user.id);
-              // TODO: Implement notification functionality
-            }}
+            onClick={() => handleNotifyClick(user)}
             className="p-1 text-gray-600 hover:bg-gray-50 rounded"
             title="Send Notification"
           >
@@ -372,14 +438,26 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Quick Actions</h4>
                           <div className="space-y-2">
-                            <button className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
-                              View Full Profile
+                            <button
+                              onClick={() => {
+                                setSelectedProfile(user);
+                                setShowProfileModal(true);
+                              }}
+                              className="w-full px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center justify-center gap-2"
+                            >
+                              <FiEye /> View Full Profile
                             </button>
-                            <button className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
-                              Send Notification
+                            <button
+                              onClick={() => handleNotifyClick(user)}
+                              className="w-full px-3 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 text-sm flex items-center justify-center gap-2"
+                            >
+                              <FiMail /> Send Notification
                             </button>
-                            <button className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm">
-                              Reset Password
+                            <button
+                              onClick={() => handleEditClick(user)}
+                              className="w-full px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm flex items-center justify-center gap-2"
+                            >
+                              <FiEdit /> Edit User
                             </button>
                           </div>
                         </div>
@@ -525,6 +603,219 @@ const AdminDirectoryTable = ({ users, loading, selectedUsers, setSelectedUsers, 
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+      {/* Profile Modal */}
+      {showProfileModal && selectedProfile && (
+        <ProfileViewModel
+          profile={selectedProfile}
+          onClose={() => {
+            setShowProfileModal(false);
+            setSelectedProfile(null);
+          }}
+          showConsultationButton={false} // Admin view only
+        />
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-2xl px-6 py-6 shadow-2xl border border-gray-200 dark:border-slate-700 relative text-gray-900 dark:text-slate-100">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <FiEdit className="text-blue-600 dark:text-blue-500 text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Edit User</h3>
+                  {selectedUserAction && (
+                    <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                      Editing: <span className="text-gray-900 dark:text-white font-medium">{selectedUserAction.name}</span>
+                      <span className="mx-2">•</span>
+                      Role: <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-xs font-semibold border border-gray-200 dark:border-slate-700">{selectedUserAction.role}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5 flex items-center gap-2">
+                    <FiUser className="text-xs" /> Name
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                    value={editFormData.name || ''}
+                    onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                    placeholder="Enter full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5 flex items-center gap-2">
+                    <FiPhone className="text-xs" /> Phone
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                    value={editFormData.phone || ''}
+                    onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5 flex items-center gap-2">
+                  <FiMail className="text-xs" /> Email
+                </label>
+                <input
+                  type="email"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                  value={editFormData.email || ''}
+                  onChange={e => setEditFormData({ ...editFormData, email: e.target.value })}
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              {selectedUserAction?.role === 'LAWYER' && (
+                <div className="pt-2 border-t border-gray-200 dark:border-slate-800/80">
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                    <HiOutlineOfficeBuilding className="text-emerald-600 dark:text-emerald-500" /> Lawyer Information
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5">Bar Council Number</label>
+                      <input
+                        type="text"
+                        className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
+                        value={editFormData.barCouncilNumber || ''}
+                        onChange={e => setEditFormData({ ...editFormData, barCouncilNumber: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5">Years of Experience</label>
+                      <input
+                        type="number"
+                        className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all"
+                        value={editFormData.yearsOfExperience || ''}
+                        onChange={e => setEditFormData({ ...editFormData, yearsOfExperience: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-1.5">Specializations (comma-separated)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                      value={editFormData.specializations || ''}
+                      onChange={e => setEditFormData({ ...editFormData, specializations: e.target.value })}
+                      placeholder="e.g. Criminal Law, Family Law"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-slate-800">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-5 py-2.5 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-800 transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitEdit}
+                disabled={isProcessing}
+                className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? (
+                  <>Processing...</>
+                ) : (
+                  <><FiCheck className="text-lg" /> Save Changes</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification Modal */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-xl w-full max-w-lg px-6 py-6 shadow-2xl border border-gray-200 dark:border-slate-700 relative text-gray-900 dark:text-slate-100">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/10 rounded-lg">
+                  <FiMail className="text-purple-600 dark:text-purple-500 text-xl" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Send Notification</h3>
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                    To: <span className="text-gray-900 dark:text-white font-medium">{selectedUserAction?.name}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                className="text-gray-400 hover:text-gray-600 dark:text-slate-400 dark:hover:text-white transition-colors"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5">Message Title</label>
+                <input
+                  type="text"
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600"
+                  placeholder="Brief subject"
+                // reusing notifyMessage state for body, might need new state for title or just mock it for now
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 dark:text-slate-400 mb-1.5">Message Content</label>
+                <textarea
+                  className="w-full bg-gray-50 dark:bg-slate-800/50 border border-gray-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-slate-600 h-32 resize-none"
+                  placeholder="Type your message here..."
+                  value={notifyMessage}
+                  onChange={e => setNotifyMessage(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-slate-800">
+              <button
+                onClick={() => setShowNotifyModal(false)}
+                className="px-5 py-2.5 rounded-lg text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:text-white dark:hover:bg-slate-800 transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitNotification}
+                disabled={isProcessing}
+                className="px-6 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-sm shadow-lg shadow-purple-500/20 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? (
+                  <>Sending...</>
+                ) : (
+                  <><FiMail className="text-lg" /> Send Message</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

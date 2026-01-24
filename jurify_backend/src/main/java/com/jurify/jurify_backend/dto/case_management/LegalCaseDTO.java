@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 public class LegalCaseDTO {
     private Long id;
+    private String caseNumber;
     private String title;
     private String description;
     private CaseStatus status;
